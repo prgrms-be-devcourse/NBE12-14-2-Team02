@@ -3,6 +3,8 @@ spring:
     name: backend
 
 
+  config:
+    import: optional:file:.env[.properties]
 
   # DB 연결 정보 (.env 값 주입)
   datasource:
