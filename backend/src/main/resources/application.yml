@@ -6,6 +6,6 @@ spring:
 
   # DB 연결 정보 (.env 값 주입)
   datasource:
-    url: ${MYSQL_URL}
-    username: ${MYSQLUSER}
-    password: ${MYSQL_PASSWORD}
+    url: jdbc:mysql://localhost:3306/backend
+    username: root
+    password: 1234
