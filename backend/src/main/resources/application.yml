@@ -8,9 +8,10 @@ spring:
 
   # DB 연결 정보 (.env 값 주입)
   datasource:
-    url: ${MYSQL_URL}
+    url: jdbc:mysql://${MYSQLHOST:localhost}:${MYSQLPORT:3306}/${MYSQLDATABASE}
     username: ${MYSQLUSER}
-    password: ${MYSQL_PASSWORD}
+    password: ${MYSQLPASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:

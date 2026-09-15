@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:9.4.0
+    container_name: team02-mysql
+
+    ports:
+      - "${MYSQLPORT:-3306}:3306"
+
+    environment:
+      MYSQL_DATABASE: ${MYSQLDATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQLUSER}
+      MYSQL_PASSWORD: ${MYSQLPASSWORD}
+
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
