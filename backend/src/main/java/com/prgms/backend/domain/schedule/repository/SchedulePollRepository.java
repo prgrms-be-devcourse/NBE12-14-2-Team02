@@ -4,4 +4,5 @@ import com.prgms.backend.domain.schedule.entity.SchedulePoll;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SchedulePollRepository extends JpaRepository<SchedulePoll, Long> {
+    boolean existsByMeetingId(Long MeetingId);
 }

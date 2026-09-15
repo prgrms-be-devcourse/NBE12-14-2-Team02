@@ -1,8 +1,10 @@
 package com.prgms.backend.domain.schedule.dto;
 
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.validator.constraints.UniqueElements;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -14,7 +16,14 @@ public record SchedulePollCreateRequest(
         LocalDateTime deadline,
 
         @NotEmpty(message = "일정 후보는 한개 이상 등록해야합니다.")
-        List<@NotNull(message = "일정 후보 날짜는 필수입니다.") LocalDate> candidateDates
+        @UniqueElements(
+                message = "동일한 일정 후보를 중복 등록할 수 없습니다."
+        )
+        List<
+                @NotNull(message = "일정 후보 날짜는 필수입니다.")
+                @FutureOrPresent(message = "지난 날짜는 후보로 등록할 수 없습니다.")
+                LocalDate
+                > candidateDates
 
 ) {
 }
