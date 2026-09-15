@@ -8,6 +8,7 @@ import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
+import com.prgms.backend.global.exception.custom.UserNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,13 +21,14 @@ public class MeetingService {
     private final MeetingMemberRepository meetingMemberRepository;
     private final UserRepository userRepository;
 
+    // 모임 생성
     @Transactional
     public MeetingResponse createMeeting(
         Long hostId,
         MeetingCreateRequest request
     ){
         User host = userRepository.findById(hostId)
-            .orElseThrow();
+            .orElseThrow(() -> new UserNotFoundException(hostId));
 
         Meeting meeting = new Meeting(
             host,
