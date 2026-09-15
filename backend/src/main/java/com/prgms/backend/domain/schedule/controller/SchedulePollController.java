@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/meetings/{meetingId}/schedule-poll")
+@RequestMapping("/api/meeting/{meetingId}/schedule-poll")
 public class SchedulePollController {
     private final SchedulePollService schedulePollService;
 
@@ -28,5 +28,4 @@ public class SchedulePollController {
                         response
                 ));
     }
-
 }
