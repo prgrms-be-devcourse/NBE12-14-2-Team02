@@ -22,8 +22,8 @@ public class UserService {
         return userRepository.existsByNickname(nickname);
     }
 
-    public Long signup(String nickname, String email, String password) {
-        User user = new User(nickname, email, passwordEncoder.encode(password));
+    public Long signup(String email, String nickname, String password) {
+        User user = new User(email, nickname, passwordEncoder.encode(password));
         userRepository.save(user);
         return user.getId();
     }

@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -55,9 +55,9 @@ public class UserController {
 
     @PostMapping("/sign-up")
     public ResponseEntity<ApiResponse<SignUpResponse>> signUp (
-            @Valid @RequestBody SignUpRequest signInRequest
+            @Valid @RequestBody SignUpRequest signUpRequest
     ) {
-        Long userId = userService.signup(signInRequest.nickname(), signInRequest.email(), signInRequest.password());
+        Long userId = userService.signup(signUpRequest.email(), signUpRequest.nickname(), signUpRequest.password());
         SignUpResponse signUpResponse = new SignUpResponse(userId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));

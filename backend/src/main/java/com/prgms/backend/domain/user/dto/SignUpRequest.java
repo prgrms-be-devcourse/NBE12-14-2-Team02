@@ -8,5 +8,5 @@ public record SignUpRequest(
         @NotBlank String nickname,
         @NotBlank String password,
         @NotBlank String confirmPassword
-){
+) {
 }
