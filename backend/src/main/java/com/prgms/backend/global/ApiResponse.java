@@ -1,5 +1,6 @@
 package com.prgms.backend.global;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
  * 성공/실패 응답을 {success, code, message, data} 구조로 표현한다.
  * 실제 HTTP 204 응답은 본문 없이 반환한다.
  */
+@JsonPropertyOrder({"success", "code", "message", "data"})
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
