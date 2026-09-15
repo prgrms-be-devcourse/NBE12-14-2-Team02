@@ -17,11 +17,11 @@ public class SchedulePollController {
     private final SchedulePollService schedulePollService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> create(
+    public ResponseEntity<ApiResponse<SchedulePollResponse.Created>> create(
             @PathVariable Long meetingId,
             @Valid @RequestBody SchedulePollRequest.Create request
             ){
-        SchedulePollResponse.Detail response = schedulePollService.create(meetingId, request);
+        SchedulePollResponse.Created response = schedulePollService.create(meetingId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         201,
