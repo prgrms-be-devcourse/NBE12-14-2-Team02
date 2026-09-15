@@ -50,6 +50,12 @@ public class SchedulePollController {
             @PathVariable Long meetingId,
             @Valid @RequestBody SchedulePollRequest.updateDeadline request
     ){
+        SchedulePollResponse.DeadlineUpdate response =
+                schedulePollService.updateDeadline(meetingId,request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(200,response)
+        );
 
     }
 }

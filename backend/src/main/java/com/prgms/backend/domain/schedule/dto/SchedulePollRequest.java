@@ -12,7 +12,7 @@ import java.util.List;
 
 
 public class SchedulePollRequest{
-
+        //일정투표 생성용 DTO
         public record create(
                 @NotNull(message = "마감 시간은 필수입니다.")
                 @Future(message = "마감 시간은 현재보다 이후여야 합니다.")
@@ -29,7 +29,7 @@ public class SchedulePollRequest{
                         > candidateDates
 
         ) {}
-
+        //마감시각 수정용 DTO
         public record updateDeadline(
                 @NotNull(message = "마감 시간은 필수입니다.")
                 @Future(message = "마감 시간은 현재보다 이후여야 합니다.")

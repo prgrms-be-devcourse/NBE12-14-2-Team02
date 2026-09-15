@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class SchedulePollService {
@@ -61,6 +63,25 @@ public class SchedulePollService {
         return SchedulePollResponse.Detail.from(schedulePoll);
 
 
+
+    }
+
+    @Transactional
+    public SchedulePollResponse.DeadlineUpdate updateDeadline(
+            Long meetingId,
+            SchedulePollRequest.updateDeadline request
+            ) {
+        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingId(meetingId)
+                .orElseThrow(
+                        () -> new SchedulePollNotFoundException(
+                                meetingId
+                        )
+                );
+        schedulePoll.updateDeadline(request.deadline(),LocalDateTime.now());
+
+        return SchedulePollResponse.DeadlineUpdate.from(
+                schedulePoll
+        );
 
     }
 }
