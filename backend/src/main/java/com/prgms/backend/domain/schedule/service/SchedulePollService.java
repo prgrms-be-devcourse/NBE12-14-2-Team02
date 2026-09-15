@@ -23,7 +23,7 @@ public class SchedulePollService {
 
     //schedulePoll생성
     @Transactional
-    public SchedulePollResponse.Detail create(
+    public SchedulePollResponse.Created create(
             Long meetingId,
             SchedulePollRequest.Create request
     ) {
@@ -37,18 +37,11 @@ public class SchedulePollService {
            throw new SchedulePollAlreadyExistsException(meetingId);
        }
 
-       SchedulePoll schedulePoll =
-               SchedulePoll.create(meeting,request.deadline());
-       //request에 있는 후보 일정들을 투표에다가 add
-       request.candidateDates()
-               .forEach(schedulePoll::addCandidate);
-
-       //이렇게 하면, 후보일정까지 한 트랜잭션 내에서 DB에 반영
        SchedulePoll savedPoll =
-               schedulePollRepository.save(schedulePoll);
+               schedulePollRepository.save(SchedulePoll.create(meeting,request.deadline()));
 
        //DTO로 변환해서 반환
-       return SchedulePollResponse.Detail.from(savedPoll);
+       return SchedulePollResponse.Created.from(savedPoll);
     }
 
     //SchedulePoll 조회하기

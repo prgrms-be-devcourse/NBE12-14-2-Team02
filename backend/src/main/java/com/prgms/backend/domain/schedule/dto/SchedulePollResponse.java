@@ -12,7 +12,26 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class SchedulePollResponse {
 
-    //생성, 조회용 DTO
+    //SchedulePoll 생성 결과 반환용 DTO
+    public record Created(
+            Long id,
+            Long meetingId,
+            LocalDateTime deadline,
+            SchedulePollStatus status
+    ) {
+        public static Created from(
+                SchedulePoll schedulePoll
+        ) {
+            return new Created(
+                    schedulePoll.getId(),
+                    schedulePoll.getMeeting().getId(),
+                    schedulePoll.getDeadline(),
+                    schedulePoll.getStatus()
+            );
+        }
+    }
+
+    //조회용 DTO
     public record Detail(
             Long id,
             Long meetingId,
@@ -20,13 +39,14 @@ public final class SchedulePollResponse {
             SchedulePollStatus status,
             List<ScheduleCandidateResponse> candidates
     ) {
-        //DTO를 반환하는 팩토리 메서드
-        //여기서 candidates만들 때, 후보목록을 함께 가져오는데 candidate는 LAZY로딩이라, 이때 DB조회가 발생함
-        public static Detail from(SchedulePoll schedulePoll) {
+        public static Detail from(
+                SchedulePoll schedulePoll
+        ) {
             List<ScheduleCandidateResponse> candidates =
                     schedulePoll.getCandidates().stream()
                             .map(ScheduleCandidateResponse::from)
                             .toList();
+
             return new Detail(
                     schedulePoll.getId(),
                     schedulePoll.getMeeting().getId(),
@@ -36,7 +56,7 @@ public final class SchedulePollResponse {
             );
         }
     }
-    //마감시간 수정 용 DTO
+    //마감시간 수정용 DTO
     public record DeadlineUpdate(
             Long id,
             LocalDateTime deadline,

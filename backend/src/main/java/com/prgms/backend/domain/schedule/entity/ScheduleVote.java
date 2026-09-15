@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @Table(
-        name = "schedule_vote",
+        name = "schedule_votes",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_schedule_vote_candidate_member",

@@ -16,7 +16,7 @@ import java.util.List;
 
 @Getter
 @Entity
-@Table(name = "schedule_poll")
+@Table(name = "schedule_polls")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SchedulePoll {
     @Id
@@ -75,7 +75,7 @@ public class SchedulePoll {
             LocalDateTime now
     ){
         if(this.status == SchedulePollStatus.CLOSED ||
-        !now.isBefore(newDeadline)){
+        !now.isBefore(this.deadline)){
             throw new SchedulePollClosedException();
         }
         this.deadline = newDeadline;
