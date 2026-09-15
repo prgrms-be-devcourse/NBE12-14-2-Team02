@@ -28,4 +28,20 @@ public class SchedulePollController {
                         response
                 ));
     }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<SchedulePollResponse>> get(
+            @PathVariable Long meetingId
+    ){
+        SchedulePollResponse response =
+                schedulePollService.get(meetingId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        200,
+                        response
+                )
+        );
+
+    }
 }
