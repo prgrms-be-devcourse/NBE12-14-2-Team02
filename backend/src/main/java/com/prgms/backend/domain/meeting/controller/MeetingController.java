@@ -4,6 +4,7 @@ import com.prgms.backend.domain.meeting.dto.request.MeetingCreateRequest;
 import com.prgms.backend.domain.meeting.dto.response.MeetingResponse;
 import com.prgms.backend.domain.meeting.service.MeetingService;
 import com.prgms.backend.global.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -23,10 +24,11 @@ public class MeetingController {
     @PostMapping
     public ResponseEntity<ApiResponse<MeetingResponse>> createMeeting(
         @RequestParam Long hostId,
-        @RequestBody MeetingCreateRequest request
+        @Valid @RequestBody MeetingCreateRequest request
     ){
         // 로그인 기능 연결되면 hostId 전달 -> 로그인 사용자에서 userId 추출하는 방식으로 변경 예정
-        MeetingResponse response = meetingService.createMeeting(hostId, request);
+        MeetingResponse response =
+            meetingService.createMeeting(hostId, request);
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
