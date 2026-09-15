@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/meeting/{meetingId}/content-poll")
+@RequestMapping("/api/meetings/{meetingId}/content-poll")
 public class ContentPollController {
     private final ContentPollService contentPollService;
 
