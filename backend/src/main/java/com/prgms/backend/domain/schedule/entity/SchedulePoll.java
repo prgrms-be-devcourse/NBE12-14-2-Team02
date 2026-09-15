@@ -21,6 +21,7 @@ public class SchedulePoll {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     //OneToOne : 1모임 1일정투표.
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(

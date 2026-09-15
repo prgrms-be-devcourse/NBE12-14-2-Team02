@@ -15,6 +15,7 @@ public record SchedulePollResponse(
         List<ScheduleCandidateResponse> candidates
 ) {
     //DTO를 반환하는 팩토리 메서드
+    //여기서 candidates만들 때, 후보목록을 함께 가져오는데 candidate는 LAZY로딩이라, 이때 DB조회가 발생함
     public static SchedulePollResponse from(SchedulePoll schedulePoll) {
         List<ScheduleCandidateResponse> candidates =
                 schedulePoll.getCandidates().stream()

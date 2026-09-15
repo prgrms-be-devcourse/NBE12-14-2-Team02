@@ -8,6 +8,7 @@ import com.prgms.backend.domain.schedule.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.repository.SchedulePollRepository;
 import com.prgms.backend.global.exception.custom.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.SchedulePollAlreadyExistsException;
+import com.prgms.backend.global.exception.custom.SchedulePollNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class SchedulePollService {
     private final SchedulePollRepository schedulePollRepository;
     private final MeetingRepository meetingRepository;
 
+    //schedulePoll생성
     @Transactional
     public SchedulePollResponse create(
             Long meetingId,
@@ -45,5 +47,20 @@ public class SchedulePollService {
 
        //DTO로 변환해서 반환
        return SchedulePollResponse.from(savedPoll);
+    }
+
+    //SchedulePoll 조회하기
+    @Transactional(readOnly = true)
+    public SchedulePollResponse get(Long meetingId) {
+        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingId(meetingId)
+                .orElseThrow(
+                        () -> new SchedulePollNotFoundException(
+                                meetingId
+                        )
+                );
+        return SchedulePollResponse.from(schedulePoll);
+
+
+
     }
 }
