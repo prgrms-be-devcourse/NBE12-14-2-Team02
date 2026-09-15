@@ -2,7 +2,7 @@ package com.prgms.backend.domain.schedule.service;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
-import com.prgms.backend.domain.schedule.dto.SchedulePollCreateRequest;
+import com.prgms.backend.domain.schedule.dto.SchedulePollRequest;
 import com.prgms.backend.domain.schedule.dto.SchedulePollResponse;
 import com.prgms.backend.domain.schedule.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.repository.SchedulePollRepository;
@@ -21,9 +21,9 @@ public class SchedulePollService {
 
     //schedulePoll생성
     @Transactional
-    public SchedulePollResponse create(
+    public SchedulePollResponse.Detail create(
             Long meetingId,
-            SchedulePollCreateRequest request
+            SchedulePollRequest.create request
     ) {
        Meeting meeting = meetingRepository.findById(meetingId)
                .orElseThrow(
@@ -46,19 +46,19 @@ public class SchedulePollService {
                schedulePollRepository.save(schedulePoll);
 
        //DTO로 변환해서 반환
-       return SchedulePollResponse.from(savedPoll);
+       return SchedulePollResponse.Detail.from(savedPoll);
     }
 
     //SchedulePoll 조회하기
     @Transactional(readOnly = true)
-    public SchedulePollResponse get(Long meetingId) {
+    public SchedulePollResponse.Detail get(Long meetingId) {
         SchedulePoll schedulePoll = schedulePollRepository.findByMeetingId(meetingId)
                 .orElseThrow(
                         () -> new SchedulePollNotFoundException(
                                 meetingId
                         )
                 );
-        return SchedulePollResponse.from(schedulePoll);
+        return SchedulePollResponse.Detail.from(schedulePoll);
 
 
 
