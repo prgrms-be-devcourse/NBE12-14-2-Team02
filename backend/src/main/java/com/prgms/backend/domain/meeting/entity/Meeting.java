@@ -31,4 +31,10 @@ public class Meeting extends BaseTimeEntity {
     private String name;
 
     private String description;
+
+    public Meeting(User host, String name, String description){
+        this.host = host;
+        this.name = name;
+        this.description = description;
+    }
 }
