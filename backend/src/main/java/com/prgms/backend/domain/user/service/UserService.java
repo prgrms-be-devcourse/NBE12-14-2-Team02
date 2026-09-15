@@ -22,7 +22,7 @@ public class UserService {
         return userRepository.existsByNickname(nickname);
     }
 
-    public Long signIn(String nickname, String email, String password) {
+    public Long signup(String nickname, String email, String password) {
         User user = new User(nickname, email, passwordEncoder.encode(password));
         userRepository.save(user);
         return user.getId();

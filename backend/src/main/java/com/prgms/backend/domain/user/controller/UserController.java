@@ -1,14 +1,13 @@
 package com.prgms.backend.domain.user.controller;
 
-import com.prgms.backend.domain.user.dto.SignInRequest;
+import com.prgms.backend.domain.user.dto.SignUpRequest;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import javax.swing.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -38,6 +37,7 @@ public class UserController {
     ) {
     }
 
+    @GetMapping("/check-nickname")
     public ResponseEntity<ApiResponse<NicknameCheckResponse>> checkNickname (
         @RequestParam String nickname
     ) {
@@ -48,17 +48,19 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(200, response));
     }
 
-    public record signInResponse(
+    public record SignUpResponse(
             Long userId
     ) {
     }
 
-    public ResponseEntity<ApiResponse<?>> signIn (
-            @Valid @RequestBody SignInRequest signInRequest
+    @PostMapping("/sign-up")
+    public ResponseEntity<ApiResponse<SignUpResponse>> signUp (
+            @Valid @RequestBody SignUpRequest signInRequest
     ) {
-        Long userId = userService.signIn(signInRequest.nickname(), signInRequest.email(), signInRequest.password());
+        Long userId = userService.signup(signInRequest.nickname(), signInRequest.email(), signInRequest.password());
+        SignUpResponse signUpResponse = new SignUpResponse(userId);
 
-        return ResponseEntity.created(ApiResponse);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));
     }
 
 }
