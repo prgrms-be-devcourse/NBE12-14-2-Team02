@@ -19,7 +19,7 @@ public class SchedulePollController {
     @PostMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> create(
             @PathVariable Long meetingId,
-            @Valid @RequestBody SchedulePollRequest.create request
+            @Valid @RequestBody SchedulePollRequest.Create request
             ){
         SchedulePollResponse.Detail response = schedulePollService.create(meetingId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -48,7 +48,7 @@ public class SchedulePollController {
     @PatchMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.DeadlineUpdate>> updateDeadline(
             @PathVariable Long meetingId,
-            @Valid @RequestBody SchedulePollRequest.updateDeadline request
+            @Valid @RequestBody SchedulePollRequest.UpdateDeadline request
     ){
         SchedulePollResponse.DeadlineUpdate response =
                 schedulePollService.updateDeadline(meetingId,request);

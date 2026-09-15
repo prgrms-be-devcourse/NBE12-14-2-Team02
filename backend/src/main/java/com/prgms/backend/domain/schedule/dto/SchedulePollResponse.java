@@ -2,12 +2,15 @@ package com.prgms.backend.domain.schedule.dto;
 
 import com.prgms.backend.domain.schedule.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.entity.SchedulePollStatus;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 //하나의 생성, 조회, 수정용 DTO를 각각 만들기보다는 하나의 클래스가 DTO를 제공하는 식으로 구현
-public class SchedulePollResponse {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class SchedulePollResponse {
 
     //생성, 조회용 DTO
     public record Detail(

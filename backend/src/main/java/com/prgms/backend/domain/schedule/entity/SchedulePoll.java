@@ -75,7 +75,7 @@ public class SchedulePoll {
             LocalDateTime now
     ){
         if(this.status == SchedulePollStatus.CLOSED ||
-        now.isBefore(newDeadline)){
+        !now.isBefore(newDeadline)){
             throw new SchedulePollClosedException();
         }
         this.deadline = newDeadline;

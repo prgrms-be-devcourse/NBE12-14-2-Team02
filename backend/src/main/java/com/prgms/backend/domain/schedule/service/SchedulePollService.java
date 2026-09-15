@@ -25,7 +25,7 @@ public class SchedulePollService {
     @Transactional
     public SchedulePollResponse.Detail create(
             Long meetingId,
-            SchedulePollRequest.create request
+            SchedulePollRequest.Create request
     ) {
        Meeting meeting = meetingRepository.findById(meetingId)
                .orElseThrow(
@@ -69,7 +69,7 @@ public class SchedulePollService {
     @Transactional
     public SchedulePollResponse.DeadlineUpdate updateDeadline(
             Long meetingId,
-            SchedulePollRequest.updateDeadline request
+            SchedulePollRequest.UpdateDeadline request
             ) {
         SchedulePoll schedulePoll = schedulePollRepository.findByMeetingId(meetingId)
                 .orElseThrow(
