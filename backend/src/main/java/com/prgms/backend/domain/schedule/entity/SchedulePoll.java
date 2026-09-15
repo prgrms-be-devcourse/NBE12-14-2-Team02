@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.schedule.entity;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
+import com.prgms.backend.global.exception.custom.SchedulePollClosedException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -67,6 +68,17 @@ public class SchedulePoll {
     public void addCandidate(LocalDate candidateDate){
         ScheduleCandidate candidate = ScheduleCandidate.create(this,candidateDate);
          candidates.add(candidate);
+    }
+
+    public void updateDeadline(
+            LocalDateTime newDeadline,
+            LocalDateTime now
+    ){
+        if(this.status == SchedulePollStatus.CLOSED ||
+        !now.isBefore(newDeadline)){
+            throw new SchedulePollClosedException();
+        }
+        this.deadline = newDeadline;
     }
 
 

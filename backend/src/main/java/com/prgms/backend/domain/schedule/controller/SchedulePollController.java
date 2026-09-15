@@ -1,6 +1,6 @@
 package com.prgms.backend.domain.schedule.controller;
 
-import com.prgms.backend.domain.schedule.dto.SchedulePollCreateRequest;
+import com.prgms.backend.domain.schedule.dto.SchedulePollRequest;
 import com.prgms.backend.domain.schedule.dto.SchedulePollResponse;
 import com.prgms.backend.domain.schedule.service.SchedulePollService;
 import com.prgms.backend.global.ApiResponse;
@@ -12,16 +12,16 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/meeting/{meetingId}/schedule-poll")
+@RequestMapping("/api/meetings/{meetingId}/schedule-poll")
 public class SchedulePollController {
     private final SchedulePollService schedulePollService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<SchedulePollResponse>> create(
+    public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> create(
             @PathVariable Long meetingId,
-            @Valid @RequestBody SchedulePollCreateRequest request
+            @Valid @RequestBody SchedulePollRequest.Create request
             ){
-        SchedulePollResponse response = schedulePollService.create(meetingId, request);
+        SchedulePollResponse.Detail response = schedulePollService.create(meetingId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         201,
@@ -30,10 +30,10 @@ public class SchedulePollController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<SchedulePollResponse>> get(
+    public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> get(
             @PathVariable Long meetingId
     ){
-        SchedulePollResponse response =
+        SchedulePollResponse.Detail response =
                 schedulePollService.get(meetingId);
 
         return ResponseEntity.ok(
@@ -41,6 +41,20 @@ public class SchedulePollController {
                         200,
                         response
                 )
+        );
+
+    }
+
+    @PatchMapping
+    public ResponseEntity<ApiResponse<SchedulePollResponse.DeadlineUpdate>> updateDeadline(
+            @PathVariable Long meetingId,
+            @Valid @RequestBody SchedulePollRequest.UpdateDeadline request
+    ){
+        SchedulePollResponse.DeadlineUpdate response =
+                schedulePollService.updateDeadline(meetingId,request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(200,response)
         );
 
     }
