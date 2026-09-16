@@ -1,4 +1,4 @@
-package com.prgms.backend.global.exception.custom;
+package com.prgms.backend.global.exception.custom.meeting;
 
 import com.prgms.backend.global.exception.BusinessException;
 

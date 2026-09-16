@@ -6,7 +6,7 @@ import com.prgms.backend.domain.schedule.poll.dto.SchedulePollRequest;
 import com.prgms.backend.domain.schedule.poll.dto.SchedulePollResponse;
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
-import com.prgms.backend.global.exception.custom.MeetingNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollAlreadyExistsException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollNotFoundException;
 import lombok.RequiredArgsConstructor;
