@@ -1,4 +1,4 @@
-/*import com.prgms.backend.domain.expense.dto.ExpenseCreateRequest;
+import com.prgms.backend.domain.expense.dto.ExpenseCreateRequest;
 import com.prgms.backend.domain.expense.dto.ExpenseCreateRequest;
 import com.prgms.backend.domain.expense.dto.ExpenseResponse;
 import com.prgms.backend.domain.expense.entity.Expense;
@@ -45,4 +45,4 @@ public class ExpenseService {
                 result.remainderMemberId());
         return ExpenseResponse.from(repository.save(expense));
     }
-}*/
+}

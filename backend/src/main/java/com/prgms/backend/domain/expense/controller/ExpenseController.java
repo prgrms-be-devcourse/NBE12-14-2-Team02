@@ -1,4 +1,4 @@
-/*package com.prgms.backend.domain.expense.controller;
+package com.prgms.backend.domain.expense.controller;
 
 import com.prgms.backend.domain.expense.dto.*;
 import com.prgms.backend.domain.expense.service.ExpenseService;
@@ -21,4 +21,4 @@ public class ExpenseController {
                                                @Valid @RequestBody ExpenseCreateRequest request) {
         return ApiResponse.success(201, service.create(meetingId, principal, request));
     }
-}*/
+}
