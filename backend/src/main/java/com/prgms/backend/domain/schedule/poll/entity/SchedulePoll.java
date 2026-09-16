@@ -2,6 +2,7 @@ package com.prgms.backend.domain.schedule.poll.entity;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
+import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateNotFoundException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollClosedException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -88,6 +89,39 @@ public class SchedulePoll {
                 !now.isBefore(deadline)) {
             throw new SchedulePollClosedException();
         }
+    }
+    public ScheduleCandidate findCandidate(Long candidateId){
+        return candidates.stream()
+                .filter(candidate ->
+                        candidate.getId().equals(candidateId))
+                .findFirst()
+                .orElseThrow(
+                        () -> new ScheduleCandidateNotFoundException(candidateId)
+                );
+
+    }
+
+    //중복날짜가 있는 지 없는지를 여기서 검사함.
+    //lazy로딩이지만, 후보를 10개로 고정했기때문에 메모리 상 성능저하는 없을 것 같아서, 여기서 처리했슴
+    public boolean hasDuplicateDate(
+            Long excludedCandidateId,
+            LocalDate candidateDate
+    ) {
+        return candidates.stream()
+                .anyMatch(candidate ->
+                        !candidate.getId().equals(excludedCandidateId)
+                                && candidate.getCandidateDate()
+                                .equals(candidateDate)
+                );
+    }
+
+    //위 메서드와 동일 기능 수행(오버로딩) -> 중복날짜가 있는 지 단일 인자를 가지고 검사.
+    public boolean hasDuplicateDate(LocalDate candidateDate) {
+        return candidates.stream()
+                .anyMatch(candidate ->
+                        candidate.getCandidateDate()
+                                .equals(candidateDate)
+                );
     }
 
 
