@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class ScheduleCandidateController {
     private final ScheduleCandidateService scheduleCandidateService;
 
+    //나중에 jwt에서 인증 정보를 가져온 뒤 post하려는 user의 id와 meetingId를 비교해서 host가 맞는 지 확인하는 과정 필요
     @PostMapping
     public ResponseEntity<ApiResponse<ScheduleCandidateResponse.Summary>> create(
             @PathVariable Long meetingId,
@@ -49,6 +50,20 @@ public class ScheduleCandidateController {
                         200,
                         response
                 ));
+    }
+
+    //나중에 jwt에서 인증 정보를 가져온 뒤 delete하려는 user의 id와 meetingId를 비교해서 host가 맞는 지 확인하는 과정 필요
+
+    @DeleteMapping("/{candidateId}")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long meetingId,
+            @PathVariable Long candidateId
+    ){
+
+        scheduleCandidateService.delete(meetingId, candidateId);
+
+
+        return ResponseEntity.noContent().build();
     }
 
 
