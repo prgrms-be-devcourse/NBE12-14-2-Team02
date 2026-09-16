@@ -2,12 +2,13 @@ package com.prgms.backend.domain.schedule.poll.entity;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
-import com.prgms.backend.global.exception.custom.SchedulePollClosedException;
+import com.prgms.backend.global.exception.custom.schedule.SchedulePollClosedException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,20 +66,28 @@ public class SchedulePoll {
     }
 
     //SchedulePoll에 candidate추가하는 메서드
-    public void addCandidate(LocalDateTime candidateDate){
-        ScheduleCandidate candidate = ScheduleCandidate.create(this,candidateDate);
-         candidates.add(candidate);
+    public ScheduleCandidate addCandidate(LocalDate candidateDate) {
+        ScheduleCandidate candidate =
+                ScheduleCandidate.create(this, candidateDate);
+
+        candidates.add(candidate);
+        return candidate;
     }
 
     public void updateDeadline(
             LocalDateTime newDeadline,
             LocalDateTime now
     ){
-        if(this.status == SchedulePollStatus.CLOSED ||
-        !now.isBefore(this.deadline)){
+        validateOpen(now);
+        this.deadline = newDeadline;
+    }
+
+    //현재 닫혀있는 투표이거나, 마감시간을 지났다면, 예외.
+    public void validateOpen(LocalDateTime now) {
+        if (this.status == SchedulePollStatus.CLOSED ||
+                !now.isBefore(deadline)) {
             throw new SchedulePollClosedException();
         }
-        this.deadline = newDeadline;
     }
 
 

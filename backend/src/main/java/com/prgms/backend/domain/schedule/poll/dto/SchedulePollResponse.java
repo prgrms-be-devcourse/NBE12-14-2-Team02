@@ -38,14 +38,14 @@ public final class SchedulePollResponse {
             Long meetingId,
             LocalDateTime deadline,
             SchedulePollStatus status,
-            List<ScheduleCandidateResponse> candidates
+            List<ScheduleCandidateResponse.Summary> candidates
     ) {
         public static Detail from(
                 SchedulePoll schedulePoll
         ) {
-            List<ScheduleCandidateResponse> candidates =
+            List<ScheduleCandidateResponse.Summary> candidates =
                     schedulePoll.getCandidates().stream()
-                            .map(ScheduleCandidateResponse::from)
+                            .map(ScheduleCandidateResponse.Summary::from)
                             .toList();
 
             return new Detail(

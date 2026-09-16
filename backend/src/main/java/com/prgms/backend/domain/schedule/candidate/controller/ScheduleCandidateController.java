@@ -1,14 +1,37 @@
 package com.prgms.backend.domain.schedule.candidate.controller;
 
+import com.prgms.backend.domain.schedule.candidate.dto.ScheduleCandidateRequest;
 import com.prgms.backend.domain.schedule.candidate.service.ScheduleCandidateService;
+import com.prgms.backend.domain.schedule.poll.dto.SchedulePollResponse;
+import com.prgms.backend.global.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/meetings/{meetingId}/schedule-poll/candidates")
 @RequiredArgsConstructor
 public class ScheduleCandidateController {
     private final ScheduleCandidateService scheduleCandidateService;
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> create(
+            @PathVariable Long meetingId,
+            @Valid @RequestBody ScheduleCandidateRequest.Create request
+
+            ){
+        SchedulePollResponse.Detail response = scheduleCandidateService.create(meetingId, request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(
+                        ApiResponse.success(
+                                201,
+                                response
+                        )
+                );
+
+    }
 
 }
