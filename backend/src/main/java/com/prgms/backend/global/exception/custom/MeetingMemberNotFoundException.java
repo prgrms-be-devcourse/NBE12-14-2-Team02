@@ -16,10 +16,7 @@ public class MeetingMemberNotFoundException extends BusinessException {
 
         super(
             404,
-            "해당 모임에 사용자가 존재하지 않습니다. meetingId = "
-            + meetingId
-            + ", userId = "
-            + userId
+            "해당 모임에 사용자가 존재하지 않습니다. meetingId = " + meetingId + ", userId = " + userId
         );
     }
 }

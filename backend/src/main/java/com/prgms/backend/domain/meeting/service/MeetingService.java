@@ -21,30 +21,36 @@ public class MeetingService {
     private final MeetingMemberRepository meetingMemberRepository;
     private final UserRepository userRepository;
 
-    // 모임 생성
+    // 모임 객체 생성
     @Transactional
     public MeetingResponse createMeeting(
         Long hostId,
         MeetingCreateRequest request
     ){
+        // 모임장이 존재하는 회원인지 검사
         User host = userRepository.findById(hostId)
             .orElseThrow(() -> new UserNotFoundException(hostId));
 
+        // 모임 객체 생성
         Meeting meeting = new Meeting(
             host,
             request.name(),
             request.description()
         );
 
+        // DB에 모임 객체 저장
         Meeting savedMeeting = meetingRepository.save(meeting);
 
+        // 모임장으로 모임원 객체 생성
         MeetingMember hostMember = new MeetingMember(
             savedMeeting,
             host
         );
 
+        // DB에 모임장 객체 저장
         meetingMemberRepository.save(hostMember);
 
+        // MeetingResponse 형태로 변환해서 리턴
         return MeetingResponse.from(savedMeeting);
     }
 }
