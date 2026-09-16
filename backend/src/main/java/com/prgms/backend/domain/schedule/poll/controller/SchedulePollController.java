@@ -1,8 +1,8 @@
-package com.prgms.backend.domain.schedule.controller;
+package com.prgms.backend.domain.schedule.poll.controller;
 
-import com.prgms.backend.domain.schedule.dto.SchedulePollRequest;
-import com.prgms.backend.domain.schedule.dto.SchedulePollResponse;
-import com.prgms.backend.domain.schedule.service.SchedulePollService;
+import com.prgms.backend.domain.schedule.poll.dto.SchedulePollRequest;
+import com.prgms.backend.domain.schedule.poll.dto.SchedulePollResponse;
+import com.prgms.backend.domain.schedule.poll.service.SchedulePollService;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

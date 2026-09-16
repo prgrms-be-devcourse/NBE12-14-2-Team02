@@ -1,12 +1,13 @@
-package com.prgms.backend.domain.schedule.entity;
+package com.prgms.backend.domain.schedule.candidate.entity;
 
+import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
 import com.prgms.backend.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 //schedule_poll하나에 같은 일정이 여러개 있을 수 없게 unique제약조건 추가.
 @Entity
@@ -35,12 +36,12 @@ public class ScheduleCandidate extends BaseCreatedEntity {
     private SchedulePoll schedulePoll;
 
     @Column(name = "candidate_date", nullable = false)
-    private LocalDate candidateDate;
+    private LocalDateTime candidateDate;
 
 
     private ScheduleCandidate(
             SchedulePoll schedulePoll,
-            LocalDate candidateDate
+            LocalDateTime candidateDate
     ) {
         this.schedulePoll = schedulePoll;
         this.candidateDate = candidateDate;
@@ -48,7 +49,7 @@ public class ScheduleCandidate extends BaseCreatedEntity {
     //ScheduleCandidate 정적 팩토리 메서드
     public static ScheduleCandidate create(
             SchedulePoll schedulePoll,
-            LocalDate candidateDate
+            LocalDateTime candidateDate
     ) {
         return new ScheduleCandidate(
                 schedulePoll,
