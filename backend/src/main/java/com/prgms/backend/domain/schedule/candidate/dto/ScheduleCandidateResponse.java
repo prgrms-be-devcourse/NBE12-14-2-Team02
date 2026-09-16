@@ -1,13 +1,13 @@
-package com.prgms.backend.domain.schedule.dto;
+package com.prgms.backend.domain.schedule.candidate.dto;
 
-import com.prgms.backend.domain.schedule.entity.ScheduleCandidate;
+import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 
 public record ScheduleCandidateResponse(
         Long id,
-        LocalDate candidateDate
+        LocalDateTime candidateDate
 ) {
     //DTO를 반환하는 팩토리 매서드
     public static ScheduleCandidateResponse from(

@@ -1,11 +1,11 @@
-package com.prgms.backend.domain.schedule.service;
+package com.prgms.backend.domain.schedule.poll.service;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
-import com.prgms.backend.domain.schedule.dto.SchedulePollRequest;
-import com.prgms.backend.domain.schedule.dto.SchedulePollResponse;
-import com.prgms.backend.domain.schedule.entity.SchedulePoll;
-import com.prgms.backend.domain.schedule.repository.SchedulePollRepository;
+import com.prgms.backend.domain.schedule.poll.dto.SchedulePollRequest;
+import com.prgms.backend.domain.schedule.poll.dto.SchedulePollResponse;
+import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
+import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.global.exception.custom.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.SchedulePollAlreadyExistsException;
 import com.prgms.backend.global.exception.custom.SchedulePollNotFoundException;

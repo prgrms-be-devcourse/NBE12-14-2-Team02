@@ -1,7 +1,8 @@
-package com.prgms.backend.domain.schedule.entity;
+package com.prgms.backend.domain.schedule.vote;
 
 
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
 import com.prgms.backend.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;

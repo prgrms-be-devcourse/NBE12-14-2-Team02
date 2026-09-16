@@ -1,4 +1,4 @@
-package com.prgms.backend.domain.schedule.dto;
+package com.prgms.backend.domain.schedule.poll.dto;
 
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;

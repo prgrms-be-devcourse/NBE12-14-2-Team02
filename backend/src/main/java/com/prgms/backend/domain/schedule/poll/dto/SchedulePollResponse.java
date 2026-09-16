@@ -1,7 +1,8 @@
-package com.prgms.backend.domain.schedule.dto;
+package com.prgms.backend.domain.schedule.poll.dto;
 
-import com.prgms.backend.domain.schedule.entity.SchedulePoll;
-import com.prgms.backend.domain.schedule.entity.SchedulePollStatus;
+import com.prgms.backend.domain.schedule.candidate.dto.ScheduleCandidateResponse;
+import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
+import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 

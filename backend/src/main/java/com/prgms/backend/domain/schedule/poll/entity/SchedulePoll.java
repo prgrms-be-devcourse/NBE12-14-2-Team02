@@ -1,13 +1,13 @@
-package com.prgms.backend.domain.schedule.entity;
+package com.prgms.backend.domain.schedule.poll.entity;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
+import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
 import com.prgms.backend.global.exception.custom.SchedulePollClosedException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +65,7 @@ public class SchedulePoll {
     }
 
     //SchedulePoll에 candidate추가하는 메서드
-    public void addCandidate(LocalDate candidateDate){
+    public void addCandidate(LocalDateTime candidateDate){
         ScheduleCandidate candidate = ScheduleCandidate.create(this,candidateDate);
          candidates.add(candidate);
     }
