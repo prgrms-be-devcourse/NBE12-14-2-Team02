@@ -2,6 +2,7 @@ package com.prgms.backend.domain.meeting.dto.response;
 
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
 
+import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import java.time.LocalDateTime;
 
 public record MeetingMemberResponse(
@@ -9,6 +10,7 @@ public record MeetingMemberResponse(
     Long meetingId,
     Long userId,
     String nickname,
+    MeetingMemberStatus status,
     LocalDateTime joinedAt,
     LocalDateTime leftAt
 ) {
@@ -19,6 +21,7 @@ public record MeetingMemberResponse(
             meetingMember.getMeeting().getId(),
             meetingMember.getUser().getId(),
             meetingMember.getUser().getNickname(),
+            meetingMember.getStatus(),
             meetingMember.getJoinedAt(),
             meetingMember.getLeftAt()
         );

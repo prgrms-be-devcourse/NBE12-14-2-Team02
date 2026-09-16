@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeetingController {
     private final MeetingService meetingService;
 
+    // 모임 생성
     @PostMapping
     public ResponseEntity<ApiResponse<MeetingResponse>> createMeeting(
         @RequestParam Long hostId,
