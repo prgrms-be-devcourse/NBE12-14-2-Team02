@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface MeetingMemberRepository
     extends JpaRepository<MeetingMember, Long> {
 
-    // MeetingMemberStatus 상관없이 회원 기록 찾기
+    // MeetingMemberStatus 상관없이 회원 기록 조회
     Optional<MeetingMember> findByMeetingIdAndUserId(
         Long meetingId,
         Long userId
@@ -25,9 +25,15 @@ public interface MeetingMemberRepository
         MeetingMemberStatus status
     );
 
-    // 현재 모임원 목록 찾기(status = JOINED인 모임원)
+    // 현재 모임원 목록 조회(status = JOINED인 모임원)
     List<MeetingMember> findAllByMeetingIdAndStatus(
         Long meetingId,
+        MeetingMemberStatus status
+    );
+
+    // 해당 회원이 JOINED 상태로 참여 중인 모임 목록 조회
+    List<MeetingMember> findAllByUserIdAndStatus(
+        Long userId,
         MeetingMemberStatus status
     );
 }

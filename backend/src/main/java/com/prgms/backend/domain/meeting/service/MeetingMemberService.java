@@ -1,10 +1,15 @@
 package com.prgms.backend.domain.meeting.service;
 
 import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
+import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
-import com.prgms.backend.global.exception.custom.MeetingMemberNotFoundException;
+import com.prgms.backend.domain.meeting.repository.MeetingRepository;
+import com.prgms.backend.global.exception.custom.meeting.MeetingHostCannotLeaveException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingMemberAlreadyLeftException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MeetingMemberService {
 
     private final MeetingMemberRepository meetingMemberRepository;
+    private final MeetingRepository meetingRepository;
 
     // meetingMemberId로 멤버 한 명 조회
     public MeetingMemberResponse getMeetingMember(Long meetingMemberId){
@@ -30,8 +36,14 @@ public class MeetingMemberService {
         return MeetingMemberResponse.from(meetingMember);
     }
 
-    // 특정 모임에서 특정 사용자 조회
+    // 현재 모임원 목록 조회
     public List<MeetingMemberResponse> getMeetingMembers(Long meetingId){
+
+        // 존재하지 않는 모임의 모임원 목록을 조회하는 경우
+        if(!meetingRepository.existsById(meetingId)){
+            throw new MeetingNotFoundException(meetingId);
+        }
+
         // 모임 id로 가져온 모임원 객체들을 MeetingMemberResponse 형태로 변환해서 리스트 리턴
         return meetingMemberRepository
             .findAllByMeetingIdAndStatus(
@@ -51,5 +63,33 @@ public class MeetingMemberService {
                 userId,
                 MeetingMemberStatus.JOINED
                 );
+    }
+
+    // 모임 탈퇴
+    @Transactional
+    public MeetingMemberResponse leaveMeeting(
+        Long meetingId,
+        Long userId
+    ) {
+        // 존재하는 모임인지 검사
+        Meeting meeting = meetingRepository.findById(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+
+        // 모임장인 경우 탈퇴 불가
+        if (meeting.isHost(userId)) {
+            throw new MeetingHostCannotLeaveException(meetingId, userId);
+        }
+
+        MeetingMember meetingMember =
+            meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
+                .orElseThrow(() -> new MeetingMemberNotFoundException(meetingId, userId));
+
+        if (!meetingMember.isJoined()) {
+            throw new MeetingMemberAlreadyLeftException(meetingId, userId);
+        }
+
+        meetingMember.leave();
+
+        return MeetingMemberResponse.from(meetingMember);
     }
 }
