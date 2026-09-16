@@ -1,7 +1,8 @@
 package com.prgms.backend.domain.content.controller;
 
-import com.prgms.backend.domain.content.dto.ContentPollCreateRequest;
-import com.prgms.backend.domain.content.dto.ContentPollResponse;
+import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
+import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
+import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
 import com.prgms.backend.domain.content.service.ContentPollService;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
@@ -25,4 +26,14 @@ public class ContentPollController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(201,response));
     }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<ContentPollDetailResponse>> get(
+            @PathVariable Long meetingId,
+            @RequestParam Long meetingMemberId
+    ){
+        ContentPollDetailResponse response = contentPollService.get(meetingId, meetingMemberId);
+        return ResponseEntity.ok(ApiResponse.success(200,response));
+    }
+
 }
