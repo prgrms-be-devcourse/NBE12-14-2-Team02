@@ -1,4 +1,4 @@
-package com.prgms.backend.domain.schedule.vote;
+package com.prgms.backend.domain.schedule.vote.entity;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

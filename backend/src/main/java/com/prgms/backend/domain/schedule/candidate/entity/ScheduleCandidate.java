@@ -7,7 +7,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 //schedule_poll하나에 같은 일정이 여러개 있을 수 없게 unique제약조건 추가.
 @Entity
@@ -36,12 +36,12 @@ public class ScheduleCandidate extends BaseCreatedEntity {
     private SchedulePoll schedulePoll;
 
     @Column(name = "candidate_date", nullable = false)
-    private LocalDateTime candidateDate;
+    private LocalDate candidateDate;
 
 
     private ScheduleCandidate(
             SchedulePoll schedulePoll,
-            LocalDateTime candidateDate
+            LocalDate candidateDate
     ) {
         this.schedulePoll = schedulePoll;
         this.candidateDate = candidateDate;
@@ -49,7 +49,7 @@ public class ScheduleCandidate extends BaseCreatedEntity {
     //ScheduleCandidate 정적 팩토리 메서드
     public static ScheduleCandidate create(
             SchedulePoll schedulePoll,
-            LocalDateTime candidateDate
+            LocalDate candidateDate
     ) {
         return new ScheduleCandidate(
                 schedulePoll,
