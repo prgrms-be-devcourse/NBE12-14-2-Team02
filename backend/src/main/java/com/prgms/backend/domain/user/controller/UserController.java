@@ -65,7 +65,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));
     }
 
-    @PostMapping("log-in")
+    @PostMapping("/log-in")
     public ResponseEntity<ApiResponse<LogInResponse>> login (
             @Valid @RequestBody LogInRequest logInRequest
     ) {
