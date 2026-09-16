@@ -17,4 +17,6 @@ public interface ContentVoteRepository extends JpaRepository<ContentVote, Long> 
     void deleteByContentCandidateIdAndMeetingMemberId(
             Long contentCandidateId, Long meetingMemberId
     );
+
+    List<ContentVote> findByContentCandidate_ContentPoll_Id(Long contentPollId);
 }

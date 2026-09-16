@@ -1,4 +1,4 @@
-package com.prgms.backend.domain.content.dto;
+package com.prgms.backend.domain.content.dto.response;
 
 import com.prgms.backend.domain.content.entity.ContentCandidate;
 

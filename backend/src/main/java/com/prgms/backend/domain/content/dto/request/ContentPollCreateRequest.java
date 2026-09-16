@@ -1,4 +1,4 @@
-package com.prgms.backend.domain.content.dto;
+package com.prgms.backend.domain.content.dto.request;
 
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;

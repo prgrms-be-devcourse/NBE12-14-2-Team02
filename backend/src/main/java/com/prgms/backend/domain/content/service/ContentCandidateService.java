@@ -1,9 +1,9 @@
 package com.prgms.backend.domain.content.service;
 
 import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
-import com.prgms.backend.domain.content.dto.ContentCandidateCreateRequest;
-import com.prgms.backend.domain.content.dto.ContentCandidateResponse;
-import com.prgms.backend.domain.content.dto.ContentCandidateUpdateRequest;
+import com.prgms.backend.domain.content.dto.request.ContentCandidateCreateRequest;
+import com.prgms.backend.domain.content.dto.response.ContentCandidateResponse;
+import com.prgms.backend.domain.content.dto.request.ContentCandidateUpdateRequest;
 import com.prgms.backend.domain.content.entity.ContentCandidate;
 import com.prgms.backend.domain.content.entity.ContentPoll;
 import com.prgms.backend.domain.content.repository.ContentCandidateRepository;

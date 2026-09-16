@@ -1,8 +1,8 @@
 package com.prgms.backend.domain.content.controller;
 
-import com.prgms.backend.domain.content.dto.ContentCandidateCreateRequest;
-import com.prgms.backend.domain.content.dto.ContentCandidateResponse;
-import com.prgms.backend.domain.content.dto.ContentCandidateUpdateRequest;
+import com.prgms.backend.domain.content.dto.request.ContentCandidateCreateRequest;
+import com.prgms.backend.domain.content.dto.response.ContentCandidateResponse;
+import com.prgms.backend.domain.content.dto.request.ContentCandidateUpdateRequest;
 import com.prgms.backend.domain.content.service.ContentCandidateService;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
