@@ -1,5 +1,7 @@
 package com.prgms.backend.domain.user.controller;
 
+import com.prgms.backend.domain.user.dto.LogInRequest;
+import com.prgms.backend.domain.user.dto.LogInResponse;
 import com.prgms.backend.domain.user.dto.SignUpRequest;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
@@ -61,6 +63,15 @@ public class UserController {
         SignUpResponse signUpResponse = new SignUpResponse(userId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));
+    }
+
+    @PostMapping("log-in")
+    public ResponseEntity<ApiResponse<LogInResponse>> login (
+            @Valid @RequestBody LogInRequest logInRequest
+    ) {
+        LogInResponse response = userService.login(logInRequest);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, response));
     }
 
 }
