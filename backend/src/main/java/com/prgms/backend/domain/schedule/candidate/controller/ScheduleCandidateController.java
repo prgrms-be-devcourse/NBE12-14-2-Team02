@@ -33,6 +33,23 @@ public class ScheduleCandidateController {
                 );
 
     }
+    //나중에 jwt에서 인증 정보를 가져온 뒤 update하려는 user의 id와 meetingId를 비교해서 host가 맞는 지 확인하는 과정 필요
+    @PatchMapping("/{candidateId}")
+    public ResponseEntity<ApiResponse<ScheduleCandidateResponse.Summary>> update(
+            @PathVariable Long meetingId,
+            @PathVariable Long candidateId,
+            @Valid @RequestBody ScheduleCandidateRequest.Update request
+    ){
+        ScheduleCandidateResponse.Summary response = scheduleCandidateService.update(meetingId, candidateId, request);
+
+
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(
+                        200,
+                        response
+                ));
+    }
 
 
 }

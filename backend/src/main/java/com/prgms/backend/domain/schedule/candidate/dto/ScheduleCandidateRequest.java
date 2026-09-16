@@ -19,4 +19,11 @@ public final class ScheduleCandidateRequest {
     ) {
     }
 
+    public record Update(
+            @Future(message = "후보 날짜는 오늘보다 이후여야 합니다.")
+            @NotNull(message = "날짜는 필수입니다")
+            LocalDate candidateDate
+    ){
+    }
+
 }

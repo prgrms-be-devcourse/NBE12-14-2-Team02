@@ -56,4 +56,10 @@ public class ScheduleCandidate extends BaseCreatedEntity {
                 candidateDate
         );
     }
+
+    public void updateCandidateDate(
+            LocalDate candidateDate
+    ){
+        this.candidateDate = candidateDate;
+    }
 }
