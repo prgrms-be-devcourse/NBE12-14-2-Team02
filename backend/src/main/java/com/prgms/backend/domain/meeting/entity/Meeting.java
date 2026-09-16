@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "meeting")
+@Table(name = "meetings")
 public class Meeting extends BaseTimeEntity {
 
     @Id
@@ -36,5 +36,10 @@ public class Meeting extends BaseTimeEntity {
         this.host = host;
         this.name = name;
         this.description = description;
+    }
+
+    // 이 모임에서 특정 모임원이 모임장인지 검사
+    public boolean isHost(Long userId){
+        return this.host.getId().equals(userId);
     }
 }
