@@ -8,7 +8,7 @@ public record MeetingInvitationResponse(
     Long meetingId,
     String inviteCode,
     LocalDateTime expiresAt,
-    LocalDateTime createAt
+    LocalDateTime createdAt
 ) {
 
     public static MeetingInvitationResponse from(MeetingInvitation invitation){

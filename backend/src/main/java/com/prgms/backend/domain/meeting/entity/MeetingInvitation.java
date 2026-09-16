@@ -27,7 +27,7 @@ public class MeetingInvitation extends BaseCreatedEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "meeting_Id", nullable = false)
+    @JoinColumn(name = "meeting_id", nullable = false)
     private Meeting meeting;
 
     // 모임 별 초대 코드는 유일해야 하므로 unique
