@@ -1,15 +1,16 @@
 package com.prgms.backend.domain.user.controller;
 
+import com.prgms.backend.domain.user.dto.SignUpRequest;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -26,12 +27,40 @@ public class UserController {
     ) {
         boolean exists = userService.checkEmail(email);
 
-        EmailCheckResponse response =
-                new EmailCheckResponse(!exists);
+        EmailCheckResponse response = new EmailCheckResponse(!exists);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(200, response)
-        );
+        return ResponseEntity.ok(ApiResponse.success(200, response));
+    }
+
+    public record NicknameCheckResponse(
+            Boolean available
+    ) {
+    }
+
+    @GetMapping("/check-nickname")
+    public ResponseEntity<ApiResponse<NicknameCheckResponse>> checkNickname (
+        @RequestParam String nickname
+    ) {
+        boolean exists = userService.checkNickname(nickname);
+
+        NicknameCheckResponse response = new NicknameCheckResponse(!exists);
+
+        return ResponseEntity.ok(ApiResponse.success(200, response));
+    }
+
+    public record SignUpResponse(
+            Long userId
+    ) {
+    }
+
+    @PostMapping("/sign-up")
+    public ResponseEntity<ApiResponse<SignUpResponse>> signUp (
+            @Valid @RequestBody SignUpRequest signUpRequest
+    ) {
+        Long userId = userService.signup(signUpRequest.email(), signUpRequest.nickname(), signUpRequest.password(), signUpRequest.confirmPassword());
+        SignUpResponse signUpResponse = new SignUpResponse(userId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));
     }
 
 }
