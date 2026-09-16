@@ -124,5 +124,8 @@ public class SchedulePoll {
                 );
     }
 
-
+    //poll에 달린 candidate삭제하는 로직 같은 트랜잭션 내에서 수행되어야함.
+    public void removeCandidate(ScheduleCandidate candidate) {
+        candidates.remove(candidate);
+    }
 }
