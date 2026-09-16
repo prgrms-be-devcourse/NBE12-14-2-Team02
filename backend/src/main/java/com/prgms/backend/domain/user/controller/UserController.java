@@ -57,7 +57,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<SignUpResponse>> signUp (
             @Valid @RequestBody SignUpRequest signUpRequest
     ) {
-        Long userId = userService.signup(signUpRequest.email(), signUpRequest.nickname(), signUpRequest.password());
+        Long userId = userService.signup(signUpRequest.email(), signUpRequest.nickname(), signUpRequest.password(), signUpRequest.confirmPassword());
         SignUpResponse signUpResponse = new SignUpResponse(userId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));
