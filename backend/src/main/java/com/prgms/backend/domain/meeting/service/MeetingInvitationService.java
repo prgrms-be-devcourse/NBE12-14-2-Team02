@@ -95,6 +95,7 @@ public class MeetingInvitationService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new UserNotFoundException(userId));
 
+        // 초대에서 미팅 객체 가져오기
         Meeting meeting = invitation.getMeeting();
 
         // 해당 모임의 모임원 목록에 있는 회원인지 검사
