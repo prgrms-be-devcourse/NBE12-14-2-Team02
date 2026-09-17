@@ -34,7 +34,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/meetings/*/content-poll",
                                 "/api/meetings/*/content-poll/**",
-                                "/api/meetings/*/content-votes"
+                                "/api/meetings/*/content-votes",
+                                "/api/notifications",
+                                "/api/notifications/**"
                         ).authenticated()
                         .requestMatchers("/**").permitAll()
                         .anyRequest().authenticated())
