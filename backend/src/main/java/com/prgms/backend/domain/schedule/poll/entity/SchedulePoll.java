@@ -136,4 +136,10 @@ public class SchedulePoll {
     public void removeCandidate(ScheduleCandidate candidate) {
         candidates.remove(candidate);
     }
+
+    //투표가 마감될 수 있도록 호출하는 메서드.
+    public void close() {
+        this.status = SchedulePollStatus.CLOSED;
+    }
+
 }
