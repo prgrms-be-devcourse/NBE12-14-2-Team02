@@ -40,7 +40,7 @@ public class MeetingInvitationService {
     @Transactional
     public MeetingInvitationResponse createInvitation(
         Long meetingId,
-        Long hostId
+        Long userId
     ){
         // 없는 미팅에 대한 초대인지 검사
         Meeting meeting = meetingRepository.findById(meetingId)
@@ -49,8 +49,8 @@ public class MeetingInvitationService {
             );
 
         // 모임장이 아닌 사람이 초대를 생성하는지 검사
-        if(!meeting.isHost(hostId)){
-            throw new MeetingAccessDeniedException(meetingId, hostId);
+        if(!meeting.isHost(userId)){
+            throw new MeetingAccessDeniedException(meetingId, userId);
         }
 
         // UUID 사용 - 쉽게 고유값 생성 가능, 충돌 위험 낮음, 별도 번호 생성 로직 필요X

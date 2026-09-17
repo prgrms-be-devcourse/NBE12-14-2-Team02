@@ -8,6 +8,8 @@ import com.prgms.backend.global.ApiResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,8 +41,10 @@ public class MeetingMemberController {
     @DeleteMapping("/{meetingId}/members/me")
     public ResponseEntity<ApiResponse<MeetingMemberResponse>> leaveMeeting(
         @PathVariable Long meetingId,
-        @RequestParam Long userId
+        @AuthenticationPrincipal Jwt jwt
     ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
         MeetingMemberResponse response =
             meetingMemberService.leaveMeeting(meetingId, userId);
 

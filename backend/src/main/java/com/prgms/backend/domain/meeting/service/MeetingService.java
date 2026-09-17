@@ -92,7 +92,7 @@ public class MeetingService {
     @Transactional
     public MeetingResponse updateMeeting(
         Long meetingId,
-        Long hostId,
+        Long userId,
         MeetingUpdateRequest request
     ){
         // 존재하는 미팅인지 검사
@@ -100,8 +100,8 @@ public class MeetingService {
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장이 아닌 참여자가 모임 수정을 시도하는 경우
-        if(!meeting.isHost(hostId)){
-            throw new MeetingAccessDeniedException(meetingId, hostId);
+        if(!meeting.isHost(userId)){
+            throw new MeetingAccessDeniedException(meetingId, userId);
         }
 
         meeting.update(

@@ -8,6 +8,8 @@ import com.prgms.backend.global.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,10 +27,15 @@ public class MeetingInvitationController {
     @PostMapping("/meetings/{meetingId}/invitations")
     public ResponseEntity<ApiResponse<MeetingInvitationResponse>> createInvitation(
         @PathVariable Long meetingId,
-        @RequestParam Long hostId
-    ){
+        @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
         MeetingInvitationResponse response =
-            meetingInvitationService.createInvitation(meetingId, hostId);
+            meetingInvitationService.createInvitation(
+                meetingId,
+                userId
+            );
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
@@ -39,11 +46,18 @@ public class MeetingInvitationController {
     @PostMapping("/invitations/{inviteCode}/join")
     public ResponseEntity<ApiResponse<MeetingMemberResponse>> joinMeeting(
         @PathVariable String inviteCode,
-        @RequestParam Long userId
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        MeetingMemberResponse response =
-            meetingInvitationService.joinMeeting(inviteCode, userId);
+        Long userId = Long.parseLong(jwt.getSubject());
 
-        return ResponseEntity.ok(ApiResponse.success(200, response));
+        MeetingMemberResponse response =
+            meetingInvitationService.joinMeeting(
+                inviteCode,
+                userId
+            );
+
+        return ResponseEntity.ok(
+            ApiResponse.success(200, response)
+        );
     }
 }

@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,12 +31,13 @@ public class MeetingController {
     // 모임 생성
     @PostMapping
     public ResponseEntity<ApiResponse<MeetingResponse>> createMeeting(
-        @RequestParam Long hostId,
+        @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody MeetingCreateRequest request
-    ){
-        // 로그인 기능 연결되면 hostId 전달 -> 로그인 사용자에서 userId 추출하는 방식으로 변경 예정
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
         MeetingResponse response =
-            meetingService.createMeeting(hostId, request);
+            meetingService.createMeeting(userId, request);
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
@@ -54,9 +57,12 @@ public class MeetingController {
     // 모임 목록 조회
     @GetMapping
     public ResponseEntity<ApiResponse<List<MeetingResponse>>> getMyMeetings(
-        @RequestParam Long userId
-    ){
-        List<MeetingResponse> response = meetingService.getMyMeetings(userId);
+        @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
+        List<MeetingResponse> response =
+            meetingService.getMyMeetings(userId);
 
         return ResponseEntity.ok(ApiResponse.success(200, response));
     }
@@ -65,18 +71,18 @@ public class MeetingController {
     @PutMapping("/{meetingId}")
     public ResponseEntity<ApiResponse<MeetingResponse>> updateMeeting(
         @PathVariable Long meetingId,
-        @RequestParam Long hostId,
+        @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody MeetingUpdateRequest request
     ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
         MeetingResponse response =
             meetingService.updateMeeting(
                 meetingId,
-                hostId,
+                userId,
                 request
             );
 
-        return ResponseEntity.ok(
-            ApiResponse.success(200, response)
-        );
+        return ResponseEntity.ok(ApiResponse.success(200, response));
     }
 }
