@@ -11,7 +11,7 @@ import com.prgms.backend.domain.content.repository.ContentCandidateRepository;
 import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.content.repository.ContentVoteRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
-import com.prgms.backend.global.exception.custom.MeetingNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.content.ContentPollAlreadyExistsException;
 import com.prgms.backend.global.exception.custom.content.ContentPollNotFoundException;
 import lombok.RequiredArgsConstructor;

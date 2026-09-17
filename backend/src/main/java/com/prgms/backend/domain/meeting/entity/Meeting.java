@@ -42,4 +42,10 @@ public class Meeting extends BaseTimeEntity {
     public boolean isHost(Long userId){
         return this.host.getId().equals(userId);
     }
+
+    // 모임 수정
+    public void update(String name, String description){
+        this.name = name;
+        this.description = description;
+    }
 }
