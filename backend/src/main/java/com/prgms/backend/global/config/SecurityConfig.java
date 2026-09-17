@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
                         .requestMatchers("/api/auth/sign-up").permitAll()
                         .requestMatchers("/api/auth/log-in").permitAll()
+
+                        // content
                         .requestMatchers(
                                 "/api/meetings/*/content-poll",
                                 "/api/meetings/*/content-poll/**",
@@ -38,6 +40,13 @@ public class SecurityConfig {
                                 "/api/notifications",
                                 "/api/notifications/**"
                         ).authenticated()
+
+                        // meeting
+                        .requestMatchers(
+                            "/api/meetings/**",
+                            "/api/invitations/**"
+                        ).authenticated()
+
                         .requestMatchers("/**").permitAll()
                         .anyRequest().authenticated())
 
