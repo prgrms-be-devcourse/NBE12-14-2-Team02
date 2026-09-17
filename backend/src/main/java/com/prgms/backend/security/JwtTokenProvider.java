@@ -12,8 +12,7 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret")
-    private SecretKey secret;
+    private final SecretKey secretKey;
 
     @Value("{jwt.access-token-validity-seconds")
     private long accessExpiration;
@@ -31,7 +30,7 @@ public class JwtTokenProvider {
                 .subject(userId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(secret)
+                .signWith(secretKey)
                 .compact();
     }
 
@@ -45,14 +44,14 @@ public class JwtTokenProvider {
                 .subject(userId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(secret)
+                .signWith(secretKey)
                 .compact();
     }
 
     public Boolean validateToken(String token){
         try {
             Jwts.parser()
-                    .verifyWith(secret)
+                    .verifyWith(secretKey)
                     .build()
                     .parseSignedClaims(token);
 
@@ -65,7 +64,7 @@ public class JwtTokenProvider {
 
     public Long getUserId(String token) {
         String subject = Jwts.parser()
-                .verifyWith(secret)
+                .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()

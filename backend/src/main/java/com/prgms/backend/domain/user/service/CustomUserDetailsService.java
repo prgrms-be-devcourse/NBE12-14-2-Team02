@@ -10,7 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 우리가 만든 User을 UserDetaols로 변환
+// 우리가 만든 User을 UserDetails로 변환
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

@@ -5,14 +5,10 @@ import com.prgms.backend.domain.user.dto.LogInResponse;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
 import com.prgms.backend.domain.user.exception.LoginFailException;
-import com.prgms.backend.domain.user.exception.PasswordMissmatchException;
+import com.prgms.backend.domain.user.exception.PasswordMismatchException;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,7 +20,6 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
 
 
@@ -38,7 +33,7 @@ public class UserService {
 
     public  void validateConfirmPassword(String confirmPassword, String password) {
         if (!password.matches(confirmPassword)) {
-            throw new PasswordMissmatchException();
+            throw new PasswordMismatchException();
         }
     }
 

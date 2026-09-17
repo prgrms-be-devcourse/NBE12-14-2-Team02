@@ -1,6 +1,5 @@
 package com.prgms.backend.security;
 
-import com.prgms.backend.domain.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +20,6 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final UserRepository userRepository;
     private final UserDetailsService userDetailsService;
 
     // 토큰 분리

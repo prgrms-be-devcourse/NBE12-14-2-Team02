@@ -1,9 +1,9 @@
 package com.prgms.backend.global.config;
 
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,7 +11,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
 
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
@@ -28,11 +27,8 @@ public class SecurityConfig {
 
                 .headers((headers) -> headers
                         .addHeaderWriter(new XFrameOptionsHeaderWriter(
-                                XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
+                                XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)));
 
-                .oauth2ResourceServer(oauth2 ->
-                        oauth2.jwt(Customizer.withDefaults())
-                );
 
         return http.build();
     }
@@ -42,13 +38,9 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+
     @Bean
-    public SecretKey secretKey(
-            @Value("${jwt.secret}") String secret
-    ) {
-        return new SecretKeySpec(
-                secret.getBytes(StandardCharsets.UTF_8),
-                "HmacSHA256"
-        );
+    public SecretKey secretKey(@Value("${custom.jwt.secret-key}") String secret) {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 }
