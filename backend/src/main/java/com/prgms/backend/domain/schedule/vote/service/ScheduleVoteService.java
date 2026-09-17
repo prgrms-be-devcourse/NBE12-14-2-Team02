@@ -26,7 +26,7 @@ public class ScheduleVoteService {
 
 
     @Transactional
-    public ScheduleVoteResponse.Saved submit(Long meetingId, Long candidateId, Long meetingMemberId, ScheduleVoteRequest.Submit request) {
+    public ScheduleVoteResponse.Saved submit(Long meetingId, Long candidateId, Long userId, ScheduleVoteRequest.Submit request) {
 
 
 
@@ -42,21 +42,23 @@ public class ScheduleVoteService {
         ScheduleCandidate candidate =
                 schedulePoll.findCandidate(candidateId);
 
-        //일단은 meeting도메인 건들 수 있으니까 meetingMember를 id로만 조회하고 여기서 검증
+        //meetingId와 jwt에서 받은 userId를 이용해서 조회.
         //todo 추후 meetingMemberRepository에서 한번에 db조회 가능하도록 변경예정
+        //지금은 meetingMember를 확인한 후에, joined인지 확인하는 과정을 여기서 진행.
         MeetingMember meetingMember =
-                meetingMemberRepository.findById(meetingMemberId)
+                meetingMemberRepository
+                        .findByMeetingIdAndUserId(
+                                meetingId,
+                                userId
+                        )
                         .orElseThrow(
                                 () -> new MeetingMemberNotFoundException(
-                                        meetingMemberId
+                                        userId
                                 )
                         );
 
-        if (!meetingMember.getMeeting().getId().equals(meetingId)
-                || !meetingMember.isJoined()) {
-            throw new MeetingMemberNotFoundException(
-                    meetingMemberId
-            );
+        if (!meetingMember.isJoined()) {
+            throw new MeetingMemberNotFoundException(userId);
         }
 
 
@@ -65,7 +67,7 @@ public class ScheduleVoteService {
                 scheduleVoteRepository
                         .findByScheduleCandidateIdAndMeetingMemberId(
                                 candidateId,
-                                meetingMemberId
+                                meetingMember.getId()
                         )
                         .map(existingVote -> {
                             existingVote.changePreference(

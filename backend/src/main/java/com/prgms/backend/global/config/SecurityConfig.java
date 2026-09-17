@@ -37,6 +37,8 @@ public class SecurityConfig {
                                 "/api/meetings/*/content-poll",
                                 "/api/meetings/*/content-poll/**",
                                 "/api/meetings/*/content-votes",
+                                "/api/meetings/*/schedule-poll",
+                                "/api/meetings/*/schedule-poll/**",
                                 "/api/notifications",
                                 "/api/notifications/**"
                         ).authenticated()
