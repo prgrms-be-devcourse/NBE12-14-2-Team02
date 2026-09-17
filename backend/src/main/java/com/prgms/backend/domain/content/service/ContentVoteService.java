@@ -9,9 +9,13 @@ import com.prgms.backend.domain.content.entity.ContentVote;
 import com.prgms.backend.domain.content.repository.ContentCandidateRepository;
 import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.content.repository.ContentVoteRepository;
+import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.global.exception.custom.content.ContentCandidateNotFoundException;
 import com.prgms.backend.global.exception.custom.content.ContentPollClosedException;
 import com.prgms.backend.global.exception.custom.content.ContentPollNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,13 +26,17 @@ public class ContentVoteService {
     private final ContentVoteRepository contentVoteRepository;
     private final ContentCandidateRepository contentCandidateRepository;
     private final ContentPollRepository contentPollRepository;
+    private final MeetingMemberRepository meetingMemberRepository;
 
     @Transactional
     public ContentVoteResponse upsert(
             Long meetingId,
-            Long meetingMemberId,
+            Long userId,
             ContentVoteRequest request
     ){
+        MeetingMember member = requireJoinedMember(meetingId, userId);
+        Long meetingMemberId = member.getId();
+
         ContentPoll poll = getOpenPoll(meetingId);
         ContentCandidate candidate = getCandidateInPoll(request.candidateId(), poll);
 
@@ -62,5 +70,16 @@ public class ContentVoteService {
             throw new ContentPollNotFoundException(candidateId);
         }
         return candidate;
+    }
+
+    private MeetingMember requireJoinedMember(Long meetingId, Long userId){
+        MeetingMember member = meetingMemberRepository
+                .findByMeetingIdAndUserId(meetingId,userId)
+                .orElseThrow(() -> new MeetingMemberNotFoundException(meetingId,userId));
+
+        if(!member.isJoined()){
+            throw new MeetingAccessDeniedException(meetingId,userId);
+        }
+        return member;
     }
 }
