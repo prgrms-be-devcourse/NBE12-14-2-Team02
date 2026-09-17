@@ -7,6 +7,7 @@ import com.prgms.backend.domain.schedule.candidate.repository.ScheduleCandidateR
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.domain.schedule.vote.repository.ScheduleVoteRepository;
+import com.prgms.backend.global.exception.custom.meeting.MeetingHostRequiredException;
 import com.prgms.backend.global.exception.custom.schedule.DuplicateScheduleCandidateException;
 import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateHasVotesException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollNotFoundException;
@@ -27,10 +28,9 @@ public class ScheduleCandidateService {
 
     //일정 후보 등록하고 SchedulePoll에다가 add하면, db반영.
     @Transactional
-    public ScheduleCandidateResponse.Summary create(Long meetingId, ScheduleCandidateRequest.Create request) {
+    public ScheduleCandidateResponse.Summary create(Long meetingId, Long userId, ScheduleCandidateRequest.Create request) {
 
-        //일정 투표가 존재한다면 모임은 반드시 존재하기때문에 일정투표만 조회.
-        SchedulePoll schedulePoll = getOpenSchedulePoll(meetingId);
+        SchedulePoll schedulePoll = getEditableSchedulePoll(meetingId, userId);
 
         LocalDate candidateDate = request.candidateDate();
 
@@ -58,9 +58,9 @@ public class ScheduleCandidateService {
     }
 
     @Transactional
-    public ScheduleCandidateResponse.Summary update(Long meetingId, Long candidateId, ScheduleCandidateRequest.Update request) {
+    public ScheduleCandidateResponse.Summary update(Long meetingId, Long candidateId, Long userId, ScheduleCandidateRequest.Update request) {
         //모임에 투표가 있는 지 검증
-        SchedulePoll schedulePoll = getOpenSchedulePoll(meetingId);
+        SchedulePoll schedulePoll = getEditableSchedulePoll(meetingId, userId);
 
         //schedulePoll 내부에서 candidates로 수정하려는 후보가 있는 지 검증 없다면 예외
         ScheduleCandidate candidate = schedulePoll.findCandidate(candidateId);
@@ -90,9 +90,9 @@ public class ScheduleCandidateService {
     }
 
     @Transactional
-    public void delete(Long meetingId, Long candidateId) {
+    public void delete(Long meetingId, Long candidateId, Long userId) {
 
-        SchedulePoll schedulePoll = getOpenSchedulePoll(meetingId);
+        SchedulePoll schedulePoll = getEditableSchedulePoll(meetingId, userId);
 
         //schedulePoll 내부에서 candidates로 삭제하려는 후보가 있는 지 검증 없다면 예외
         ScheduleCandidate candidate = schedulePoll.findCandidate(candidateId);
@@ -104,17 +104,26 @@ public class ScheduleCandidateService {
         schedulePoll.removeCandidate(candidate);
     }
 
-    //공통 로직 수행하는 부분 메서드 분리 schedulePoll이 현재 유효한지 + meeting이 있는 지까지 검증가능.
-    private SchedulePoll getOpenSchedulePoll(Long meetingId){
+    //공통 로직 수행하는 부분 메서드 분리 schedulePoll이 현재 유효한지 + meeting이 있는 지까지 검증가능 + 현재 사용자가 host인지 검증
+    private SchedulePoll getEditableSchedulePoll(
+            Long meetingId,
+            Long userId
+    ) {
         SchedulePoll schedulePoll =
                 schedulePollRepository.findByMeetingId(meetingId)
                         .orElseThrow(
-                                () -> new SchedulePollNotFoundException(meetingId)
+                                () -> new SchedulePollNotFoundException(
+                                        meetingId
+                                )
                         );
+
+        if (!schedulePoll.getMeeting().isHost(userId)) {
+            throw new MeetingHostRequiredException();
+        }
+
         schedulePoll.validateOpen(LocalDateTime.now());
 
         return schedulePoll;
-
     }
 
     //update와 delete 공통으로 수행하는 부분 메서드 분리 -> vote가 있다면 삭제, 수정 불가

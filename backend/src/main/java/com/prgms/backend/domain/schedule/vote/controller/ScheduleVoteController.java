@@ -7,10 +7,12 @@ import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/meetings/{meetingId}/schedule-poll/candidates/{candidateId}/votes/{meetingMemberId}")
+@RequestMapping("/api/meetings/{meetingId}/schedule-poll/candidates/{candidateId}/vote")
 @RequiredArgsConstructor
 public class ScheduleVoteController {
     private final ScheduleVoteService scheduleVoteService;
@@ -19,14 +21,15 @@ public class ScheduleVoteController {
     public ResponseEntity<ApiResponse<ScheduleVoteResponse.Saved>> upsert(
             @PathVariable Long meetingId,
             @PathVariable Long candidateId,
-            @PathVariable Long meetingMemberId,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ScheduleVoteRequest.Submit request
             ){
+        Long userId = Long.valueOf(jwt.getSubject());
 
         ScheduleVoteResponse.Saved response = scheduleVoteService.submit(
                 meetingId,
                 candidateId,
-                meetingMemberId,
+                userId,
                 request
         );
 
