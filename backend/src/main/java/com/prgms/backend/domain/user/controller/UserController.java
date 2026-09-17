@@ -3,14 +3,19 @@ package com.prgms.backend.domain.user.controller;
 import com.prgms.backend.domain.user.dto.LogInRequest;
 import com.prgms.backend.domain.user.dto.LogInResponse;
 import com.prgms.backend.domain.user.dto.SignUpRequest;
+import com.prgms.backend.domain.user.dto.TokenPair;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
 // import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -82,9 +87,21 @@ public class UserController {
     public ResponseEntity<ApiResponse<LogInResponse>> login (
             @Valid @RequestBody LogInRequest logInRequest
     ) {
-        LogInResponse response = userService.login(logInRequest);
+        TokenPair pair = userService.login(logInRequest);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, response));
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", pair.refreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/api/user")
+                .maxAge(Duration.ofDays(14))
+                .build();
+
+        LogInResponse response = new LogInResponse(pair.accessToken());
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success(201, response));
     }
 
 }

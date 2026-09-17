@@ -2,6 +2,7 @@ package com.prgms.backend.domain.user.service;
 
 import com.prgms.backend.domain.user.dto.LogInRequest;
 import com.prgms.backend.domain.user.dto.LogInResponse;
+import com.prgms.backend.domain.user.dto.TokenPair;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
 import com.prgms.backend.domain.user.exception.LoginFailException;
@@ -50,7 +51,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public LogInResponse login(LogInRequest request) {
+    public TokenPair login(LogInRequest request) {
 
         User user = userRepository.findByEmail(request.email()).orElseThrow(()->
                 new UsernameNotFoundException("존재하지 않는 사용자"));
@@ -62,7 +63,9 @@ public class UserService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-        return new LogInResponse(accessToken, refreshToken);
+        user.updateRefreshToken(refreshToken);
+
+        return new TokenPair(accessToken, refreshToken);
     }
 
 }
