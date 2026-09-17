@@ -31,6 +31,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
                         .requestMatchers("/api/auth/sign-up").permitAll()
                         .requestMatchers("/api/auth/log-in").permitAll()
+                        .requestMatchers(
+                                "/api/meetings/*/content-poll",
+                                "/api/meetings/*/content-poll/**",
+                                "/api/meetings/*/content-votes"
+                        ).authenticated()
                         .requestMatchers("/**").permitAll()
                         .anyRequest().authenticated())
 
