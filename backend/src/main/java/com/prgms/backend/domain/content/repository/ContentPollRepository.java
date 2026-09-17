@@ -1,8 +1,11 @@
 package com.prgms.backend.domain.content.repository;
 
+import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
 import com.prgms.backend.domain.content.entity.ContentPoll;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface ContentPollRepository extends JpaRepository<ContentPoll,Long> {
@@ -10,4 +13,9 @@ public interface ContentPollRepository extends JpaRepository<ContentPoll,Long> {
 
     // 이 모임에 투표판이 존제는지에 대한 함수
     boolean existsByMeetingId(Long meetingId);
+
+    List<ContentPoll> findByStatusAndDeadlineLessThanEqual(
+            ContentPollStatus status,
+            LocalDateTime now
+    );
 }
