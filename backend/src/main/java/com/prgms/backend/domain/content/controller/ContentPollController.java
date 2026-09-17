@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.content.controller;
 
 import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
+import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
 import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
 import com.prgms.backend.domain.content.service.ContentPollService;
@@ -40,5 +41,17 @@ public class ContentPollController {
         ContentPollDetailResponse response = contentPollService.get(meetingId, userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
+
+    @PatchMapping
+    public ResponseEntity<ApiResponse<ContentPollResponse>> updateDeadline(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody ContentPollDeadlineUpdateRequest request
+    ){
+        Long userId = Long.parseLong(jwt.getSubject());
+        ContentPollResponse response = contentPollService.updateDeadline(meetingId, userId, request);
+        return ResponseEntity.ok(ApiResponse.success(200,response));
+    }
+
 
 }
