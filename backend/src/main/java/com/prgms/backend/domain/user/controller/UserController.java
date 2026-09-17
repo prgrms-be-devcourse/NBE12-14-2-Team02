@@ -1,9 +1,6 @@
 package com.prgms.backend.domain.user.controller;
 
-import com.prgms.backend.domain.user.dto.LogInRequest;
-import com.prgms.backend.domain.user.dto.LogInResponse;
-import com.prgms.backend.domain.user.dto.SignUpRequest;
-import com.prgms.backend.domain.user.dto.TokenPair;
+import com.prgms.backend.domain.user.dto.*;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
 // import io.swagger.v3.oas.annotations.Operation;
@@ -102,6 +99,16 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(ApiResponse.success(201, response));
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
+            @CookieValue(value = "refreshToken, required = false")
+            String refreshToken
+    ) {
+        String newAccessToken = userService.reissue(refreshToken);
+
+        return ResponseEntity.status(200).body(new ReissueResponse(newAccessToken));
     }
 
 }

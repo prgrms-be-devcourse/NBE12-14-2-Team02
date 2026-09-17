@@ -1,15 +1,16 @@
 package com.prgms.backend.domain.user.service;
 
 import com.prgms.backend.domain.user.dto.LogInRequest;
-import com.prgms.backend.domain.user.dto.LogInResponse;
 import com.prgms.backend.domain.user.dto.TokenPair;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
 import com.prgms.backend.domain.user.exception.LoginFailException;
 import com.prgms.backend.domain.user.exception.PasswordMismatchException;
+import com.prgms.backend.domain.user.exception.UserNotFoundException;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final CustomUserDetailsService customUserDetailsService;
 
 
     public Boolean checkEmail(String email) {
@@ -66,6 +68,24 @@ public class UserService {
         user.updateRefreshToken(refreshToken);
 
         return new TokenPair(accessToken, refreshToken);
+    }
+
+    public String reissue(String refreshToken) {
+        if (jwtTokenProvider.validateToken(refreshToken)) {
+            Long userId = jwtTokenProvider.getUserId(refreshToken);
+
+            User user = userRepository.findById(userId).orElseThrow(
+                    () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
+            );
+
+            if(user.getRefreshToken().equals(refreshToken)) {
+                return jwtTokenProvider.createAccessToken(userId);
+            }
+
+            return null;
+        }
+
+        return null;
     }
 
 }
