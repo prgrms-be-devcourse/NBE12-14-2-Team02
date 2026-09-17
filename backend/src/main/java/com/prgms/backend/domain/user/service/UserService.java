@@ -4,12 +4,15 @@ import com.prgms.backend.domain.user.dto.LogInRequest;
 import com.prgms.backend.domain.user.dto.LogInResponse;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
+import com.prgms.backend.domain.user.exception.LoginFailException;
 import com.prgms.backend.domain.user.exception.PasswordMissmatchException;
 import com.prgms.backend.domain.user.repository.UserRepository;
+import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -55,18 +58,16 @@ public class UserService {
     public LogInResponse login(LogInRequest request) {
 
         User user = userRepository.findByEmail(request.email()).orElseThrow(()->
-                new UsernameNotFoundException("User not found"));
+                new UsernameNotFoundException("존재하지 않는 사용자"));
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                request.email(),
-                request.password()
-        );
-
-        Authentication result = authenticationManager.authenticate(authentication);
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new LoginFailException();
+        }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-        return new LogInResponse(accessToken);
+        return new LogInResponse(accessToken, refreshToken);
     }
 
 }

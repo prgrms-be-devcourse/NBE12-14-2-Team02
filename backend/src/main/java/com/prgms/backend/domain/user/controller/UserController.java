@@ -5,6 +5,7 @@ import com.prgms.backend.domain.user.dto.LogInResponse;
 import com.prgms.backend.domain.user.dto.SignUpRequest;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
+// import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,7 +23,13 @@ public class UserController {
             Boolean available
     ) {
     }
+/*
+    @Operation(
+            summary = "이메일 중복 확인",
+            description = "사용자가 입력한 이메일이 이용중인지 중복을 확인합니다. "
+    )
 
+ */
     @GetMapping("/check-email")
     public ResponseEntity<ApiResponse<EmailCheckResponse>> checkEmail(
             @RequestParam String email
@@ -38,7 +45,13 @@ public class UserController {
             Boolean available
     ) {
     }
+/*
+    @Operation(
+            summary = "닉네임 중복 확인",
+            description = "사용자가 입력한 닉네임이 이용중인지 중복을 확인합니다. "
+    )
 
+ */
     @GetMapping("/check-nickname")
     public ResponseEntity<ApiResponse<NicknameCheckResponse>> checkNickname (
         @RequestParam String nickname
