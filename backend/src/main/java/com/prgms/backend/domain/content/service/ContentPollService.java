@@ -1,11 +1,13 @@
 package com.prgms.backend.domain.content.service;
 
+import com.prgms.backend.domain.content.ENUM.ContentPollResultSort;
 import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
 import com.prgms.backend.domain.content.ENUM.ContentPreference;
 import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
 import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
 import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
+import com.prgms.backend.domain.content.dto.response.ContentPollResultsResponse;
 import com.prgms.backend.domain.content.entity.ContentCandidate;
 import com.prgms.backend.domain.content.entity.ContentPoll;
 import com.prgms.backend.domain.content.entity.ContentVote;
@@ -14,6 +16,7 @@ import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.content.repository.ContentVoteRepository;
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.global.exception.custom.content.ContentPollAlreadyExistsException;
@@ -132,6 +135,7 @@ public class ContentPollService {
         poll.changeDeadLine(request.deadline());
         return ContentPollResponse.from(poll);
     }
+    //해당 미팅멤버 반환하는 함수
     private MeetingMember requireJoinedMember(Long meetingId, Long userId){
         MeetingMember member = meetingMemberRepository
                 .findByMeetingIdAndUserId(meetingId,userId)
@@ -142,4 +146,142 @@ public class ContentPollService {
         }
         return member;
     }
+
+    //콘텐츠 투표 결과 조회
+    @Transactional(readOnly = true)
+    public ContentPollResultsResponse getResults(
+            Long meetingId,
+            Long userId,
+            ContentPollResultSort sort
+    ){
+        requireJoinedMember(meetingId, userId);
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        ContentPoll poll = contentPollRepository.findByMeetingId(meetingId)
+                .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
+
+        //JOIN인지 확인 후 집계
+        List<MeetingMember> joined = meetingMemberRepository
+                .findAllByMeetingIdAndStatus(meetingId, MeetingMemberStatus.JOINED);
+        int joinedCount = joined.size();
+
+        Map<Long, String> nicknameByMemberId = joined.stream()
+                .collect(Collectors.toMap(
+                        MeetingMember::getId,
+                        m -> m.getUser().getNickname()
+                ));
+
+        List<ContentCandidate> candidates = contentCandidateRepository.findByContentPollIdOrderByCreatedAtAsc(poll.getId());
+
+        //모든 표들을 가져와서 후보별로 맵핑
+        Map<Long,List<ContentVote>> votesByCandidate = contentVoteRepository
+                .findByContentCandidate_ContentPoll_Id(poll.getId())
+                .stream()
+                .collect(Collectors.groupingBy(v -> v.getContentCandidate().getId()));
+
+        //후보마다 투표결과 집계 정렬기준 sort에 따라 다르게 정렬
+        List<ContentPollResultsResponse.CandidateResult> candidateResults = candidates.stream()
+                .map(candidate -> {
+                    List<ContentVote> votes = votesByCandidate.getOrDefault(candidate.getId(), List.of());
+                    int preferCount = (int) votes.stream()
+                            .filter(v -> v.getPreference() == ContentPreference.PREFER)
+                            .count();
+                    int availableCount = (int) votes.stream()
+                            .filter(v -> v.getPreference() == ContentPreference.AVAILABLE)
+                            .count();
+                    int dislikeCount = (int) votes.stream()
+                            .filter(v -> v.getPreference() == ContentPreference.DISLIKE)
+                            .count();
+                    int responseCount = votes.size();
+                    int totalScore = votes.stream()
+                            .mapToInt(v -> v.getPreference().score())
+                            .sum();
+                    return new ContentPollResultsResponse.CandidateResult(
+                            candidate.getId(),
+                            candidate.getCreatedByMemberId(),
+                            nicknameByMemberId.get(candidate.getCreatedByMemberId()),
+                            candidate.getTitle(),
+                            candidate.getDescription(),
+                            totalScore,
+                            preferCount,
+                            availableCount,
+                            dislikeCount,
+                            responseCount,
+                            joinedCount - responseCount // 미응답 카운트
+                    );
+                })
+                .sorted(sortComparator(sort))
+                .toList();
+
+        List<Long> orderedCandidateIds = candidateResults.stream()
+                .map(ContentPollResultsResponse.CandidateResult::candidateId)
+                .toList();
+
+        //후보마다 사람별 투표결과 집계
+        Map<Long,Map<Long, ContentPreference>> preferenceByMemberAndCandidate =
+                votesByCandidate.values().stream()
+                        .flatMap(List::stream)
+                        .collect(Collectors.groupingBy(
+                                ContentVote::getMeetingMemberId,
+                                Collectors.toMap(
+                                        v -> v.getContentCandidate().getId(),
+                                        ContentVote::getPreference,
+                                        (a,b) -> a
+                                )
+                        ));
+
+        List<ContentPollResultsResponse.MemberResult> memberResults = joined.stream()
+                .map(member -> {
+                    Map<Long, ContentPreference> mine =
+                            preferenceByMemberAndCandidate.getOrDefault(member.getId(), Map.of());
+                    List<ContentPreference> preferences = orderedCandidateIds.stream()
+                            .map(mine::get)
+                            .toList();
+                    int responseCount = (int) preferences.stream()
+                            .filter(p -> p != null)
+                            .count();
+                    return new ContentPollResultsResponse.MemberResult(
+                            member.getId(),
+                            member.getUser().getId(),
+                            member.getUser().getNickname(),
+                            meeting.isHost(member.getUser().getId()),
+                            preferences,
+                            responseCount
+                    );
+                })
+                .toList();
+
+        return new ContentPollResultsResponse(
+                poll.getId(),
+                poll.getMeetingId(),
+                poll.getDeadline(),
+                poll.getStatus(),
+                joinedCount,
+                candidateResults,
+                memberResults
+        );
+    }
+
+    //정해진 타입별로 정렬시켜주는 함수
+    private Comparator<ContentPollResultsResponse.CandidateResult>  sortComparator(
+            ContentPollResultSort sort
+    ){
+        Comparator<ContentPollResultsResponse.CandidateResult> byCreated =
+                Comparator.comparing(ContentPollResultsResponse.CandidateResult::candidateId);
+        if(sort == ContentPollResultSort.PARTICIPANTS){
+            return Comparator
+                    .comparingInt(ContentPollResultsResponse.CandidateResult::responseCount)
+                    .reversed()
+                    .thenComparing(Comparator
+                            .comparingInt(ContentPollResultsResponse.CandidateResult::totalScore)
+                            .reversed())
+                    .thenComparing(byCreated);
+        }
+
+        return Comparator
+                .comparingInt(ContentPollResultsResponse.CandidateResult::totalScore)
+                .reversed()
+                .thenComparing(byCreated);
+    }
+
 }
