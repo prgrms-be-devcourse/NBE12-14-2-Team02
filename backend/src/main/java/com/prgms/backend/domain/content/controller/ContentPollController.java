@@ -1,9 +1,12 @@
 package com.prgms.backend.domain.content.controller;
 
+import com.prgms.backend.domain.content.ENUM.ContentPollResultSort;
+import com.prgms.backend.domain.content.dto.request.ContentPollConfirmRequest;
 import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
 import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
 import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
+import com.prgms.backend.domain.content.dto.response.ContentPollResultsResponse;
 import com.prgms.backend.domain.content.service.ContentPollService;
 import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
@@ -53,5 +56,27 @@ public class ContentPollController {
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
 
+    @GetMapping("/results")
+    public ResponseEntity<ApiResponse<ContentPollResultsResponse>> getResults(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @RequestParam(defaultValue = "SCORE")ContentPollResultSort sort
+            ){
+        Long userId = securityUser.getId();
+        ContentPollResultsResponse response = contentPollService.getResults(meetingId, userId, sort);
+        return ResponseEntity.ok(ApiResponse.success(200,response));
+    }
+
+    @PostMapping("/confirm")
+    public ResponseEntity<ApiResponse<ContentPollResponse>> confirm(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @Valid @RequestBody ContentPollConfirmRequest request
+    ) {
+        Long userId = securityUser.getId();
+        ContentPollResponse response =
+                contentPollService.confirm(meetingId, userId, request);
+        return ResponseEntity.ok(ApiResponse.success(200, response));
+    }
 
 }

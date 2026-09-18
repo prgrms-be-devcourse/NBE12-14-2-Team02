@@ -67,7 +67,7 @@ public class ContentVoteService {
         ContentCandidate candidate = contentCandidateRepository.findById(candidateId)
                 .orElseThrow(() -> new ContentCandidateNotFoundException(candidateId));
         if(!candidate.getContentPoll().getId().equals(poll.getId())){
-            throw new ContentPollNotFoundException(candidateId);
+            throw new ContentCandidateNotFoundException(candidateId);
         }
         return candidate;
     }
