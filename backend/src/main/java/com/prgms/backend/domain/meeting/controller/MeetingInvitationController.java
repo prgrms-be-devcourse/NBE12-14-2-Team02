@@ -4,12 +4,12 @@ import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationResponse;
 import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
 import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
 import com.prgms.backend.domain.meeting.service.MeetingInvitationService;
+import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,9 +27,9 @@ public class MeetingInvitationController {
     @PostMapping("/meetings/{meetingId}/invitations")
     public ResponseEntity<ApiResponse<MeetingInvitationResponse>> createInvitation(
         @PathVariable Long meetingId,
-        @AuthenticationPrincipal Jwt jwt
+        @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = Long.parseLong(jwt.getSubject());
+        Long userId = securityUser.getId();
 
         MeetingInvitationResponse response =
             meetingInvitationService.createInvitation(
@@ -46,9 +46,9 @@ public class MeetingInvitationController {
     @PostMapping("/invitations/{inviteCode}/join")
     public ResponseEntity<ApiResponse<MeetingMemberResponse>> joinMeeting(
         @PathVariable String inviteCode,
-        @AuthenticationPrincipal Jwt jwt
+        @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = Long.parseLong(jwt.getSubject());
+        Long userId = securityUser.getId();
 
         MeetingMemberResponse response =
             meetingInvitationService.joinMeeting(

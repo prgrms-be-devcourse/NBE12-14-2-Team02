@@ -33,10 +33,16 @@ public class User extends BaseTimeEntity {
 
     private LocalDateTime deletedAt;
 
+    private String refreshToken;
+
     public User(String email, String nickname, String password) {
         this.email = email;
         this.nickname = nickname;
         this.password = password;
+    }
+
+    public void updateRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 
 }

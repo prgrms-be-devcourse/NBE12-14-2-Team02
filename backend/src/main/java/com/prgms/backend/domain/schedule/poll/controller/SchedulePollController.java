@@ -2,14 +2,16 @@ package com.prgms.backend.domain.schedule.poll.controller;
 
 import com.prgms.backend.domain.schedule.poll.dto.SchedulePollRequest;
 import com.prgms.backend.domain.schedule.poll.dto.SchedulePollResponse;
+import com.prgms.backend.domain.schedule.poll.dto.ScheduleResultResponse;
 import com.prgms.backend.domain.schedule.poll.service.SchedulePollService;
+import com.prgms.backend.domain.schedule.poll.service.ScheduleResultService;
+import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,15 +19,16 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/meetings/{meetingId}/schedule-poll")
 public class SchedulePollController {
     private final SchedulePollService schedulePollService;
+    private final ScheduleResultService scheduleResultService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.Created>> create(
             @PathVariable Long meetingId,
             @Valid @RequestBody SchedulePollRequest.Create request,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal SecurityUser securityUser
             ){
 
-        Long userId = Long.valueOf(jwt.getSubject());
+        Long userId = securityUser.getId();
 
         SchedulePollResponse.Created response = schedulePollService.create(meetingId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -38,10 +41,10 @@ public class SchedulePollController {
     @GetMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> get(
             @PathVariable Long meetingId,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal SecurityUser securityUser
     ){
 
-        Long userId = Long.valueOf(jwt.getSubject());
+        Long userId = securityUser.getId();
         SchedulePollResponse.Detail response =
                 schedulePollService.get(meetingId, userId);
 
@@ -58,10 +61,10 @@ public class SchedulePollController {
     public ResponseEntity<ApiResponse<SchedulePollResponse.DeadlineUpdate>> updateDeadline(
             @PathVariable Long meetingId,
             @Valid @RequestBody SchedulePollRequest.UpdateDeadline request,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal SecurityUser securityUser
     ){
 
-        Long userId = Long.valueOf(jwt.getSubject());
+        Long userId = securityUser.getId();
 
         SchedulePollResponse.DeadlineUpdate response =
                 schedulePollService.updateDeadline(meetingId, userId,request);
@@ -71,4 +74,24 @@ public class SchedulePollController {
         );
 
     }
+
+    // 후보별 순위와 참여자별 응답을 결과 화면에 한 번에 반환한다.
+    @GetMapping("/results")
+    public ResponseEntity<ApiResponse<ScheduleResultResponse.Detail>> getResults(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ){
+        Long userId = securityUser.getId();
+
+        ScheduleResultResponse.Detail response =
+                scheduleResultService.getResults(
+                        meetingId,
+                        userId
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(200, response)
+        );
+    }
+
 }

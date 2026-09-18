@@ -1,15 +1,19 @@
 package com.prgms.backend.domain.user.controller;
 
-import com.prgms.backend.domain.user.dto.LogInRequest;
-import com.prgms.backend.domain.user.dto.LogInResponse;
-import com.prgms.backend.domain.user.dto.SignUpRequest;
+import com.prgms.backend.domain.user.dto.*;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -22,7 +26,10 @@ public class UserController {
             Boolean available
     ) {
     }
-
+    @Operation(
+            summary = "이메일 중복 확인",
+            description = "사용자가 입력한 이메일이 이용중인지 중복을 확인합니다. "
+    )
     @GetMapping("/check-email")
     public ResponseEntity<ApiResponse<EmailCheckResponse>> checkEmail(
             @RequestParam String email
@@ -39,6 +46,10 @@ public class UserController {
     ) {
     }
 
+    @Operation(
+            summary = "닉네임 중복 확인",
+            description = "사용자가 입력한 닉네임이 이용중인지 중복을 확인합니다. "
+    )
     @GetMapping("/check-nickname")
     public ResponseEntity<ApiResponse<NicknameCheckResponse>> checkNickname (
         @RequestParam String nickname
@@ -55,6 +66,7 @@ public class UserController {
     ) {
     }
 
+    @SecurityRequirements
     @PostMapping("/sign-up")
     public ResponseEntity<ApiResponse<SignUpResponse>> signUp (
             @Valid @RequestBody SignUpRequest signUpRequest
@@ -65,13 +77,37 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));
     }
 
+    @SecurityRequirements
     @PostMapping("/log-in")
     public ResponseEntity<ApiResponse<LogInResponse>> login (
             @Valid @RequestBody LogInRequest logInRequest
     ) {
-        LogInResponse response = userService.login(logInRequest);
+        TokenPair pair = userService.login(logInRequest);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, response));
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", pair.refreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(Duration.ofDays(14))
+                .build();
+
+        LogInResponse response = new LogInResponse(pair.accessToken());
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success(201, response));
+    }
+
+    @SecurityRequirements
+    @PostMapping("/reissue")
+    public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
+            @CookieValue(value = "refreshToken", required = false)
+            String refreshToken
+    ) {
+        String newAccessToken = userService.reissue(refreshToken);
+
+        return ResponseEntity.ok(ApiResponse.success(200,new ReissueResponse(newAccessToken)));
     }
 
 }
