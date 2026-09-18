@@ -14,17 +14,17 @@ public class JwtTokenProvider {
 
     private final SecretKey secretKey;
 
-    @Value("{custom.jwt.access-token-validity-seconds}")
+    @Value("${custom.jwt.access-token-validity-seconds}")
     private long accessExpiration;
 
-    @Value("{custom.jwt.refresh-token-validity-seconds}")
+    @Value("${custom.jwt.refresh-token-validity-seconds}")
     private long refreshExpiration;
 
     public String createAccessToken(
             Long userId
     ) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + accessExpiration);
+        Date expiryDate = new Date(now.getTime() + accessExpiration * 1000);
 
         return Jwts.builder()
                 .subject(userId.toString())
@@ -38,7 +38,7 @@ public class JwtTokenProvider {
             Long userId
     ) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + refreshExpiration);
+        Date expiryDate = new Date(now.getTime() + refreshExpiration*1000);
 
         return Jwts.builder()
                 .subject(userId.toString())

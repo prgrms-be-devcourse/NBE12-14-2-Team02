@@ -32,7 +32,7 @@ public class UserService {
     }
 
     public  void validateConfirmPassword(String password, String confirmPassword) {
-        if (password.equals(confirmPassword)) {
+        if (!password.equals(confirmPassword)) {
             throw new PasswordMismatchException();
         }
     }
