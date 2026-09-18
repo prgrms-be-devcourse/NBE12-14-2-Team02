@@ -19,4 +19,13 @@ public class UserService {
 
         return new ProfileResponse(user.getEmail(), user.getNickname());
     }
+
+    public ProfileResponse updateNickname(Long userId, String nickname) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new UserNotFoundException("회원 정보가 존재하지 않습니다.")
+        );
+
+        user.updateNickname(nickname);
+        return new ProfileResponse(user.getEmail(), user.getNickname());
+    }
 }

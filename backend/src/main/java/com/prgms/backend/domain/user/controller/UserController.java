@@ -94,12 +94,30 @@ public class UserController {
             description = "로그인한 사용자의 이메일과 닉네임을 조회합니다."
     )
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<ProfileResponse>> getMeetings(
+    public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(
             @AuthenticationPrincipal SecurityUser securityUser
             ) {
         Long userId = securityUser.getId();
 
         ProfileResponse response = userService.getProfile(userId);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.success(200,response));
+    }
+
+    public record UpdateNicknameRequest(
+            String newNickname
+    ) {
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<ApiResponse<ProfileResponse>> updateNickname(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @RequestBody UpdateNicknameRequest request
+    ) {
+        Long userId = securityUser.getId();
+        ProfileResponse response = userService.updateNickname(userId, request.newNickname());
 
         return ResponseEntity
                 .status(HttpStatus.OK)
