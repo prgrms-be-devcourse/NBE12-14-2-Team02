@@ -36,4 +36,8 @@ public class SecurityUser implements UserDetails {
     public Long getId() {
         return user.getId();
     }
+
+    public String getRefreshToken() {
+        return user.getRefreshToken();
+    }
 }
