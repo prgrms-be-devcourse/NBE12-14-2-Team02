@@ -10,11 +10,9 @@ import com.prgms.backend.domain.user.exception.UserNotFoundException;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +21,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final CustomUserDetailsService customUserDetailsService;
 
 
     public Boolean checkEmail(String email) {
@@ -34,8 +31,8 @@ public class UserService {
         return userRepository.existsByNickname(nickname);
     }
 
-    public  void validateConfirmPassword(String confirmPassword, String password) {
-        if (!password.matches(confirmPassword)) {
+    public  void validateConfirmPassword(String password, String confirmPassword) {
+        if (password.equals(confirmPassword)) {
             throw new PasswordMismatchException();
         }
     }
@@ -52,13 +49,12 @@ public class UserService {
         return user.getId();
     }
 
-    @Transactional(readOnly = true)
     public TokenPair login(LogInRequest request) {
 
         User user = userRepository.findByEmail(request.email()).orElseThrow(()->
                 new UsernameNotFoundException("존재하지 않는 사용자"));
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        if (user.getPassword().equals(passwordEncoder.encode(request.password()))) {
             throw new LoginFailException();
         }
 

@@ -90,7 +90,7 @@ public class UserController {
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
-                .path("/api/user")
+                .path("/api/auth")
                 .maxAge(Duration.ofDays(14))
                 .build();
 
@@ -103,7 +103,7 @@ public class UserController {
 
     @PostMapping("/reissue")
     public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
-            @CookieValue(value = "refreshToken, required = false")
+            @CookieValue(value = "refreshToken", required = false)
             String refreshToken
     ) {
         String newAccessToken = userService.reissue(refreshToken);

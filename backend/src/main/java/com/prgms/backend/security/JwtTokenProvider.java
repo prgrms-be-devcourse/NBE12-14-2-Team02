@@ -14,10 +14,10 @@ public class JwtTokenProvider {
 
     private final SecretKey secretKey;
 
-    @Value("{jwt.access-token-validity-seconds")
+    @Value("{custom.jwt.access-token-validity-seconds}")
     private long accessExpiration;
 
-    @Value("{jwt.refresh-token-validity-seconds")
+    @Value("{custom.jwt.refresh-token-validity-seconds}")
     private long refreshExpiration;
 
     public String createAccessToken(
