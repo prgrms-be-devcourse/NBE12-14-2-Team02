@@ -6,10 +6,12 @@ import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
 import com.prgms.backend.domain.meeting.service.MeetingInvitationService;
 import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,6 +57,22 @@ public class MeetingInvitationController {
                 inviteCode,
                 userId
             );
+
+        return ResponseEntity.ok(
+            ApiResponse.success(200, response)
+        );
+    }
+
+    // 초대 코드 목록 조회
+    @GetMapping("/meetings/{meetingId}/invitations")
+    public ResponseEntity<ApiResponse<List<MeetingInvitationResponse>>> getInvitations(
+        @PathVariable Long meetingId,
+        @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        Long userId = securityUser.getId();
+
+        List<MeetingInvitationResponse> response =
+            meetingInvitationService.getInvitations(meetingId, userId);
 
         return ResponseEntity.ok(
             ApiResponse.success(200, response)
