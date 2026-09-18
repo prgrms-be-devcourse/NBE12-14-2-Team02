@@ -2,11 +2,13 @@ package com.prgms.backend.domain.user.controller;
 
 import com.prgms.backend.domain.user.dto.ProfileResponse;
 import com.prgms.backend.domain.user.dto.SignUpRequest;
+import com.prgms.backend.domain.user.dto.UpdatePasswordRequest;
 import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.domain.user.service.AuthService;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -109,10 +111,15 @@ public class UserController {
     }
 
     public record UpdateNicknameRequest(
+            @Schema(description = "새 닉네임", example = "홍길동")
             String newNickname
     ) {
     }
 
+    @Operation(
+            summary = "닉네임 변경",
+            description = "로그인한 사용자의 닉네임을 새 닉네임으로 변경합니다."
+    )
     @PatchMapping("/me/nickname")
     public ResponseEntity<ApiResponse<ProfileResponse>> updateNickname(
             @AuthenticationPrincipal SecurityUser securityUser,
@@ -126,14 +133,14 @@ public class UserController {
                 .body(ApiResponse.success(200,response));
     }
 
-    public record UpdatePasswordRequest(
-            String password,
-            String newPassword
-    ){}
 
+    @Operation(
+            summary = "비밀번호 변경",
+            description = "현재 비밀번호를 확인한 뒤, 새 비밀번호(회원가입과 동일한 형식 규칙 적용)로 변경합니다."
+    )
     @PatchMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> updatePassword(
-            @RequestBody UpdatePasswordRequest request,
+            @Valid @RequestBody UpdatePasswordRequest request,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
         Long userId = securityUser.getId();
