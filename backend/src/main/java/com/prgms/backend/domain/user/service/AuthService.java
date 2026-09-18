@@ -86,4 +86,14 @@ public class AuthService {
         return null;
     }
 
+    @Transactional
+    public void logout(
+            String refreshToken
+    ) {
+        User user = userRepository.findByRefreshToken(refreshToken).orElseThrow(
+                () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
+        );
+
+        user.updateRefreshToken(null);
+    }
 }
