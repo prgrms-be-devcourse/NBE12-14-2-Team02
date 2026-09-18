@@ -61,14 +61,27 @@ public class MeetingService {
 
     // 모임 상세 조회
     @Transactional(readOnly = true)
-    public MeetingResponse getMeeting(Long meetingId){
+    public MeetingResponse getMeeting(Long meetingId, Long userId) {
         Meeting meeting = meetingRepository.findById(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+
+        // status 값까지 넣어서 현재 ACTIVE 상태로 모임에 참여 중인 모임원인지 검사
+        boolean isMember =
+            meetingMemberRepository.existsByMeetingIdAndUserIdAndStatus(
+                meetingId,
+                userId,
+                MeetingMemberStatus.JOINED
+            );
+
+        // 현재 참여 중인 모임원이 아닌 경우 예외 처리
+        if (!isMember) {
+            throw new MeetingAccessDeniedException(meetingId, userId);
+        }
 
         return MeetingResponse.from(meeting);
     }
 
-    // 해당 회원이 참여 중인 모임 목록 조회
+    // 참여 중인 모임 목록 조회
     @Transactional(readOnly = true)
     public List<MeetingResponse> getMyMeetings(Long userId){
 

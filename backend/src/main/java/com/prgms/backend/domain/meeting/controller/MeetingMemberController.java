@@ -27,10 +27,13 @@ public class MeetingMemberController {
     // 현재 모임원 목록 조회
     @GetMapping("/{meetingId}/members")
     public ResponseEntity<ApiResponse<List<MeetingMemberResponse>>> getMeetingMembers(
-        @PathVariable Long meetingId
+        @PathVariable Long meetingId,
+        @AuthenticationPrincipal SecurityUser securityUser
     ){
+        Long userId = securityUser.getId();
+
         List<MeetingMemberResponse> responses =
-            meetingMemberService.getMeetingMembers(meetingId);
+            meetingMemberService.getMeetingMembers(meetingId, userId);
 
         return ResponseEntity.ok(ApiResponse.success(200, responses)
 

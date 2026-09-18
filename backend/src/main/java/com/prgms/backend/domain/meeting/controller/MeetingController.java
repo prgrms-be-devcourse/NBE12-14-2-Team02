@@ -7,10 +7,10 @@ import com.prgms.backend.domain.meeting.service.MeetingService;
 import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
+import java.security.Security;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -47,9 +46,12 @@ public class MeetingController {
     // 모임 상세 조회
     @GetMapping("/{meetingId}")
     public ResponseEntity<ApiResponse<MeetingResponse>> getMeeting(
-        @PathVariable Long meetingId
+        @PathVariable Long meetingId,
+        @AuthenticationPrincipal SecurityUser securityUser
     ){
-        MeetingResponse response = meetingService.getMeeting(meetingId);
+        Long userId = securityUser.getId();
+
+        MeetingResponse response = meetingService.getMeeting(meetingId, userId);
 
         return ResponseEntity.ok(ApiResponse.success(200, response));
     }
