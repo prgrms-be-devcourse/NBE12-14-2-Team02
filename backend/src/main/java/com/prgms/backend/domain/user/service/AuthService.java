@@ -56,7 +56,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email()).orElseThrow(()->
                 new UsernameNotFoundException("존재하지 않는 사용자"));
 
-        if (user.getPassword().equals(passwordEncoder.encode(request.password()))) {
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new LoginFailException();
         }
 
