@@ -108,7 +108,7 @@ public class UserController {
     ) {
         String newAccessToken = userService.reissue(refreshToken);
 
-        return ResponseEntity.status(200).body(new ReissueResponse(newAccessToken));
+        return ResponseEntity.ok(ApiResponse.success(200,new ReissueResponse(newAccessToken)));
     }
 
 }

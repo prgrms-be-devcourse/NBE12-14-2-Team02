@@ -2,11 +2,11 @@ package com.prgms.backend.domain.notification.controller;
 
 import com.prgms.backend.domain.notification.dto.response.NotificationResponse;
 import com.prgms.backend.domain.notification.service.NotificationService;
+import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,9 +19,9 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMine(
-            @AuthenticationPrincipal Jwt jwt
-    ){
-        Long userId = Long.parseLong(jwt.getSubject());
+            @AuthenticationPrincipal SecurityUser securityUser
+            ){
+        Long userId = securityUser.getId();
         List<NotificationResponse> response =
                 notificationService.getMyNotifications(userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
@@ -30,9 +30,9 @@ public class NotificationController {
     @PatchMapping("/{notificationId}/read")
     public ResponseEntity<ApiResponse<NotificationResponse>> markRead(
             @PathVariable Long notificationId,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = Long.parseLong(jwt.getSubject());
+        Long userId = securityUser.getId();
         NotificationResponse response = notificationService.markRead(notificationId, userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
