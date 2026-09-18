@@ -1,10 +1,7 @@
 package com.prgms.backend.domain.content.controller;
 
 import com.prgms.backend.domain.content.ENUM.ContentPollResultSort;
-import com.prgms.backend.domain.content.dto.request.ContentPollConfirmRequest;
-import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
-import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
-import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
+import com.prgms.backend.domain.content.dto.request.ContentPollRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
 import com.prgms.backend.domain.content.dto.response.ContentPollResultsResponse;
 import com.prgms.backend.domain.content.service.ContentPollService;
@@ -24,57 +21,59 @@ public class ContentPollController {
     private final ContentPollService contentPollService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ContentPollResponse>> create(
+    public ResponseEntity<ApiResponse<ContentPollResponse.Created>> create(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser,
-            @Valid @RequestBody ContentPollCreateRequest request
+            @Valid @RequestBody ContentPollRequest.Create request
             ){
         Long userId = securityUser.getId();
-        ContentPollResponse response = contentPollService.create(meetingId,userId, request);
+        ContentPollResponse.Created response = contentPollService.create(meetingId,userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(201,response));
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<ContentPollDetailResponse>> get(
+    public ResponseEntity<ApiResponse<ContentPollResponse.Detail>> get(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
         Long userId = securityUser.getId();
-        ContentPollDetailResponse response = contentPollService.get(meetingId, userId);
+        ContentPollResponse.Detail response = contentPollService.get(meetingId, userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
 
     @PatchMapping
-    public ResponseEntity<ApiResponse<ContentPollResponse>> updateDeadline(
+    public ResponseEntity<ApiResponse<ContentPollResponse.DeadlineUpdate>> updateDeadline(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser,
-            @Valid @RequestBody ContentPollDeadlineUpdateRequest request
+            @Valid @RequestBody ContentPollRequest.UpdateDeadline request
     ){
         Long userId = securityUser.getId();
-        ContentPollResponse response = contentPollService.updateDeadline(meetingId, userId, request);
+        ContentPollResponse.DeadlineUpdate response =
+                contentPollService.updateDeadline(meetingId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
 
     @GetMapping("/results")
-    public ResponseEntity<ApiResponse<ContentPollResultsResponse>> getResults(
+    public ResponseEntity<ApiResponse<ContentPollResultsResponse.Detail>> getResults(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser,
             @RequestParam(defaultValue = "SCORE")ContentPollResultSort sort
             ){
         Long userId = securityUser.getId();
-        ContentPollResultsResponse response = contentPollService.getResults(meetingId, userId, sort);
+        ContentPollResultsResponse.Detail response =
+                contentPollService.getResults(meetingId, userId, sort);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
 
     @PostMapping("/confirm")
-    public ResponseEntity<ApiResponse<ContentPollResponse>> confirm(
+    public ResponseEntity<ApiResponse<ContentPollResponse.Confirmed>> confirm(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser,
-            @Valid @RequestBody ContentPollConfirmRequest request
+            @Valid @RequestBody ContentPollRequest.Confirm request
     ) {
         Long userId = securityUser.getId();
-        ContentPollResponse response =
+        ContentPollResponse.Confirmed response =
                 contentPollService.confirm(meetingId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(200, response));
     }

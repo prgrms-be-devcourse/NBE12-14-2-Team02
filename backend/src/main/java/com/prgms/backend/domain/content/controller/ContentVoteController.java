@@ -18,13 +18,13 @@ public class ContentVoteController {
     private final ContentVoteService contentVoteService;
 
     @PutMapping
-    public ResponseEntity<ApiResponse<ContentVoteResponse>> upsert(
+    public ResponseEntity<ApiResponse<ContentVoteResponse.Saved>> upsert(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser,
-            @Valid@RequestBody ContentVoteRequest request
+            @Valid @RequestBody ContentVoteRequest.Submit request
     ){
         Long userId = securityUser.getId();
-        ContentVoteResponse response = contentVoteService.upsert(meetingId, userId, request);
+        ContentVoteResponse.Saved response = contentVoteService.upsert(meetingId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(200, response));
     }
 }

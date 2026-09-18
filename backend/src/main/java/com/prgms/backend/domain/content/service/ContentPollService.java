@@ -3,10 +3,7 @@ package com.prgms.backend.domain.content.service;
 import com.prgms.backend.domain.content.ENUM.ContentPollResultSort;
 import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
 import com.prgms.backend.domain.content.ENUM.ContentPreference;
-import com.prgms.backend.domain.content.dto.request.ContentPollConfirmRequest;
-import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
-import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
-import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
+import com.prgms.backend.domain.content.dto.request.ContentPollRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
 import com.prgms.backend.domain.content.dto.response.ContentPollResultsResponse;
 import com.prgms.backend.domain.content.entity.ContentCandidate;
@@ -43,7 +40,7 @@ public class ContentPollService {
     private final MeetingMemberRepository meetingMemberRepository;
 
     @Transactional
-    public ContentPollResponse create(Long meetingId, Long userId, ContentPollCreateRequest request){
+    public ContentPollResponse.Created create(Long meetingId, Long userId, ContentPollRequest.Create request){
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
         if(!meeting.isHost(userId)){
@@ -58,11 +55,11 @@ public class ContentPollService {
                 new ContentPoll(meetingId,request.deadline())
         );
 
-        return ContentPollResponse.from(saved);
+        return ContentPollResponse.Created.from(saved);
     }
 
     @Transactional
-    public ContentPollDetailResponse get(Long meetingId, Long userId){
+    public ContentPollResponse.Detail get(Long meetingId, Long userId){
         MeetingMember member = requireJoinedMember(meetingId, userId);
         Long meetingMemberId = member.getId();
 
@@ -78,7 +75,7 @@ public class ContentPollService {
                 .collect(Collectors.groupingBy(v -> v.getContentCandidate().getId()));
 
         //후보마다 점수
-        List<ContentPollDetailResponse.CandidateRank> ranked = candidates.stream()
+        List<ContentPollResponse.CandidateRank> ranked = candidates.stream()
                 .map(candidate -> {
                     List<ContentVote> votes = votesByCandidate.getOrDefault(candidate.getId(), List.of());
                     int totalScore = votes.stream()
@@ -89,7 +86,7 @@ public class ContentPollService {
                             .map(ContentVote::getPreference)
                             .findFirst()
                             .orElse(null);
-                    return new ContentPollDetailResponse.CandidateRank(
+                    return new ContentPollResponse.CandidateRank(
                             candidate.getId(),
                             candidate.getCreatedByMemberId(),
                             candidate.getTitle(),
@@ -99,11 +96,11 @@ public class ContentPollService {
                     );
                 })
                 .sorted(Comparator
-                        .comparingInt(ContentPollDetailResponse.CandidateRank::totalScore)
+                        .comparingInt(ContentPollResponse.CandidateRank::totalScore)
                         .reversed())
                 .toList();
 
-        return new ContentPollDetailResponse(
+        return new ContentPollResponse.Detail(
                 poll.getId(),
                 poll.getMeetingId(),
                 poll.getDeadline(),
@@ -115,10 +112,10 @@ public class ContentPollService {
     }
     // 콘텐츠 투표 마감기한 업데이트
     @Transactional
-    public ContentPollResponse updateDeadline(
+    public ContentPollResponse.DeadlineUpdate updateDeadline(
             Long meetingId,
             Long userId,
-            ContentPollDeadlineUpdateRequest request
+            ContentPollRequest.UpdateDeadline request
     ){
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
@@ -132,7 +129,7 @@ public class ContentPollService {
             throw new ContentPollClosedException();
         }
         poll.changeDeadLine(request.deadline());
-        return ContentPollResponse.from(poll);
+        return ContentPollResponse.DeadlineUpdate.from(poll);
     }
     //해당 미팅멤버 반환하는 함수
     private MeetingMember requireJoinedMember(Long meetingId, Long userId){
@@ -148,7 +145,7 @@ public class ContentPollService {
 
     //콘텐츠 투표 결과 조회
     @Transactional(readOnly = true)
-    public ContentPollResultsResponse getResults(
+    public ContentPollResultsResponse.Detail getResults(
             Long meetingId,
             Long userId,
             ContentPollResultSort sort
@@ -250,7 +247,7 @@ public class ContentPollService {
                 })
                 .toList();
 
-        return new ContentPollResultsResponse(
+        return new ContentPollResultsResponse.Detail(
                 poll.getId(),
                 poll.getMeetingId(),
                 poll.getDeadline(),
@@ -286,10 +283,10 @@ public class ContentPollService {
 
     //콘텐츠 투표결과 후보 확정 시키기
     @Transactional
-    public ContentPollResponse confirm(
+    public ContentPollResponse.Confirmed confirm(
             Long meetingId,
             Long userId,
-            ContentPollConfirmRequest request
+            ContentPollRequest.Confirm request
     ){
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
@@ -313,7 +310,7 @@ public class ContentPollService {
         }
 
         poll.confirm(request.candidateId());
-        return ContentPollResponse.from(poll);
+        return ContentPollResponse.Confirmed.from(poll);
     }
 
 }

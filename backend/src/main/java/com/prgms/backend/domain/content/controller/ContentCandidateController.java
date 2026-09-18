@@ -1,7 +1,6 @@
 package com.prgms.backend.domain.content.controller;
 
-import com.prgms.backend.domain.content.dto.request.ContentCandidateCreateRequest;
-import com.prgms.backend.domain.content.dto.request.ContentCandidateUpdateRequest;
+import com.prgms.backend.domain.content.dto.request.ContentCandidateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentCandidateResponse;
 import com.prgms.backend.domain.content.service.ContentCandidateService;
 import com.prgms.backend.domain.user.entity.SecurityUser;
@@ -20,27 +19,27 @@ public class ContentCandidateController {
     private final ContentCandidateService contentCandidateService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ContentCandidateResponse>> create(
+    public ResponseEntity<ApiResponse<ContentCandidateResponse.Saved>> create(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser,
-            @Valid @RequestBody ContentCandidateCreateRequest request
+            @Valid @RequestBody ContentCandidateRequest.Create request
             ){
         Long userId = securityUser.getId();
-        ContentCandidateResponse response =
+        ContentCandidateResponse.Saved response =
                 contentCandidateService.create(meetingId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(201, response));
     }
 
     @PatchMapping("/{candidateId}")
-    public ResponseEntity<ApiResponse<ContentCandidateResponse>> update(
+    public ResponseEntity<ApiResponse<ContentCandidateResponse.Saved>> update(
             @PathVariable Long meetingId,
             @PathVariable Long candidateId,
             @AuthenticationPrincipal SecurityUser securityUser,
-            @Valid @RequestBody ContentCandidateUpdateRequest request
+            @Valid @RequestBody ContentCandidateRequest.Update request
     ){
         Long userId = securityUser.getId();
-        ContentCandidateResponse response =
+        ContentCandidateResponse.Saved response =
                 contentCandidateService.update(meetingId, candidateId, userId, request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success(200, response));
