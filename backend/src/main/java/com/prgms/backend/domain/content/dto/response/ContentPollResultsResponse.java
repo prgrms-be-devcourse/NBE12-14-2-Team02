@@ -11,6 +11,7 @@ public record ContentPollResultsResponse(
         Long meetingId,
         LocalDateTime deadline,
         ContentPollStatus status,
+        Long confirmedCandidateId,
         int joinedCount,
         List<CandidateResult> candidates,
         List<MemberResult> members

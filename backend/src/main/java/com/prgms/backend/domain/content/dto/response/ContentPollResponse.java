@@ -9,14 +9,16 @@ public record ContentPollResponse(
         Long id,
         Long meetingId,
         LocalDateTime deadline,
-        ContentPollStatus status
+        ContentPollStatus status,
+        Long confirmedCandidateId
 ) {
     public static ContentPollResponse from(ContentPoll contentPoll) {
         return new ContentPollResponse(
                 contentPoll.getId(),
                 contentPoll.getMeetingId(),
                 contentPoll.getDeadline(),
-                contentPoll.getStatus()
+                contentPoll.getStatus(),
+                contentPoll.getConfirmedCandidateId()
         );
     }
 }

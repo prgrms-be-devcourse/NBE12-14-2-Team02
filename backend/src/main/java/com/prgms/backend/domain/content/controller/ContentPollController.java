@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.content.controller;
 
 import com.prgms.backend.domain.content.ENUM.ContentPollResultSort;
+import com.prgms.backend.domain.content.dto.request.ContentPollConfirmRequest;
 import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
 import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
@@ -66,5 +67,16 @@ public class ContentPollController {
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
 
+    @PostMapping("/confirm")
+    public ResponseEntity<ApiResponse<ContentPollResponse>> confirm(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @Valid @RequestBody ContentPollConfirmRequest request
+    ) {
+        Long userId = securityUser.getId();
+        ContentPollResponse response =
+                contentPollService.confirm(meetingId, userId, request);
+        return ResponseEntity.ok(ApiResponse.success(200, response));
+    }
 
 }

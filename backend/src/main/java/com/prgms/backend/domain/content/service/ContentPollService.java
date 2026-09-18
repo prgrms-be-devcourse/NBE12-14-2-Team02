@@ -3,6 +3,7 @@ package com.prgms.backend.domain.content.service;
 import com.prgms.backend.domain.content.ENUM.ContentPollResultSort;
 import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
 import com.prgms.backend.domain.content.ENUM.ContentPreference;
+import com.prgms.backend.domain.content.dto.request.ContentPollConfirmRequest;
 import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
 import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
@@ -19,9 +20,7 @@ import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
-import com.prgms.backend.global.exception.custom.content.ContentPollAlreadyExistsException;
-import com.prgms.backend.global.exception.custom.content.ContentPollClosedException;
-import com.prgms.backend.global.exception.custom.content.ContentPollNotFoundException;
+import com.prgms.backend.global.exception.custom.content.*;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
@@ -256,6 +255,7 @@ public class ContentPollService {
                 poll.getMeetingId(),
                 poll.getDeadline(),
                 poll.getStatus(),
+                poll.getConfirmedCandidateId(),
                 joinedCount,
                 candidateResults,
                 memberResults
@@ -282,6 +282,38 @@ public class ContentPollService {
                 .comparingInt(ContentPollResultsResponse.CandidateResult::totalScore)
                 .reversed()
                 .thenComparing(byCreated);
+    }
+
+    //콘텐츠 투표결과 후보 확정 시키기
+    @Transactional
+    public ContentPollResponse confirm(
+            Long meetingId,
+            Long userId,
+            ContentPollConfirmRequest request
+    ){
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        if (!meeting.isHost(userId)){
+            throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+
+        ContentPoll poll = contentPollRepository.findByMeetingId(meetingId)
+                .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
+        if(poll.getStatus() != ContentPollStatus.CLOSED) {
+            throw new ContentPollNotClosedException();
+        }
+        if(poll.getConfirmedCandidateId() != null){
+            throw new ContentPollAlreadyConfirmedException();
+        }
+
+        ContentCandidate candidate = contentCandidateRepository.findById(request.candidateId())
+                .orElseThrow(() -> new ContentCandidateNotFoundException(request.candidateId()));
+        if (!candidate.getContentPoll().getId().equals(poll.getId())) {
+            throw new ContentCandidateNotFoundException(request.candidateId());
+        }
+
+        poll.confirm(request.candidateId());
+        return ContentPollResponse.from(poll);
     }
 
 }
