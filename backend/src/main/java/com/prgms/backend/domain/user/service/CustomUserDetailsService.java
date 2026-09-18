@@ -1,5 +1,6 @@
 package com.prgms.backend.domain.user.service;
 
+import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,8 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-
+// 우리가 만든 User을 UserDetails로 변환
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -19,17 +19,14 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String id) throws UsernameNotFoundException {
+
         User user = userRepository
-                .findByEmail(email)
+                .findById(Long.parseLong(id))
                 .orElseThrow(
-                        ()-> new UsernameNotFoundException("User not found")
+                        ()-> new UsernameNotFoundException("존재하지 않는 사용자")
                 );
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
-                .password(user.getPassword())
-                .authorities(Collections.emptyList())
-                .build();
+        return new SecurityUser(user);
     }
 }

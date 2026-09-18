@@ -1,55 +1,31 @@
 package com.prgms.backend.global.config;
 
+import com.prgms.backend.security.JwtAuthenticationFilter;
+import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
 
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
+@RequiredArgsConstructor
 @Configuration
 public class SecurityConfig {
+
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
-                        .requestMatchers("/api/auth/sign-up").permitAll()
-                        .requestMatchers("/api/auth/log-in").permitAll()
-
-                        // content
-                        .requestMatchers(
-                                "/api/meetings/*/content-poll",
-                                "/api/meetings/*/content-poll/**",
-                                "/api/meetings/*/content-votes",
-                                "/api/meetings/*/schedule-poll",
-                                "/api/meetings/*/schedule-poll/**",
-                                "/api/notifications",
-                                "/api/notifications/**"
-                        ).authenticated()
-
-                        // meeting
-                        .requestMatchers(
-                            "/api/meetings/**",
-                            "/api/invitations/**"
-                        ).authenticated()
-
-                        .requestMatchers("/**").permitAll()
+                        .requestMatchers("/api/auth/sign-up", "/api/auth/log-in", "/api/auth/reissue").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/api/v1/invitations/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
 
                 .csrf((csrf) -> csrf.disable())
@@ -58,9 +34,24 @@ public class SecurityConfig {
                         .addHeaderWriter(new XFrameOptionsHeaderWriter(
                                 XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
 
-                .oauth2ResourceServer(oauth2 ->
-                        oauth2.jwt(Customizer.withDefaults())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("""
+                {"success": false, "error": {"code": "UNAUTHORIZED", "message": "인증이 필요합니다."}}
+                """);
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("""
+                {"success": false, "error": {"code": "FORBIDDEN", "message": "접근 권한이 없습니다."}}
+                """);
+                        })
                 );
+
 
         return http.build();
     }
@@ -70,40 +61,9 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public AuthenticationManager authenticationManager(
-            PasswordEncoder passwordEncoder,
-            UserDetailsService userDetailsService
-    ) {
-        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider(userDetailsService);
-
-        daoAuthenticationProvider.setPasswordEncoder(passwordEncoder);
-
-        return new ProviderManager(daoAuthenticationProvider);
-    }
 
     @Bean
-    public SecretKey secretKey(
-            @Value("${jwt.secret}") String secret
-    ) {
-        return new SecretKeySpec(
-                secret.getBytes(StandardCharsets.UTF_8),
-                "HmacSHA256"
-        );
-    }
-
-    @Bean
-    public JwtEncoder jwtEncoder(SecretKey secretKey) {
-        return NimbusJwtEncoder
-                .withSecretKey(secretKey)
-                .build();
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder(SecretKey secretKey) {
-        return NimbusJwtDecoder
-                .withSecretKey(secretKey)
-                .macAlgorithm(MacAlgorithm.HS256)
-                .build();
+    public SecretKey secretKey(@Value("${custom.jwt.secret}") String secret) {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 }

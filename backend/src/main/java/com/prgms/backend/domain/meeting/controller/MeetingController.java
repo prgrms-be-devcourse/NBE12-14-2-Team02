@@ -4,6 +4,7 @@ import com.prgms.backend.domain.meeting.dto.request.MeetingCreateRequest;
 import com.prgms.backend.domain.meeting.dto.request.MeetingUpdateRequest;
 import com.prgms.backend.domain.meeting.dto.response.MeetingResponse;
 import com.prgms.backend.domain.meeting.service.MeetingService;
+import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -12,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,10 +31,10 @@ public class MeetingController {
     // 모임 생성
     @PostMapping
     public ResponseEntity<ApiResponse<MeetingResponse>> createMeeting(
-        @AuthenticationPrincipal Jwt jwt,
+        @AuthenticationPrincipal SecurityUser securityUser,
         @Valid @RequestBody MeetingCreateRequest request
     ) {
-        Long userId = Long.parseLong(jwt.getSubject());
+        Long userId = securityUser.getId();
 
         MeetingResponse response =
             meetingService.createMeeting(userId, request);
@@ -57,9 +57,9 @@ public class MeetingController {
     // 모임 목록 조회
     @GetMapping
     public ResponseEntity<ApiResponse<List<MeetingResponse>>> getMyMeetings(
-        @AuthenticationPrincipal Jwt jwt
+        @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = Long.parseLong(jwt.getSubject());
+        Long userId = securityUser.getId();
 
         List<MeetingResponse> response =
             meetingService.getMyMeetings(userId);
@@ -71,10 +71,10 @@ public class MeetingController {
     @PutMapping("/{meetingId}")
     public ResponseEntity<ApiResponse<MeetingResponse>> updateMeeting(
         @PathVariable Long meetingId,
-        @AuthenticationPrincipal Jwt jwt,
+        @AuthenticationPrincipal SecurityUser securityUser,
         @Valid @RequestBody MeetingUpdateRequest request
     ) {
-        Long userId = Long.parseLong(jwt.getSubject());
+        Long userId = securityUser.getId();
 
         MeetingResponse response =
             meetingService.updateMeeting(
