@@ -89,6 +89,10 @@ public class UserController {
                 .body(ApiResponse.success(201, response));
     }
 
+    @Operation(
+            summary = "내 프로필 조회",
+            description = "로그인한 사용자의 이메일과 닉네임을 조회합니다."
+    )
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<ProfileResponse>> getMeetings(
             @AuthenticationPrincipal SecurityUser securityUser

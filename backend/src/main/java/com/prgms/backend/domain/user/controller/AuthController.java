@@ -70,6 +70,10 @@ public class AuthController {
                 .body(ApiResponse.success(200, response));
     }
 
+    @Operation(
+            summary = "로그아웃",
+            description = "저장된 리프레시 토큰을 무효화하고 리프레시 토큰 쿠키를 삭제합니다."
+    )
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse> logout(
             @AuthenticationPrincipal SecurityUser securityUser
