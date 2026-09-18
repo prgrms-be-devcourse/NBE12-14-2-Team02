@@ -66,6 +66,10 @@ public class UserController {
     ) {
     }
 
+    @Operation(
+            summary = "회원가입",
+            description = "이메일, 닉네임, 비밀번호를 입력받아 회원가입을 진행합니다."
+    )
     @SecurityRequirements
     @PostMapping("/sign-up")
     public ResponseEntity<ApiResponse<SignUpResponse>> signUp (
@@ -77,6 +81,10 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(201, signUpResponse));
     }
 
+    @Operation(
+            summary = "로그인",
+            description = "이메일과 비밀번호로 로그인하고, 액세스 토큰과 리프레시 토큰(쿠키)을 발급받습니다."
+    )
     @SecurityRequirements
     @PostMapping("/log-in")
     public ResponseEntity<ApiResponse<LogInResponse>> login (
@@ -99,6 +107,10 @@ public class UserController {
                 .body(ApiResponse.success(201, response));
     }
 
+    @Operation(
+            summary = "액세스 토큰 재발급",
+            description = "쿠키로 전달된 리프레시 토큰을 검증하여 새로운 액세스 토큰을 발급합니다."
+    )
     @SecurityRequirements
     @PostMapping("/reissue")
     public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
