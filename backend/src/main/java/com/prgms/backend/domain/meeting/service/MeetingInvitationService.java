@@ -1,10 +1,12 @@
 package com.prgms.backend.domain.meeting.service;
 
+import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationDetailResponse;
 import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationResponse;
 import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingInvitationRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
@@ -88,7 +90,7 @@ public class MeetingInvitationService {
                 );
 
         // 만료된 초대를 통해 참여하는 경우
-        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (invitation.isExpired()) {
             throw new MeetingInvitationExpiredException();
         }
 
@@ -151,6 +153,39 @@ public class MeetingInvitationService {
             .stream()
             .map(MeetingInvitationResponse::from)
             .toList();
+    }
+
+    // 초대받은 모임 정보 조회
+    public MeetingInvitationDetailResponse getInvitation(
+        String inviteCode,
+        Long userId
+    ) {
+        // 존재하는 초대인지 검사
+        MeetingInvitation invitation = meetingInvitationRepository
+            .findByInviteCode(inviteCode)
+            .orElseThrow(
+                () -> new MeetingInvitationNotFoundException(inviteCode)
+            );
+
+        // 만료된 초대인지 검사
+        if (invitation.isExpired()) {
+            throw new MeetingInvitationExpiredException();
+        }
+
+        Long meetingId = invitation.getMeeting().getId();
+
+        // 현재 참여 중인 모임원인지 검사
+        boolean alreadyJoined =
+            meetingMemberRepository.existsByMeetingIdAndUserIdAndStatus(
+                meetingId,
+                userId,
+                MeetingMemberStatus.JOINED
+            );
+
+        return MeetingInvitationDetailResponse.from(
+            invitation,
+            alreadyJoined
+        );
     }
 
     // 초대 코드 삭제

@@ -1,11 +1,13 @@
 package com.prgms.backend.domain.meeting.controller;
 
+import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationDetailResponse;
 import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationResponse;
 import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
 import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
 import com.prgms.backend.domain.meeting.service.MeetingInvitationService;
 import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
+import io.jsonwebtoken.Jwt;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -74,6 +76,22 @@ public class MeetingInvitationController {
 
         List<MeetingInvitationResponse> response =
             meetingInvitationService.getInvitations(meetingId, userId);
+
+        return ResponseEntity.ok(
+            ApiResponse.success(200, response)
+        );
+    }
+
+    // 초대받은 모임 정보 조회
+    @GetMapping("/invitations/{inviteCode}")
+    public ResponseEntity<ApiResponse<MeetingInvitationDetailResponse>> getInvitation(
+        @PathVariable String inviteCode,
+        @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        Long userId = securityUser.getId();
+
+        MeetingInvitationDetailResponse response =
+            meetingInvitationService.getInvitation(inviteCode, userId);
 
         return ResponseEntity.ok(
             ApiResponse.success(200, response)
