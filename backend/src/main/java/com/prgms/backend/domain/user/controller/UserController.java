@@ -33,6 +33,7 @@ public class UserController {
             description = "사용자가 입력한 이메일이 이용중인지 중복을 확인합니다. "
     )
     @GetMapping("/check-email")
+    @SecurityRequirements
     public ResponseEntity<ApiResponse<EmailCheckResponse>> checkEmail(
             @RequestParam String email
     ) {
@@ -54,6 +55,7 @@ public class UserController {
             summary = "닉네임 중복 확인",
             description = "사용자가 입력한 닉네임이 이용중인지 중복을 확인합니다. "
     )
+    @SecurityRequirements
     @GetMapping("/check-nickname")
     public ResponseEntity<ApiResponse<NicknameCheckResponse>> checkNickname (
             @RequestParam String nickname
@@ -111,7 +113,7 @@ public class UserController {
     ) {
     }
 
-    @PatchMapping("/me")
+    @PatchMapping("/me/nickname")
     public ResponseEntity<ApiResponse<ProfileResponse>> updateNickname(
             @AuthenticationPrincipal SecurityUser securityUser,
             @RequestBody UpdateNicknameRequest request
@@ -122,5 +124,23 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.success(200,response));
+    }
+
+    public record UpdatePasswordRequest(
+            String password,
+            String newPassword
+    ){}
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<ApiResponse<Void>> updatePassword(
+            @RequestBody UpdatePasswordRequest request,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ){
+        Long userId = securityUser.getId();
+        userService.updatePassword(userId, request.password(), request.newPassword());
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.noContentSuccess("비밀번호를 변경했습니다."));
     }
 }
