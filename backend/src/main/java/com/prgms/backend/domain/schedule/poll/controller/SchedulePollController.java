@@ -2,7 +2,9 @@ package com.prgms.backend.domain.schedule.poll.controller;
 
 import com.prgms.backend.domain.schedule.poll.dto.SchedulePollRequest;
 import com.prgms.backend.domain.schedule.poll.dto.SchedulePollResponse;
+import com.prgms.backend.domain.schedule.poll.dto.ScheduleResultResponse;
 import com.prgms.backend.domain.schedule.poll.service.SchedulePollService;
+import com.prgms.backend.domain.schedule.poll.service.ScheduleResultService;
 import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/meetings/{meetingId}/schedule-poll")
 public class SchedulePollController {
     private final SchedulePollService schedulePollService;
+    private final ScheduleResultService scheduleResultService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.Created>> create(
@@ -71,4 +74,24 @@ public class SchedulePollController {
         );
 
     }
+
+    // 후보별 순위와 참여자별 응답을 결과 화면에 한 번에 반환한다.
+    @GetMapping("/results")
+    public ResponseEntity<ApiResponse<ScheduleResultResponse.Detail>> getResults(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal Jwt jwt
+    ){
+        Long userId = Long.valueOf(jwt.getSubject());
+
+        ScheduleResultResponse.Detail response =
+                scheduleResultService.getResults(
+                        meetingId,
+                        userId
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(200, response)
+        );
+    }
+
 }
