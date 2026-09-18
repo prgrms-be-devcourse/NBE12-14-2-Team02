@@ -1,7 +1,9 @@
 package com.prgms.backend.domain.content.service;
 
+import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
 import com.prgms.backend.domain.content.ENUM.ContentPreference;
 import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
+import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
 import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
 import com.prgms.backend.domain.content.entity.ContentCandidate;
@@ -10,10 +12,16 @@ import com.prgms.backend.domain.content.entity.ContentVote;
 import com.prgms.backend.domain.content.repository.ContentCandidateRepository;
 import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.content.repository.ContentVoteRepository;
+import com.prgms.backend.domain.meeting.entity.Meeting;
+import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
-import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.content.ContentPollAlreadyExistsException;
+import com.prgms.backend.global.exception.custom.content.ContentPollClosedException;
 import com.prgms.backend.global.exception.custom.content.ContentPollNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +38,14 @@ public class ContentPollService {
     private final MeetingRepository meetingRepository;
     private final ContentCandidateRepository contentCandidateRepository;
     private final ContentVoteRepository contentVoteRepository;
+    private final MeetingMemberRepository meetingMemberRepository;
 
     @Transactional
-    public ContentPollResponse create(Long meetingId, ContentPollCreateRequest request){
-        if(!meetingRepository.existsById(meetingId)){
-            throw new MeetingNotFoundException(meetingId);
+    public ContentPollResponse create(Long meetingId, Long userId, ContentPollCreateRequest request){
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        if(!meeting.isHost(userId)){
+            throw new MeetingAccessDeniedException(meetingId, userId);
         }
 
         if (contentPollRepository.existsByMeetingId(meetingId)){
@@ -49,7 +60,10 @@ public class ContentPollService {
     }
 
     @Transactional
-    public ContentPollDetailResponse get(Long meetingId, Long meetingMemberId){
+    public ContentPollDetailResponse get(Long meetingId, Long userId){
+        MeetingMember member = requireJoinedMember(meetingId, userId);
+        Long meetingMemberId = member.getId();
+
         ContentPoll poll = contentPollRepository.findByMeetingId(meetingId)
                 .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
         //해당 poll의 후보들을 등록시간 기준으로 정렬
@@ -94,5 +108,38 @@ public class ContentPollService {
                 poll.getStatus(),
                 ranked
         );
+
+
+    }
+    // 콘텐츠 투표 마감기한 업데이트
+    @Transactional
+    public ContentPollResponse updateDeadline(
+            Long meetingId,
+            Long userId,
+            ContentPollDeadlineUpdateRequest request
+    ){
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        if(!meeting.isHost(userId)){
+            throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+
+        ContentPoll poll = contentPollRepository.findByMeetingId(meetingId)
+                .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
+        if(poll.getStatus() == ContentPollStatus.CLOSED){
+            throw new ContentPollClosedException();
+        }
+        poll.changeDeadLine(request.deadline());
+        return ContentPollResponse.from(poll);
+    }
+    private MeetingMember requireJoinedMember(Long meetingId, Long userId){
+        MeetingMember member = meetingMemberRepository
+                .findByMeetingIdAndUserId(meetingId,userId)
+                .orElseThrow(() -> new MeetingMemberNotFoundException(meetingId,userId));
+
+        if(!member.isJoined()){
+            throw new MeetingAccessDeniedException(meetingId,userId);
+        }
+        return member;
     }
 }

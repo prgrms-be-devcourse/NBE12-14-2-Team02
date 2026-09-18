@@ -7,6 +7,8 @@ import com.prgms.backend.global.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,10 +20,11 @@ public class ContentVoteController {
     @PutMapping
     public ResponseEntity<ApiResponse<ContentVoteResponse>> upsert(
             @PathVariable Long meetingId,
-            @RequestParam Long meetingMemberId,
-            @Valid @RequestBody ContentVoteRequest request
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid@RequestBody ContentVoteRequest request
     ){
-        ContentVoteResponse response = contentVoteService.upsert(meetingId, meetingMemberId, request);
+        Long userId = Long.parseLong(jwt.getSubject());
+        ContentVoteResponse response = contentVoteService.upsert(meetingId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(200, response));
     }
 }

@@ -2,14 +2,18 @@ package com.prgms.backend.domain.content.service;
 
 import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
 import com.prgms.backend.domain.content.dto.request.ContentCandidateCreateRequest;
-import com.prgms.backend.domain.content.dto.response.ContentCandidateResponse;
 import com.prgms.backend.domain.content.dto.request.ContentCandidateUpdateRequest;
+import com.prgms.backend.domain.content.dto.response.ContentCandidateResponse;
 import com.prgms.backend.domain.content.entity.ContentCandidate;
 import com.prgms.backend.domain.content.entity.ContentPoll;
 import com.prgms.backend.domain.content.repository.ContentCandidateRepository;
 import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.content.repository.ContentVoteRepository;
+import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.global.exception.custom.content.*;
+import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,14 +24,17 @@ public class ContentCandidateService {
     private final ContentCandidateRepository contentCandidateRepository;
     private final ContentPollRepository contentPollRepository;
     private final ContentVoteRepository contentVoteRepository;
+    private final MeetingMemberRepository meetingMemberRepository;
 
     //후보 생성
     @Transactional
     public ContentCandidateResponse create(
             Long meetingId,
-            Long meetingMemberId,
+            Long userId,
             ContentCandidateCreateRequest request
     ){
+        MeetingMember member = requireJoinedMember(meetingId, userId);
+        Long meetingMemberId = member.getId();
         ContentPoll poll = getOpenPoll(meetingId);
 
         if(contentCandidateRepository.existsByContentPollIdAndTitle(poll.getId(), request.title())){
@@ -45,9 +52,12 @@ public class ContentCandidateService {
     public ContentCandidateResponse update(
             Long meetingId,
             Long candidateId,
-            Long meetingMemberId,
+            Long userId,
             ContentCandidateUpdateRequest request
     ){
+        MeetingMember member = requireJoinedMember(meetingId, userId);
+        Long meetingMemberId = member.getId();
+
         ContentPoll poll = getOpenPoll(meetingId);
         ContentCandidate candidate = getCandidateInPoll(candidateId, poll);
 
@@ -71,7 +81,10 @@ public class ContentCandidateService {
     }
 
     @Transactional
-    public void delete(Long meetingId, Long candidateId, Long meetingMemberId){
+    public void delete(Long meetingId, Long candidateId, Long userId){
+        MeetingMember member = requireJoinedMember(meetingId, userId);
+        Long meetingMemberId = member.getId();
+
         ContentPoll poll = getOpenPoll(meetingId);
         ContentCandidate candidate = getCandidateInPoll(candidateId, poll);
 
@@ -104,5 +117,15 @@ public class ContentCandidateService {
             throw new ContentCandidateNotFoundException(candidateId);
         }
         return candidate;
+    }
+
+    private MeetingMember requireJoinedMember(Long meetingId, Long userId) {
+        MeetingMember member = meetingMemberRepository
+                .findByMeetingIdAndUserId(meetingId, userId)
+                .orElseThrow(() -> new MeetingMemberNotFoundException(meetingId, userId));
+        if (!member.isJoined()) {
+            throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+        return member;
     }
 }

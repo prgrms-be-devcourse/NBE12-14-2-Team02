@@ -1,12 +1,15 @@
 package com.prgms.backend.domain.meeting.controller;
 
 import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationResponse;
+import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
 import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
 import com.prgms.backend.domain.meeting.service.MeetingInvitationService;
 import com.prgms.backend.global.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,22 +18,46 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/meetings")
+@RequestMapping("/api")
 public class MeetingInvitationController {
 
     private final MeetingInvitationService meetingInvitationService;
 
     // 초대 생성
-    @PostMapping("/{meetingId}/invitations")
+    @PostMapping("/meetings/{meetingId}/invitations")
     public ResponseEntity<ApiResponse<MeetingInvitationResponse>> createInvitation(
         @PathVariable Long meetingId,
-        @RequestParam Long hostId
-    ){
+        @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
         MeetingInvitationResponse response =
-            meetingInvitationService.createInvitation(meetingId, hostId);
+            meetingInvitationService.createInvitation(
+                meetingId,
+                userId
+            );
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body(ApiResponse.success(201, response));
+    }
+
+    // 초대를 통한 모임 참여
+    @PostMapping("/invitations/{inviteCode}/join")
+    public ResponseEntity<ApiResponse<MeetingMemberResponse>> joinMeeting(
+        @PathVariable String inviteCode,
+        @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
+        MeetingMemberResponse response =
+            meetingInvitationService.joinMeeting(
+                inviteCode,
+                userId
+            );
+
+        return ResponseEntity.ok(
+            ApiResponse.success(200, response)
+        );
     }
 }

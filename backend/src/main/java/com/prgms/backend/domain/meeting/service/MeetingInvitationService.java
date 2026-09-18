@@ -1,13 +1,23 @@
 package com.prgms.backend.domain.meeting.service;
 
 import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationResponse;
+import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
+import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.repository.MeetingInvitationRepository;
+import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
+import com.prgms.backend.domain.user.entity.User;
+import com.prgms.backend.domain.user.repository.UserRepository;
+import com.prgms.backend.global.exception.custom.UserNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.AlreadyMeetingMemberException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationExpiredException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +30,8 @@ public class MeetingInvitationService {
 
     private final MeetingRepository meetingRepository;
     private final MeetingInvitationRepository meetingInvitationRepository;
+    private final MeetingMemberRepository meetingMemberRepository;
+    private final UserRepository userRepository;
 
     // 초대 기간 만료일 상수
     private static final long INVITATION_EXPIRE_DAYS = 7;
@@ -28,7 +40,7 @@ public class MeetingInvitationService {
     @Transactional
     public MeetingInvitationResponse createInvitation(
         Long meetingId,
-        Long hostId
+        Long userId
     ){
         // 없는 미팅에 대한 초대인지 검사
         Meeting meeting = meetingRepository.findById(meetingId)
@@ -37,8 +49,8 @@ public class MeetingInvitationService {
             );
 
         // 모임장이 아닌 사람이 초대를 생성하는지 검사
-        if(!meeting.isHost(hostId)){
-            throw new MeetingAccessDeniedException(meetingId, hostId);
+        if(!meeting.isHost(userId)){
+            throw new MeetingAccessDeniedException(meetingId, userId);
         }
 
         // UUID 사용 - 쉽게 고유값 생성 가능, 충돌 위험 낮음, 별도 번호 생성 로직 필요X
@@ -59,5 +71,63 @@ public class MeetingInvitationService {
 
         // MeetingInvitationResponse 형태로 변환해서 리턴
         return MeetingInvitationResponse.from(savedInvitation);
+    }
+
+    // 초대를 통한 모임 참여
+    @Transactional
+    public MeetingMemberResponse joinMeeting(
+        String inviteCode,
+        Long userId
+    ) {
+        // 존재하는 초대인지 검사
+        MeetingInvitation invitation =
+            meetingInvitationRepository.findByInviteCode(inviteCode)
+                .orElseThrow(
+                    () -> new MeetingInvitationNotFoundException(inviteCode)
+                );
+
+        // 만료된 초대를 통해 참여하는 경우
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new MeetingInvitationExpiredException();
+        }
+
+        // 존재하는 회원인지 검사
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new UserNotFoundException(userId));
+
+        // 초대에서 미팅 객체 가져오기
+        Meeting meeting = invitation.getMeeting();
+
+        // 해당 모임의 모임원 목록에 있는 회원인지 검사
+        Optional<MeetingMember> existingMember =
+            meetingMemberRepository.findByMeetingIdAndUserId(
+                meeting.getId(),
+                userId
+            );
+
+        MeetingMember meetingMember;
+
+        // 모임원 목록에 있는 회원인 경우
+        if (existingMember.isPresent()) {
+            meetingMember = existingMember.get();
+
+            // 현재 참여 중인 모임원인 경우
+            if (meetingMember.isJoined()) {
+                throw new AlreadyMeetingMemberException(
+                    meeting.getId(),
+                    userId
+                );
+            }
+
+            // 현재 참여 중이 아니면(LEFT) 재가입
+            meetingMember.rejoin();
+
+            // 모임에 가입한 적 없는 회원인 경우 모임원에 등록
+        } else {
+            meetingMember = new MeetingMember(meeting, user);
+            meetingMemberRepository.save(meetingMember);
+        }
+
+        return MeetingMemberResponse.from(meetingMember);
     }
 }

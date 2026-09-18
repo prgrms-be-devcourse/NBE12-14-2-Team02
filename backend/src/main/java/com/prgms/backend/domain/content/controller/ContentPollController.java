@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.content.controller;
 
 import com.prgms.backend.domain.content.dto.request.ContentPollCreateRequest;
+import com.prgms.backend.domain.content.dto.request.ContentPollDeadlineUpdateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentPollDetailResponse;
 import com.prgms.backend.domain.content.dto.response.ContentPollResponse;
 import com.prgms.backend.domain.content.service.ContentPollService;
@@ -9,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,9 +23,11 @@ public class ContentPollController {
     @PostMapping
     public ResponseEntity<ApiResponse<ContentPollResponse>> create(
             @PathVariable Long meetingId,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ContentPollCreateRequest request
             ){
-        ContentPollResponse response = contentPollService.create(meetingId, request);
+        Long userId = Long.parseLong(jwt.getSubject());
+        ContentPollResponse response = contentPollService.create(meetingId,userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(201,response));
     }
@@ -30,10 +35,23 @@ public class ContentPollController {
     @GetMapping
     public ResponseEntity<ApiResponse<ContentPollDetailResponse>> get(
             @PathVariable Long meetingId,
-            @RequestParam Long meetingMemberId
+            @AuthenticationPrincipal Jwt jwt
     ){
-        ContentPollDetailResponse response = contentPollService.get(meetingId, meetingMemberId);
+        Long userId = Long.parseLong(jwt.getSubject());
+        ContentPollDetailResponse response = contentPollService.get(meetingId, userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
+
+    @PatchMapping
+    public ResponseEntity<ApiResponse<ContentPollResponse>> updateDeadline(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody ContentPollDeadlineUpdateRequest request
+    ){
+        Long userId = Long.parseLong(jwt.getSubject());
+        ContentPollResponse response = contentPollService.updateDeadline(meetingId, userId, request);
+        return ResponseEntity.ok(ApiResponse.success(200,response));
+    }
+
 
 }

@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,9 +21,13 @@ public class SchedulePollController {
     @PostMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.Created>> create(
             @PathVariable Long meetingId,
-            @Valid @RequestBody SchedulePollRequest.Create request
+            @Valid @RequestBody SchedulePollRequest.Create request,
+            @AuthenticationPrincipal Jwt jwt
             ){
-        SchedulePollResponse.Created response = schedulePollService.create(meetingId, request);
+
+        Long userId = Long.valueOf(jwt.getSubject());
+
+        SchedulePollResponse.Created response = schedulePollService.create(meetingId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         201,
@@ -31,10 +37,13 @@ public class SchedulePollController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> get(
-            @PathVariable Long meetingId
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal Jwt jwt
     ){
+
+        Long userId = Long.valueOf(jwt.getSubject());
         SchedulePollResponse.Detail response =
-                schedulePollService.get(meetingId);
+                schedulePollService.get(meetingId, userId);
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -48,10 +57,14 @@ public class SchedulePollController {
     @PatchMapping
     public ResponseEntity<ApiResponse<SchedulePollResponse.DeadlineUpdate>> updateDeadline(
             @PathVariable Long meetingId,
-            @Valid @RequestBody SchedulePollRequest.UpdateDeadline request
+            @Valid @RequestBody SchedulePollRequest.UpdateDeadline request,
+            @AuthenticationPrincipal Jwt jwt
     ){
+
+        Long userId = Long.valueOf(jwt.getSubject());
+
         SchedulePollResponse.DeadlineUpdate response =
-                schedulePollService.updateDeadline(meetingId,request);
+                schedulePollService.updateDeadline(meetingId, userId,request);
 
         return ResponseEntity.ok(
                 ApiResponse.success(200,response)

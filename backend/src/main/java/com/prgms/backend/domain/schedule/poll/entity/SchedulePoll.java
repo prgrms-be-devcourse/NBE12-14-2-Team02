@@ -2,6 +2,7 @@ package com.prgms.backend.domain.schedule.poll.entity;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
+import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateLimitExceededException;
 import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateNotFoundException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollClosedException;
 import jakarta.persistence.*;
@@ -21,6 +22,9 @@ import java.util.List;
 @Table(name = "schedule_polls")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SchedulePoll {
+
+    private final static int MAX_CANDIDATE_COUNT = 10;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -68,6 +72,11 @@ public class SchedulePoll {
 
     //SchedulePoll에 candidate추가하는 메서드
     public ScheduleCandidate addCandidate(LocalDate candidateDate) {
+        //최대 10개까지만 후보 저장 가능.
+        if(candidates.size() >= MAX_CANDIDATE_COUNT){
+            throw new ScheduleCandidateLimitExceededException(MAX_CANDIDATE_COUNT);
+        }
+
         ScheduleCandidate candidate =
                 ScheduleCandidate.create(this, candidateDate);
 
@@ -102,7 +111,6 @@ public class SchedulePoll {
     }
 
     //중복날짜가 있는 지 없는지를 여기서 검사함.
-    //lazy로딩이지만, 후보를 10개로 고정했기때문에 메모리 상 성능저하는 없을 것 같아서, 여기서 처리했슴
     public boolean hasDuplicateDate(
             Long excludedCandidateId,
             LocalDate candidateDate
@@ -128,4 +136,10 @@ public class SchedulePoll {
     public void removeCandidate(ScheduleCandidate candidate) {
         candidates.remove(candidate);
     }
+
+    //투표가 마감될 수 있도록 호출하는 메서드.
+    public void close() {
+        this.status = SchedulePollStatus.CLOSED;
+    }
+
 }
