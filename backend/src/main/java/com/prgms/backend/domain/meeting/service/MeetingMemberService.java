@@ -6,6 +6,7 @@ import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
+import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingHostCannotLeaveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberAlreadyLeftException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
@@ -37,14 +38,22 @@ public class MeetingMemberService {
     }
 
     // 현재 모임원 목록 조회
-    public List<MeetingMemberResponse> getMeetingMembers(Long meetingId){
+    public List<MeetingMemberResponse> getMeetingMembers(
+        Long meetingId,
+        Long userId
+    ){
 
-        // 존재하지 않는 모임의 모임원 목록을 조회하는 경우
+        // 존재하지 않는 모임인지 검사
         if(!meetingRepository.existsById(meetingId)){
             throw new MeetingNotFoundException(meetingId);
         }
 
-        // 모임 id로 가져온 모임원 객체들을 MeetingMemberResponse 형태로 변환해서 리스트 리턴
+        // 현재 로그인한 사용자가 해당 모임에 참여 중인지 검사
+        if(!isMeetingMember(meetingId, userId)){
+            throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+
+        // JOINED 상태의 모임원만 조회
         return meetingMemberRepository
             .findAllByMeetingIdAndStatus(
                 meetingId,
