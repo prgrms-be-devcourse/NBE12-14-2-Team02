@@ -133,7 +133,6 @@ public class MeetingInvitationService {
     }
 
     // 초대 코드 목록 조회(모임장만 가능)
-    @Transactional(readOnly = true)
     public List<MeetingInvitationResponse> getInvitations(
         Long meetingId,
         Long userId
@@ -152,5 +151,34 @@ public class MeetingInvitationService {
             .stream()
             .map(MeetingInvitationResponse::from)
             .toList();
+    }
+
+    // 초대 코드 삭제
+    @Transactional
+    public void deleteInvitation(
+        Long meetingId,
+        Long invitationId,
+        Long userId
+    ) {
+        // 존재하는 모임인지 검사
+        Meeting meeting = meetingRepository.findById(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+
+        // 모임장만 초대 취소 가능
+        if (!meeting.isHost(userId)) {
+            throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+
+        // 존재하는 초대인지 검사
+        MeetingInvitation invitation = meetingInvitationRepository
+            .findById(invitationId)
+            .orElseThrow(() -> new MeetingInvitationNotFoundException(invitationId));
+
+        // 다른 모임의 초대 코드를 삭제하려는 경우
+        if (!invitation.getMeeting().getId().equals(meetingId)) {
+            throw new MeetingInvitationNotFoundException(invitationId);
+        }
+
+        meetingInvitationRepository.delete(invitation);
     }
 }

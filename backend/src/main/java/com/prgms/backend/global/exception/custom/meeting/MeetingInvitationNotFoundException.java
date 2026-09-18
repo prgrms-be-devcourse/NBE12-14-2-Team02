@@ -10,4 +10,11 @@ public class MeetingInvitationNotFoundException extends BusinessException {
         "유효하지 않은 초대 코드입니다. inviteCode = " + inviteCode
     );
   }
+
+  public MeetingInvitationNotFoundException(Long invitationId) {
+    super(
+        404,
+        "초대 정보를 찾을 수 없습니다. invitationId=" + invitationId
+    );
+  }
 }
