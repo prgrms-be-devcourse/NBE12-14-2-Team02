@@ -30,6 +30,9 @@ public class ContentPoll extends BaseTimeEntity {
     @Column(name = "status", nullable = false)
     private ContentPollStatus status = ContentPollStatus.OPEN;
 
+    @Column(name = "confirmed_candidate_id")
+    private Long confirmedCandidateId;
+
     public ContentPoll(Long meetingId, LocalDateTime deadLine){
         this.meetingId = meetingId;
         this.deadline = deadLine;
@@ -42,5 +45,9 @@ public class ContentPoll extends BaseTimeEntity {
 
     public void close(){
         this.status = ContentPollStatus.CLOSED;
+    }
+
+    public void confirm(Long candidateId){
+        this.confirmedCandidateId = candidateId;
     }
 }

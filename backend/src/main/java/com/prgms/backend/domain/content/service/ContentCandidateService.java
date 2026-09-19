@@ -1,8 +1,7 @@
 package com.prgms.backend.domain.content.service;
 
 import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
-import com.prgms.backend.domain.content.dto.request.ContentCandidateCreateRequest;
-import com.prgms.backend.domain.content.dto.request.ContentCandidateUpdateRequest;
+import com.prgms.backend.domain.content.dto.request.ContentCandidateRequest;
 import com.prgms.backend.domain.content.dto.response.ContentCandidateResponse;
 import com.prgms.backend.domain.content.entity.ContentCandidate;
 import com.prgms.backend.domain.content.entity.ContentPoll;
@@ -28,10 +27,10 @@ public class ContentCandidateService {
 
     //후보 생성
     @Transactional
-    public ContentCandidateResponse create(
+    public ContentCandidateResponse.Saved create(
             Long meetingId,
             Long userId,
-            ContentCandidateCreateRequest request
+            ContentCandidateRequest.Create request
     ){
         MeetingMember member = requireJoinedMember(meetingId, userId);
         Long meetingMemberId = member.getId();
@@ -44,16 +43,16 @@ public class ContentCandidateService {
         ContentCandidate saved = contentCandidateRepository.save(
                 new ContentCandidate(poll,meetingMemberId, request.title(), request.description())
         );
-        return ContentCandidateResponse.from(saved);
+        return ContentCandidateResponse.Saved.from(saved);
     }
 
     //후보 수정
     @Transactional
-    public ContentCandidateResponse update(
+    public ContentCandidateResponse.Saved update(
             Long meetingId,
             Long candidateId,
             Long userId,
-            ContentCandidateUpdateRequest request
+            ContentCandidateRequest.Update request
     ){
         MeetingMember member = requireJoinedMember(meetingId, userId);
         Long meetingMemberId = member.getId();
@@ -77,7 +76,7 @@ public class ContentCandidateService {
         }
 
         candidate.update(request.title(), request.description());
-        return ContentCandidateResponse.from(candidate);
+        return ContentCandidateResponse.Saved.from(candidate);
     }
 
     @Transactional

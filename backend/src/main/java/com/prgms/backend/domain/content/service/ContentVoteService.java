@@ -29,10 +29,10 @@ public class ContentVoteService {
     private final MeetingMemberRepository meetingMemberRepository;
 
     @Transactional
-    public ContentVoteResponse upsert(
+    public ContentVoteResponse.Saved upsert(
             Long meetingId,
             Long userId,
-            ContentVoteRequest request
+            ContentVoteRequest.Submit request
     ){
         MeetingMember member = requireJoinedMember(meetingId, userId);
         Long meetingMemberId = member.getId();
@@ -51,7 +51,7 @@ public class ContentVoteService {
                         new ContentVote(candidate, meetingMemberId, request.preference())
                 ));
 
-        return ContentVoteResponse.from(vote);
+        return ContentVoteResponse.Saved.from(vote);
     }
 
     private ContentPoll getOpenPoll(Long meetingId){
@@ -67,7 +67,7 @@ public class ContentVoteService {
         ContentCandidate candidate = contentCandidateRepository.findById(candidateId)
                 .orElseThrow(() -> new ContentCandidateNotFoundException(candidateId));
         if(!candidate.getContentPoll().getId().equals(poll.getId())){
-            throw new ContentPollNotFoundException(candidateId);
+            throw new ContentCandidateNotFoundException(candidateId);
         }
         return candidate;
     }

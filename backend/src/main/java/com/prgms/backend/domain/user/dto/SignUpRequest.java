@@ -32,6 +32,6 @@ public record SignUpRequest(
         String confirmPassword
 ) {
     // 영문 1자 이상 + 숫자 1자 이상 + 특수문자 1자 이상 + 총 8자 이상
-    static final String PASSWORD_PATTERN =
+    public static final String PASSWORD_PATTERN =
             "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=]).{8,}$";
 }
