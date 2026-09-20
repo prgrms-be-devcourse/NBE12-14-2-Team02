@@ -1,7 +1,6 @@
 package com.prgms.backend.domain.user.entity;
 
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
@@ -9,35 +8,41 @@ import java.util.List;
 
 // User 엔티티를 Security가 이해할 수 있는 UserDetails로 변환
 public class SecurityUser implements UserDetails {
-    public final User user;
 
-    public SecurityUser(User user) {
-        this.user = user;
+    private final Long userId;  // User 대신 id를 가짐
+
+    public SecurityUser(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getUserId() {
+        return userId;
     }
 
     @Override
-    public String getUsername() {
-        return user.getEmail();
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of();
     }
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return null;
     }
 
     @Override
-    public Collection<? extends GrantedAuthority>
-    getAuthorities() {
-        return List.of(
-                new SimpleGrantedAuthority("ROLE_USER")
-        );
+    public String getUsername() {
+        return String.valueOf(userId);
     }
 
-    public Long getId() {
-        return user.getId();
-    }
+    @Override
+    public boolean isAccountNonExpired() { return true; }
 
-    public String getRefreshToken() {
-        return user.getRefreshToken();
-    }
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
 }

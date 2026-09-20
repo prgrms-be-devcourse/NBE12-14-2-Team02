@@ -21,7 +21,7 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMine(
             @AuthenticationPrincipal SecurityUser securityUser
             ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
         List<NotificationResponse> response =
                 notificationService.getMyNotifications(userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
@@ -32,7 +32,7 @@ public class NotificationController {
             @PathVariable Long notificationId,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
         NotificationResponse response = notificationService.markRead(notificationId, userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }

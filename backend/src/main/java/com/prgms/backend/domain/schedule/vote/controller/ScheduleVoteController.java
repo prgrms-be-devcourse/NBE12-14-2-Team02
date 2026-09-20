@@ -24,7 +24,7 @@ public class ScheduleVoteController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ScheduleVoteRequest.Submit request
             ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         ScheduleVoteResponse.Saved response = scheduleVoteService.submit(
                 meetingId,

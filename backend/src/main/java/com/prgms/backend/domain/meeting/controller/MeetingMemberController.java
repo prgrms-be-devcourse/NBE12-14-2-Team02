@@ -30,7 +30,7 @@ public class MeetingMemberController {
         @PathVariable Long meetingId,
         @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         List<MeetingMemberResponse> responses =
             meetingMemberService.getMeetingMembers(meetingId, userId);
@@ -46,7 +46,7 @@ public class MeetingMemberController {
         @PathVariable Long meetingId,
         @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         MeetingMemberResponse response =
             meetingMemberService.leaveMeeting(meetingId, userId);

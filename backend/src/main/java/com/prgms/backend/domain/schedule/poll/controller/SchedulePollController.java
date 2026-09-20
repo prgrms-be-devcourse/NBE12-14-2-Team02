@@ -28,7 +28,7 @@ public class SchedulePollController {
             @AuthenticationPrincipal SecurityUser securityUser
             ){
 
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         SchedulePollResponse.Created response = schedulePollService.create(meetingId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -44,7 +44,7 @@ public class SchedulePollController {
             @AuthenticationPrincipal SecurityUser securityUser
     ){
 
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
         SchedulePollResponse.Detail response =
                 schedulePollService.get(meetingId, userId);
 
@@ -64,7 +64,7 @@ public class SchedulePollController {
             @AuthenticationPrincipal SecurityUser securityUser
     ){
 
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         SchedulePollResponse.DeadlineUpdate response =
                 schedulePollService.updateDeadline(meetingId, userId,request);
@@ -81,7 +81,7 @@ public class SchedulePollController {
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         ScheduleResultResponse.Detail response =
                 scheduleResultService.getResults(

@@ -32,7 +32,7 @@ public class MeetingInvitationController {
         @PathVariable Long meetingId,
         @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         MeetingInvitationResponse response =
             meetingInvitationService.createInvitation(
@@ -51,7 +51,7 @@ public class MeetingInvitationController {
         @PathVariable String inviteCode,
         @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         MeetingMemberResponse response =
             meetingInvitationService.joinMeeting(
@@ -70,7 +70,7 @@ public class MeetingInvitationController {
         @PathVariable Long meetingId,
         @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         List<MeetingInvitationResponse> response =
             meetingInvitationService.getInvitations(meetingId, userId);
@@ -87,7 +87,7 @@ public class MeetingInvitationController {
         @PathVariable Long invitationId,
         @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
 
         meetingInvitationService.deleteInvitation(
             meetingId,

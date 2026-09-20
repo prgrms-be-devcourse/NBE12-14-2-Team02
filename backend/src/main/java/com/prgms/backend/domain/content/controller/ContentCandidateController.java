@@ -24,7 +24,7 @@ public class ContentCandidateController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ContentCandidateRequest.Create request
             ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
         ContentCandidateResponse.Saved response =
                 contentCandidateService.create(meetingId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -38,7 +38,7 @@ public class ContentCandidateController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ContentCandidateRequest.Update request
     ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
         ContentCandidateResponse.Saved response =
                 contentCandidateService.update(meetingId, candidateId, userId, request);
         return ResponseEntity.status(HttpStatus.OK)
@@ -51,7 +51,7 @@ public class ContentCandidateController {
             @PathVariable Long candidateId,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getId();
+        Long userId = securityUser.getUserId();
         contentCandidateService.delete(meetingId, candidateId, userId);
         return ResponseEntity.noContent().build();
     }
