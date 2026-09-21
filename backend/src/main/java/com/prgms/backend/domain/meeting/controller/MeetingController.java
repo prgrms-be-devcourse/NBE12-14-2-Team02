@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -86,5 +87,21 @@ public class MeetingController {
             );
 
         return ResponseEntity.ok(ApiResponse.success(200, response));
+    }
+
+    // 모임 종료
+    @PatchMapping("/{meetingId}/complete")
+    public ResponseEntity<ApiResponse<MeetingResponse>> completeMeeting(
+        @PathVariable Long meetingId,
+        @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        Long userId = securityUser.getId();
+
+        MeetingResponse response =
+            meetingService.completeMeeting(meetingId, userId);
+
+        return ResponseEntity.ok(
+            ApiResponse.success(200, response)
+        );
     }
 }
