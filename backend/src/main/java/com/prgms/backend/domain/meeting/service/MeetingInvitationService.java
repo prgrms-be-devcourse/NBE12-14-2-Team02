@@ -1,10 +1,12 @@
 package com.prgms.backend.domain.meeting.service;
 
+import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationDetailResponse;
 import com.prgms.backend.domain.meeting.dto.response.MeetingInvitationResponse;
 import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingInvitationRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
@@ -80,17 +82,8 @@ public class MeetingInvitationService {
         String inviteCode,
         Long userId
     ) {
-        // 존재하는 초대인지 검사
-        MeetingInvitation invitation =
-            meetingInvitationRepository.findByInviteCode(inviteCode)
-                .orElseThrow(
-                    () -> new MeetingInvitationNotFoundException(inviteCode)
-                );
-
-        // 만료된 초대를 통해 참여하는 경우
-        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new MeetingInvitationExpiredException();
-        }
+        // 유효한 초대인지 검사
+        MeetingInvitation invitation = getValidInvitation(inviteCode);
 
         // 존재하는 회원인지 검사
         User user = userRepository.findById(userId)
@@ -151,6 +144,47 @@ public class MeetingInvitationService {
             .stream()
             .map(MeetingInvitationResponse::from)
             .toList();
+    }
+
+    // 초대받은 모임 정보 조회
+    public MeetingInvitationDetailResponse getInvitation(
+        String inviteCode,
+        Long userId
+    ) {
+        // 유효한 초대인지 검사
+        MeetingInvitation invitation = getValidInvitation(inviteCode);
+
+        Long meetingId = invitation.getMeeting().getId();
+
+        // 이미 모임에 가입된 회원인지 검사
+        boolean alreadyJoined =
+            meetingMemberRepository.existsByMeetingIdAndUserIdAndStatus(
+                meetingId,
+                userId,
+                MeetingMemberStatus.JOINED
+            );
+
+        return MeetingInvitationDetailResponse.from(
+            invitation,
+            alreadyJoined
+        );
+    }
+
+    // 유효한 초대인지 검사
+    private MeetingInvitation getValidInvitation(String inviteCode) {
+        // 존재하는 초대인지 검사
+        MeetingInvitation invitation = meetingInvitationRepository
+            .findByInviteCode(inviteCode)
+            .orElseThrow(
+                () -> new MeetingInvitationNotFoundException(inviteCode)
+            );
+
+        // 만료된 초대인지 검사
+        if (invitation.isExpired()) {
+            throw new MeetingInvitationExpiredException();
+        }
+
+        return invitation;
     }
 
     // 초대 코드 삭제
