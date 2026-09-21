@@ -7,9 +7,9 @@
 하나의 모임 안에서 관리할 수 있도록 돕는 서비스입니다.
 
 
-[서비스 바로가기](https://nbe-12-14-2-team02.vercel.app)
-[swagger](https://nbe12-14-2-team02-production.up.railway.app/swagger-ui/index.html#/)
-[ERD](https://www.erdcloud.com/d/MQ5G84GCBHH3ghK2N)
+[서비스 바로가기](https://nbe-12-14-2-team02.vercel.app)  
+[swagger 문서](https://nbe12-14-2-team02-production.up.railway.app/swagger-ui/index.html#/)  
+[ERD](https://www.erdcloud.com/d/MQ5G84GCBHH3ghK2N)  
 
 ---
 
