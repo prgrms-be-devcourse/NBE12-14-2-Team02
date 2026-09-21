@@ -44,9 +44,9 @@ public class MeetingMemberService {
     ){
 
         // 존재하지 않는 모임인지 검사
-        if(!meetingRepository.existsById(meetingId)){
-            throw new MeetingNotFoundException(meetingId);
-        }
+        meetingRepository
+            .findByIdAndDeletedAtIsNull(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 현재 로그인한 사용자가 해당 모임에 참여 중인지 검사
         if(!isMeetingMember(meetingId, userId)){
@@ -81,7 +81,8 @@ public class MeetingMemberService {
         Long userId
     ) {
         // 존재하는 모임인지 검사
-        Meeting meeting = meetingRepository.findById(meetingId)
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNull(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장인 경우 탈퇴 불가

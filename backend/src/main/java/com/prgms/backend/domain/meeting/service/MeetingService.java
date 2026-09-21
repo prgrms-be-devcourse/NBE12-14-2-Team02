@@ -11,6 +11,7 @@ import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.UserNotFoundException;
 import java.util.List;
@@ -62,7 +63,9 @@ public class MeetingService {
     // 모임 상세 조회
     @Transactional(readOnly = true)
     public MeetingResponse getMeeting(Long meetingId, Long userId) {
-        Meeting meeting = meetingRepository.findById(meetingId)
+
+        // ACTIVE/COMPLETED 상태의 모임 상세 조회 가능, soft deleted 상태의 모임 조회 불가능
+        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNull(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // status 값까지 넣어서 현재 ACTIVE 상태로 모임에 참여 중인 모임원인지 검사
@@ -108,13 +111,17 @@ public class MeetingService {
         Long userId,
         MeetingUpdateRequest request
     ){
-        // 존재하는 미팅인지 검사
-        Meeting meeting = meetingRepository.findById(meetingId)
+        // 진행 중인 미팅인지 검사
+        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNull(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장이 아닌 참여자가 모임 수정을 시도하는 경우
         if(!meeting.isHost(userId)){
             throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meetingId);
         }
 
         meeting.update(

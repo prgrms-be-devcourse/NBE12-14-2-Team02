@@ -17,6 +17,7 @@ import com.prgms.backend.global.exception.custom.meeting.AlreadyMeetingMemberExc
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationExpiredException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,14 +47,18 @@ public class MeetingInvitationService {
         Long userId
     ){
         // 없는 미팅에 대한 초대인지 검사
-        Meeting meeting = meetingRepository.findById(meetingId)
-            .orElseThrow(
-                () -> new MeetingNotFoundException(meetingId)
-            );
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNull(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장이 아닌 사람이 초대를 생성하는지 검사
         if(!meeting.isHost(userId)){
             throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+
+        // 종료된 모임이면 초대 생성 불가
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meetingId);
         }
 
         // UUID 사용 - 쉽게 고유값 생성 가능, 충돌 위험 낮음, 별도 번호 생성 로직 필요X
@@ -184,6 +189,16 @@ public class MeetingInvitationService {
             throw new MeetingInvitationExpiredException();
         }
 
+        Meeting meeting = invitation.getMeeting();
+
+        if (meeting.isDeleted()) {
+            throw new MeetingNotFoundException(meeting.getId());
+        }
+
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meeting.getId());
+        }
+
         return invitation;
     }
 
@@ -201,6 +216,10 @@ public class MeetingInvitationService {
         // 모임장만 초대 취소 가능
         if (!meeting.isHost(userId)) {
             throw new MeetingAccessDeniedException(meetingId, userId);
+        }
+
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meetingId);
         }
 
         // 존재하는 초대인지 검사
