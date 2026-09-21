@@ -48,4 +48,9 @@ public class MeetingInvitation extends BaseCreatedEntity {
         this.inviteCode = inviteCode;
         this.expiresAt = expiresAt;
     }
+
+    // 초대가 만료됐는지 검사
+    public boolean isExpired(){
+        return expiresAt.isBefore(LocalDateTime.now());
+    }
 }
