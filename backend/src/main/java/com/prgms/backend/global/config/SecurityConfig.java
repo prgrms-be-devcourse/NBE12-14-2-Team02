@@ -24,7 +24,8 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
-                        .requestMatchers("/api/auth/sign-up", "/api/auth/log-in", "/api/auth/reissue").permitAll()
+                        .requestMatchers("/api/user/sign-up", "/api/auth/log-in", "/api/auth/reissue").permitAll()
+                        .requestMatchers("/api/user/check-nickname", "/api/user/check-email").permitAll()
                         .requestMatchers("/swagger-ui/**", "/api/v1/invitations/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
 

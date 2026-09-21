@@ -1,5 +1,6 @@
 package com.prgms.backend.security;
 
+import com.prgms.backend.domain.user.entity.SecurityUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -41,14 +43,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (token != null && jwtTokenProvider.validateToken(token)) {
+
             // 토큰이 유효한 경우 인증 정보를 가져온다.
             Long userId = jwtTokenProvider.getUserId(token);
 
-            // id를 가지고 User을 SecurityUser 형태로 받는다.
-            UserDetails securityUser = userDetailsService.loadUserByUsername(userId.toString());
+            // 필터 — DB 조회 없이 JWT payload의 userId로 바로 조립
+            SecurityUser securityUser = new SecurityUser(userId);
 
             Authentication authentication = new UsernamePasswordAuthenticationToken(
-                    securityUser, token, securityUser.getAuthorities());
+                    securityUser, null, securityUser.getAuthorities());
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
