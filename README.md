@@ -1,4 +1,3 @@
-<div align="center">
 
 # "모임 구축해주겠어"
 
@@ -7,11 +6,10 @@
 여러 명이 함께하는 모임에서 흩어지기 쉬운 **일정 조율, 콘텐츠 투표, 지출 및 정산 과정**을  
 하나의 모임 안에서 관리할 수 있도록 돕는 서비스입니다.
 
+
 [서비스 바로가기](https://nbe-12-14-2-team02.vercel.app)
 [swagger](https://nbe12-14-2-team02-production.up.railway.app/swagger-ui/index.html#/)
 [ERD](https://www.erdcloud.com/d/MQ5G84GCBHH3ghK2N)
-
-</div>
 
 ---
 
