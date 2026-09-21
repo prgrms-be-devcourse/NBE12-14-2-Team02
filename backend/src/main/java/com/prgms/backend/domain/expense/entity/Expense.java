@@ -46,11 +46,11 @@ public class Expense {
 
 
     @Column(length = 10)
-    private String splitMode;
-    private Integer roundingUnit;
-    private Long remainderMemberId;
+    private String splitMode; //정산 나눌 방식 -> 지정 또는 모임 전체 인원수만큼
+    private Integer roundingUnit; //1000,100,10단위로 금액을 나눔
+    private Long remainderMemberId; //나머지 멤버
 
-
+    // 정산금액
     public Map<Long, Long> getParticipantAmounts() { return Map.copyOf(participantAmounts); }
     //정산금액 나누는 방식 n분의1, 지정 등록 -> 지정 등록의 금액 지정 기능 추가 예정
     public static Expense register(long meetingId, long payerMemberId, String title, long amount, String memo,
@@ -62,7 +62,7 @@ public class Expense {
         expense.remainderMemberId = remainderMemberId;
         return expense;
     }
-
+    //어느 모임에서 발생한 참여자와 총 금액,메모 내용
     public Expense(long meetingId, long payerMemberId, String title, long amount,
                    String memo, Set<Long> participantIds) {
         this.meetingId = meetingId;
@@ -75,7 +75,7 @@ public class Expense {
 
     public Set<Long> getParticipantIds() { return Set.copyOf(participantIds); }
 
-    // 영수증
+    // 영수증은 파일경로랑 DB에 저장하는 방식이 있는데 DB에 저장하는 건 부담이 될 거 같아 우선 로컬 파일 경로로 테스트 진행 예정
     public void attachReceipt(String storageKey) {
         receiptKey = storageKey;
     }
