@@ -29,12 +29,12 @@ public class MeetingService {
     // 모임 객체 생성
     @Transactional
     public MeetingResponse createMeeting(
-        Long hostId,
+        Long userId,
         MeetingCreateRequest request
     ){
         // 모임장이 존재하는 회원인지 검사
-        User host = userRepository.findById(hostId)
-            .orElseThrow(() -> new UserNotFoundException(hostId));
+        User host = userRepository.findById(userId)
+            .orElseThrow(() -> new UserNotFoundException(userId));
 
         // 모임 객체 생성
         Meeting meeting = new Meeting(
