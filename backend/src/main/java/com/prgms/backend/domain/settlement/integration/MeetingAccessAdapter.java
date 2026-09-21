@@ -30,7 +30,7 @@ public class MeetingAccessAdapter implements MeetingAccessPort {
         }
         // 로그인해서 모임에 참여한 사람인지 검증
         SecurityUser loginUser = (SecurityUser) authentication.getPrincipal();
-        long userId = loginUser.getId();
+        long userId = loginUser.getUserId();
 
         // 아직 정산 데이터가 없어도 존재하는 모임 행을 잠가 최초 확정 요청까지 보호합니다.
         Meeting meeting = entityManager.find(Meeting.class, meetingId, LockModeType.PESSIMISTIC_WRITE);
