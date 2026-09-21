@@ -156,10 +156,10 @@ public class UserController {
             @AuthenticationPrincipal SecurityUser securityUser
     ){
         Long userId = securityUser.getUserId();
-        userService.withdraw(userId);
+        String message = userService.withdraw(userId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(ApiResponse.noContentSuccess("회원이 탈퇴되었습니다."));
+                .body(ApiResponse.noContentSuccess(message));
     }
 }

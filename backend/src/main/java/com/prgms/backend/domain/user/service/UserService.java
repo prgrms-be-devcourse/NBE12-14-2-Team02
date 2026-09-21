@@ -1,5 +1,7 @@
 package com.prgms.backend.domain.user.service;
 
+import com.prgms.backend.domain.meeting.entity.Meeting;
+import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.user.dto.ProfileResponse;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +23,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
+    private final MeetingRepository meetingRepository;
 
     // 프로필 조회
     public ProfileResponse getProfile(Long userId) {
@@ -66,11 +70,14 @@ public class UserService {
     }
 
     // 회원 탈퇴
-    public void withdraw(Long userId) {
+    public String withdraw(Long userId) {
+
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("회원 정보가 존재하지 않습니다.")
         );
 
+        // 가지고 있는 모임 확인
+        List<Meeting> meetings = meetingRepository.findByHostId(userId);
 
     }
 
