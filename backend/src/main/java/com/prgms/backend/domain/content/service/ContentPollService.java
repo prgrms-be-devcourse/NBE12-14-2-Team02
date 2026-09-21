@@ -157,6 +157,8 @@ public class ContentPollService {
                 .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
 
         //JOIN인지 확인 후 집계
+        //findAllByMeetingIdAndStatus()에서 meeting_members만 가져오고 user은 비어있음
+        // -> @EntityGraph를 통해 user까지 한번에 가져옴
         List<MeetingMember> joined = meetingMemberRepository
                 .findAllByMeetingIdAndStatus(meetingId, MeetingMemberStatus.JOINED);
         int joinedCount = joined.size();
