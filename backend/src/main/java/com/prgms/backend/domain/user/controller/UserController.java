@@ -150,4 +150,16 @@ public class UserController {
                 .status(HttpStatus.OK)
                 .body(ApiResponse.noContentSuccess("비밀번호를 변경했습니다."));
     }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @AuthenticationPrincipal SecurityUser securityUser
+    ){
+        Long userId = securityUser.getUserId();
+        userService.withdraw(userId);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.noContentSuccess("회원이 탈퇴되었습니다."));
+    }
 }

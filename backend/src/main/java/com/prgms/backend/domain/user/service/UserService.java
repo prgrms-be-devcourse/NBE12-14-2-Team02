@@ -11,11 +11,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
-    private final UserRepository userRepository;
 
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
+
+    // 프로필 조회
     public ProfileResponse getProfile(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("회원 정보가 존재하지 않습니다.")
@@ -24,6 +30,8 @@ public class UserService {
         return new ProfileResponse(user.getEmail(), user.getNickname());
     }
 
+    // 닉네임으로 바로 회원 정보 받아오도록 수정하기
+    // 닉네임 수정
     @Transactional
     public ProfileResponse updateNickname(Long userId, String nickname) {
         if (authService.checkNickname(nickname)) {
@@ -35,9 +43,11 @@ public class UserService {
         );
 
         user.updateNickname(nickname);
+        user.updateUpdatedAt(LocalDateTime.now());
         return new ProfileResponse(user.getEmail(), user.getNickname());
     }
 
+    // 비밀번호 수정
     @Transactional
     public void updatePassword(Long userId, String password, String newPassword) {
         User user = userRepository.findById(userId).orElseThrow(
@@ -51,8 +61,18 @@ public class UserService {
 
         // 암호화한 비밀번호로 업데이트
         user.updatePassword(passwordEncoder.encode(newPassword));
+
+        user.updateUpdatedAt(LocalDateTime.now());
     }
 
-    private final PasswordEncoder passwordEncoder;
-    private final AuthService authService;
+    // 회원 탈퇴
+    public void withdraw(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new UserNotFoundException("회원 정보가 존재하지 않습니다.")
+        );
+
+
+    }
+
+
 }
