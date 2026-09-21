@@ -24,20 +24,24 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
 
 
+    // 이메일 중복 체크
     public Boolean checkEmail(String email) {
         return userRepository.existsByEmail(email);
     }
 
+    // 닉네임 중복 체크
     public Boolean checkNickname(String nickname) {
         return userRepository.existsByNickname(nickname);
     }
 
+    // 회원가입에서 비밀번호와 비밀번호 확인이 일치하는지 확인
     public  void validateConfirmPassword(String password, String confirmPassword) {
         if (!password.equals(confirmPassword)) {
             throw new PasswordMismatchException();
         }
     }
 
+    // 회원가입
     public Long signup(String email, String nickname, String password, String confirmPassword) {
 
         validateConfirmPassword(password, confirmPassword);
@@ -50,6 +54,7 @@ public class AuthService {
         return user.getId();
     }
 
+    // 로그인
     @Transactional
     public TokenPair login(LogInRequest request) {
 
@@ -68,6 +73,7 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
+    // refresh token 재발급
     public String reissue(String refreshToken) {
         if (jwtTokenProvider.validateToken(refreshToken)) {
             Long userId = jwtTokenProvider.getUserId(refreshToken);
@@ -86,14 +92,19 @@ public class AuthService {
         return null;
     }
 
+    // 로그아웃
     @Transactional
     public void logout(
+            Long userId,
             String refreshToken
     ) {
-        User user = userRepository.findByRefreshToken(refreshToken).orElseThrow(
+        User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
         );
 
-        user.updateRefreshToken(null);
+        if (user.getRefreshToken().equals(refreshToken)) {
+            user.updateRefreshToken(null);
+        }
+
     }
 }

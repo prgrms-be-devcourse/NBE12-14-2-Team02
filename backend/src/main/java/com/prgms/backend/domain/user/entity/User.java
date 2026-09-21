@@ -2,7 +2,6 @@ package com.prgms.backend.domain.user.entity;
 
 import com.prgms.backend.domain.user.enums.UserStatus;
 import com.prgms.backend.global.entity.BaseTimeEntity;
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -13,6 +12,7 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "users")
 public class User extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,4 +53,15 @@ public class User extends BaseTimeEntity {
         this.password = password;
     }
 
+    public void updateStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    public void updateDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public void updateUpdatedAt(LocalDateTime updatedAt) {
+        this.deletedAt = updatedAt;
+    }
 }
