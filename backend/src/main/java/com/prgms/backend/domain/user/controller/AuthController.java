@@ -79,7 +79,7 @@ public class AuthController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @CookieValue(value = "refreshToken", required = false) String refreshToken
     ) {
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
         authService.logout(userId, refreshToken);
 

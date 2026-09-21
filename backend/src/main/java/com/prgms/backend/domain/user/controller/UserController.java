@@ -101,7 +101,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(
             @AuthenticationPrincipal SecurityUser securityUser
             ) {
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
         ProfileResponse response = userService.getProfile(userId);
 
@@ -125,7 +125,7 @@ public class UserController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @RequestBody UpdateNicknameRequest request
     ) {
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ProfileResponse response = userService.updateNickname(userId, request.newNickname());
 
         return ResponseEntity
@@ -143,7 +143,7 @@ public class UserController {
             @Valid @RequestBody UpdatePasswordRequest request,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         userService.updatePassword(userId, request.password(), request.newPassword());
 
         return ResponseEntity

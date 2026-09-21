@@ -23,7 +23,7 @@ public class ContentVoteController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ContentVoteRequest.Submit request
     ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ContentVoteResponse.Saved response = contentVoteService.upsert(meetingId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(200, response));
     }

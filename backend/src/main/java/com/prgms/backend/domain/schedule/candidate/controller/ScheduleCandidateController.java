@@ -26,7 +26,7 @@ public class ScheduleCandidateController {
 
             ){
 
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
 
         ScheduleCandidateResponse.Summary response = scheduleCandidateService.create(meetingId, userId, request);
@@ -50,7 +50,7 @@ public class ScheduleCandidateController {
             @Valid @RequestBody ScheduleCandidateRequest.Update request
     ){
 
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ScheduleCandidateResponse.Summary response = scheduleCandidateService.update(meetingId, candidateId, userId, request);
 
 
@@ -69,7 +69,7 @@ public class ScheduleCandidateController {
             @PathVariable Long candidateId,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
         scheduleCandidateService.delete(meetingId, candidateId,userId);
 

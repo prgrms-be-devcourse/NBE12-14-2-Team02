@@ -15,7 +15,7 @@ public class SecurityUser implements UserDetails {
         this.userId = userId;
     }
 
-    public Long getUserId() {
+    public Long getId() {
         return userId;
     }
 

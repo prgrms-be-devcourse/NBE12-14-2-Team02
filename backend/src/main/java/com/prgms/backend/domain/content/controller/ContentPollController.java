@@ -26,7 +26,7 @@ public class ContentPollController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ContentPollRequest.Create request
             ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ContentPollResponse.Created response = contentPollService.create(meetingId,userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(201,response));
@@ -37,7 +37,7 @@ public class ContentPollController {
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ContentPollResponse.Detail response = contentPollService.get(meetingId, userId);
         return ResponseEntity.ok(ApiResponse.success(200,response));
     }
@@ -48,7 +48,7 @@ public class ContentPollController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ContentPollRequest.UpdateDeadline request
     ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ContentPollResponse.DeadlineUpdate response =
                 contentPollService.updateDeadline(meetingId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(200,response));
@@ -60,7 +60,7 @@ public class ContentPollController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @RequestParam(defaultValue = "SCORE")ContentPollResultSort sort
             ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ContentPollResultsResponse.Detail response =
                 contentPollService.getResults(meetingId, userId, sort);
         return ResponseEntity.ok(ApiResponse.success(200,response));
@@ -72,7 +72,7 @@ public class ContentPollController {
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ContentPollRequest.Confirm request
     ) {
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
         ContentPollResponse.Confirmed response =
                 contentPollService.confirm(meetingId, userId, request);
         return ResponseEntity.ok(ApiResponse.success(200, response));

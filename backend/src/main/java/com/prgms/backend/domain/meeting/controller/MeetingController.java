@@ -33,7 +33,7 @@ public class MeetingController {
         @AuthenticationPrincipal SecurityUser securityUser,
         @Valid @RequestBody MeetingCreateRequest request
     ) {
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
         MeetingResponse response =
             meetingService.createMeeting(userId, request);
@@ -49,7 +49,7 @@ public class MeetingController {
         @PathVariable Long meetingId,
         @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
         MeetingResponse response = meetingService.getMeeting(meetingId, userId);
 
@@ -61,7 +61,7 @@ public class MeetingController {
     public ResponseEntity<ApiResponse<List<MeetingResponse>>> getMyMeetings(
         @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
         List<MeetingResponse> response =
             meetingService.getMyMeetings(userId);
@@ -76,7 +76,7 @@ public class MeetingController {
         @AuthenticationPrincipal SecurityUser securityUser,
         @Valid @RequestBody MeetingUpdateRequest request
     ) {
-        Long userId = securityUser.getUserId();
+        Long userId = securityUser.getId();
 
         MeetingResponse response =
             meetingService.updateMeeting(
