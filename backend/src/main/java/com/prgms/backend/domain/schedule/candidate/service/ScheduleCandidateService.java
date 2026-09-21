@@ -34,8 +34,6 @@ public class ScheduleCandidateService {
 
         LocalDate candidateDate = request.candidateDate();
 
-        //후보 날짜 검증
-        //같은 날짜 있는지?(중복)
         if(schedulePoll.hasDuplicateDate(
                 candidateDate
         )){
@@ -44,10 +42,8 @@ public class ScheduleCandidateService {
             );
         }
 
-        //후보를 SchedulePoll에 저장
         ScheduleCandidate candidate = schedulePoll.addCandidate(candidateDate);
 
-        //save호출 시점에 insert발생
         ScheduleCandidate savedCandidate =
                 scheduleCandidateRepository.save(candidate);
 
@@ -59,16 +55,10 @@ public class ScheduleCandidateService {
 
     @Transactional
     public ScheduleCandidateResponse.Summary update(Long meetingId, Long candidateId, Long userId, ScheduleCandidateRequest.Update request) {
-        //모임에 투표가 있는 지 검증
         SchedulePoll schedulePoll = getEditableSchedulePoll(meetingId, userId);
 
-        //schedulePoll 내부에서 candidates로 수정하려는 후보가 있는 지 검증 없다면 예외
         ScheduleCandidate candidate = schedulePoll.findCandidate(candidateId);
 
-        //투표가 있는 지 검증 , candidateId로만 검증하는 이유는
-        //이미 candidate는 schedulePoll에 소속되어있다는게 검증이 된 상태임.
-        //근데 schedulePoll은 meeting이 있어야 가능하니까 meeting도 검증이 된 상태.
-        //그니까 meeting의 schedulePoll의 candidate의 vote가 겹치지않는다는게 확정
         validateCandidateHasNoVotes(candidateId);
 
         LocalDate candidateDate = request.candidateDate();
@@ -82,7 +72,6 @@ public class ScheduleCandidateService {
             );
         }
 
-        //이미 영속성 컨텍스트 안에 있으니까 반영..
         candidate.updateCandidateDate(candidateDate);
 
         return ScheduleCandidateResponse.Summary.from(candidate);
@@ -94,23 +83,20 @@ public class ScheduleCandidateService {
 
         SchedulePoll schedulePoll = getEditableSchedulePoll(meetingId, userId);
 
-        //schedulePoll 내부에서 candidates로 삭제하려는 후보가 있는 지 검증 없다면 예외
         ScheduleCandidate candidate = schedulePoll.findCandidate(candidateId);
 
-        //candidateId를 가지고, 이 후보가 vote가 있는지 검증, 있다면 예외.
         validateCandidateHasNoVotes(candidateId);
 
-        //candidate를 삭제
         schedulePoll.removeCandidate(candidate);
     }
 
-    //공통 로직 수행하는 부분 메서드 분리 schedulePoll이 현재 유효한지 + meeting이 있는 지까지 검증가능 + 현재 사용자가 host인지 검증
+    //공통 로직 수행하는 부분 메서드 분리 schedulePoll이 현재 유효한지 + meeting이 있는 지까지 검증 + 현재 사용자가 host인지 검증
     private SchedulePoll getEditableSchedulePoll(
             Long meetingId,
             Long userId
     ) {
         SchedulePoll schedulePoll =
-                schedulePollRepository.findByMeetingId(meetingId)
+                schedulePollRepository.findByMeetingIdWithMeetingAndCandidates(meetingId)
                         .orElseThrow(
                                 () -> new SchedulePollNotFoundException(
                                         meetingId
@@ -126,11 +112,7 @@ public class ScheduleCandidateService {
         return schedulePoll;
     }
 
-    //update와 delete 공통으로 수행하는 부분 메서드 분리 -> vote가 있다면 삭제, 수정 불가
-    //투표가 있는 지 검증 , candidateId로만 검증하는 이유는
-    //이미 candidate는 schedulePoll에 소속되어있다는게 검증이 된 상태임.
-    //근데 schedulePoll은 meeting이 있어야 가능하니까 meeting도 검증이 된 상태.
-    //그니까 meeting의 schedulePoll의 candidate의 vote가 겹치지않는다는게 확정
+
     private void validateCandidateHasNoVotes(Long candidateId) {
         if (scheduleVoteRepository
                 .existsByScheduleCandidateId(candidateId)) {

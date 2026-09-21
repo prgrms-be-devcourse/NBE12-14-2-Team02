@@ -75,7 +75,7 @@ public class SchedulePollService {
             throw new MeetingMemberAlreadyLeftException(meetingId, userId);
         }
 
-        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingId(meetingId)
+        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdWithCandidates(meetingId)
                 .orElseThrow(
                         () -> new SchedulePollNotFoundException(
                                 meetingId
@@ -94,20 +94,13 @@ public class SchedulePollService {
             SchedulePollRequest.UpdateDeadline request
             ) {
 
-        Meeting meeting = meetingRepository.findById(meetingId)
-                .orElseThrow(
-                        () ->
-                                new MeetingNotFoundException(meetingId)
-                );
-        //요청하는 애가 호스트임? 맞다면, 통과.
-        validateHost(meeting,userId);
+        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdWithMeeting(meetingId)
+                        .orElseThrow(
+                                () -> new SchedulePollNotFoundException(meetingId)
+                        );
+        validateHost(schedulePoll.getMeeting(),userId);
 
-        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingId(meetingId)
-                .orElseThrow(
-                        () -> new SchedulePollNotFoundException(
-                                meetingId
-                        )
-                );
+
         schedulePoll.updateDeadline(request.deadline(),LocalDateTime.now());
 
         return SchedulePollResponse.DeadlineUpdate.from(
