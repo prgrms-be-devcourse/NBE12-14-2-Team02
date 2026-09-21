@@ -36,4 +36,16 @@ public interface MeetingMemberRepository
         Long userId,
         MeetingMemberStatus status
     );
+
+    // 삭제(soft delete)된 모임인지 검사
+    List<MeetingMember> findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
+        Long userId,
+        MeetingMemberStatus status
+    );
+
+    // 모임원 수
+    long countByMeetingIdAndStatus(
+        Long meetingId,
+        MeetingMemberStatus status
+    );
 }

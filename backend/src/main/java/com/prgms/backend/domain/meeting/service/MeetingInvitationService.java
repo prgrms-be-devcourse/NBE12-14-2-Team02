@@ -136,7 +136,8 @@ public class MeetingInvitationService {
         Long userId
     ) {
         // 존재하는 모임인지 검사
-        Meeting meeting = meetingRepository.findById(meetingId)
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNull(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 초대 코드 목록 조회를 시도하는 사람이 모임장인지 검사
@@ -210,7 +211,8 @@ public class MeetingInvitationService {
         Long userId
     ) {
         // 존재하는 모임인지 검사
-        Meeting meeting = meetingRepository.findById(meetingId)
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNull(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장만 초대 취소 가능

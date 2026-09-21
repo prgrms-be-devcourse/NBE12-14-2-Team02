@@ -8,15 +8,20 @@ public record MeetingResponse(
     Long hostId,
     String name,
     String description,
-    MeetingStatus status
+    MeetingStatus status,
+    long participantCount
 ) {
-    public static MeetingResponse from(Meeting meeting) {
+    public static MeetingResponse from(
+        Meeting meeting,
+        long participantCount
+    ) {
         return new MeetingResponse(
             meeting.getId(),
             meeting.getHost().getId(),
             meeting.getName(),
             meeting.getDescription(),
-            meeting.getStatus()
+            meeting.getStatus(),
+            participantCount
         );
     }
 }
