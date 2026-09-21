@@ -1,12 +1,13 @@
 package com.prgms.backend.domain.meeting.repository;
 
-import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
-import java.util.List;
-import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MeetingMemberRepository
@@ -26,6 +27,7 @@ public interface MeetingMemberRepository
     );
 
     // 현재 모임원 목록 조회(status = JOINED인 모임원)
+    @EntityGraph(attributePaths = "user")
     List<MeetingMember> findAllByMeetingIdAndStatus(
         Long meetingId,
         MeetingMemberStatus status
