@@ -34,10 +34,10 @@ public class UserService {
         return new ProfileResponse(user.getEmail(), user.getNickname());
     }
 
-    // 닉네임으로 바로 회원 정보 받아오도록 수정하기
     // 닉네임 수정
     @Transactional
     public ProfileResponse updateNickname(Long userId, String nickname) {
+        // 새로운 닉네임이 사용 중인지 확인
         if (authService.checkNickname(nickname)) {
             throw new DuplicateEmailNickname();
         }
@@ -69,6 +69,7 @@ public class UserService {
         user.updateUpdatedAt(LocalDateTime.now());
     }
 
+    /*
     // 회원 탈퇴
     public String withdraw(Long userId) {
 
@@ -80,6 +81,7 @@ public class UserService {
         List<Meeting> meetings = meetingRepository.findByHostId(userId);
 
     }
+     */
 
 
 }

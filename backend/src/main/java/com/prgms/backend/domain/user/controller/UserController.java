@@ -151,6 +151,7 @@ public class UserController {
                 .body(ApiResponse.noContentSuccess("비밀번호를 변경했습니다."));
     }
 
+    /*
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @AuthenticationPrincipal SecurityUser securityUser
@@ -162,4 +163,5 @@ public class UserController {
                 .status(HttpStatus.OK)
                 .body(ApiResponse.noContentSuccess(message));
     }
+     */
 }
