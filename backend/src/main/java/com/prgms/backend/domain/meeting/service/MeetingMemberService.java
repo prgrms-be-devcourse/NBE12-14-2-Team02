@@ -103,7 +103,7 @@ public class MeetingMemberService {
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장은 모임 탈퇴 불가
-        if (meeting.isHost(userId)) {
+        if (meeting.isHost(userId) && !meeting.isCompleted()) {
             throw new MeetingHostCannotLeaveException(meetingId, userId);
         }
 

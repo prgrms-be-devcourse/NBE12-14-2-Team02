@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByMeetingIdOrderByIdAsc(long meetingId);
 
+    boolean existsByMeetingId(Long meetingId);
+
     @Query("""
     SELECT CASE WHEN COUNT(e) > 0 THEN true ELSE false END
     FROM Expense e

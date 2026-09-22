@@ -1,5 +1,6 @@
 package com.prgms.backend.domain.meeting.service;
 
+import com.prgms.backend.domain.expense.repository.ExpenseRepository;
 import com.prgms.backend.domain.meeting.dto.request.MeetingCreateRequest;
 import com.prgms.backend.domain.meeting.dto.request.MeetingUpdateRequest;
 import com.prgms.backend.domain.meeting.dto.response.MeetingResponse;
@@ -30,6 +31,7 @@ public class MeetingService {
     private final MeetingMemberRepository meetingMemberRepository;
     private final UserRepository userRepository;
     private final SettlementRepository settlementRepository;
+    private final ExpenseRepository expenseRepository;
 
     // 모임 객체 생성
     @Transactional
@@ -157,19 +159,26 @@ public class MeetingService {
             throw new MeetingNotActiveException(meetingId);
         }
 
-        // 최종 정산 완료 여부 확인
-        boolean settlementCompleted =
-            settlementRepository.findByMeetingId(meetingId)
-                .map(settlement ->
-                    settlement.getStatus() == SettlementStatus.CLOSED
-                )
-                .orElse(false);
+        // 지출 내역 존재 여부 확인
+        boolean hasExpense =
+            expenseRepository.existsByMeetingId(meetingId);
 
-        if (!settlementCompleted) {
-            throw new MeetingSettlementNotCompletedException(meetingId);
+        // 지출 내역이 있는 경우에만 최종 정산 완료 여부 확인
+        if (hasExpense) {
+
+            boolean settlementCompleted =
+                settlementRepository.findByMeetingId(meetingId)
+                    .map(settlement ->
+                        settlement.getStatus() == SettlementStatus.CLOSED
+                    )
+                    .orElse(false);
+
+            if (!settlementCompleted) {
+                throw new MeetingSettlementNotCompletedException(meetingId);
+            }
         }
 
-        // ACTIVE → COMPLETED
+        // 지출이 없거나 최종 정산이 완료되었다면 모임 종료
         meeting.complete();
 
         return toResponse(meeting);
