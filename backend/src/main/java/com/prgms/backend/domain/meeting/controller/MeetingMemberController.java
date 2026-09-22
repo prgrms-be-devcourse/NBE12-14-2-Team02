@@ -39,18 +39,4 @@ public class MeetingMemberController {
 
         );
     }
-    
-    // 모임 탈퇴
-    @DeleteMapping("/{meetingId}/members/me")
-    public ResponseEntity<ApiResponse<MeetingMemberResponse>> leaveMeeting(
-        @PathVariable Long meetingId,
-        @AuthenticationPrincipal SecurityUser securityUser
-    ) {
-        Long userId = securityUser.getId();
-
-        MeetingMemberResponse response =
-            meetingMemberService.leaveMeeting(meetingId, userId);
-
-        return ResponseEntity.ok(ApiResponse.success(200, response));
-    }
 }
