@@ -2,7 +2,9 @@ package com.prgms.backend.domain.schedule.poll.repository;
 
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -47,6 +49,19 @@ public interface SchedulePollRepository extends JpaRepository<SchedulePoll, Long
         WHERE sp.meeting.id = :meetingId
         """)
     Optional<SchedulePoll> findByMeetingIdWithMeetingAndCandidates(
+            @Param("meetingId") Long meetingId
+    );
+
+
+    //조회 시 락을 적용해 다른 요청이 조회할 수 없도록 제어함.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT sp
+        FROM SchedulePoll sp
+        JOIN FETCH sp.meeting
+        WHERE sp.meeting.id = :meetingId
+        """)
+    Optional<SchedulePoll> findByMeetingIdWithMeetingForUpdate(
             @Param("meetingId") Long meetingId
     );
 }
