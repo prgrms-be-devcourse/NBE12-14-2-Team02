@@ -30,7 +30,16 @@ public class ScheduleCandidateService {
     @Transactional
     public ScheduleCandidateResponse.Summary create(Long meetingId, Long userId, ScheduleCandidateRequest.Create request) {
 
-        SchedulePoll schedulePoll = getEditableSchedulePoll(meetingId, userId);
+        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdWithMeetingForUpdate(meetingId)
+                .orElseThrow(
+                        () -> new SchedulePollNotFoundException(meetingId)
+                );
+
+        if (!schedulePoll.getMeeting().isHost(userId)) {
+            throw new MeetingHostRequiredException();
+        }
+
+        schedulePoll.validateOpen(LocalDateTime.now());
 
         LocalDate candidateDate = request.candidateDate();
 
