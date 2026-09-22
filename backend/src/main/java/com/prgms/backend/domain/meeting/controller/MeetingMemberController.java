@@ -1,8 +1,6 @@
 package com.prgms.backend.domain.meeting.controller;
 
 import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
-import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
-import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.service.MeetingMemberService;
 import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.global.ApiResponse;
@@ -14,7 +12,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -35,8 +32,22 @@ public class MeetingMemberController {
         List<MeetingMemberResponse> responses =
             meetingMemberService.getMeetingMembers(meetingId, userId);
 
-        return ResponseEntity.ok(ApiResponse.success(200, responses)
+        return ResponseEntity.ok(ApiResponse.success(200, responses));
+    }
 
+    // 현재 로그인한 사용자가 모임 탈퇴
+    @DeleteMapping("/{meetingId}/members/me")
+    public ResponseEntity<ApiResponse<MeetingMemberResponse>> leaveMeeting(
+        @PathVariable Long meetingId,
+        @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        Long userId = securityUser.getId();
+
+        MeetingMemberResponse response =
+            meetingMemberService.leaveMeeting(meetingId, userId);
+
+        return ResponseEntity.ok(
+            ApiResponse.success(200, response)
         );
     }
 }
