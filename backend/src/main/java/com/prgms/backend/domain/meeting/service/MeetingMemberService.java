@@ -38,10 +38,7 @@ public class MeetingMemberService {
     private final ExpenseRepository expenseRepository;
     private final SettlementRepository settlementRepository;
 
-    private final SchedulePollRepository schedulePollRepository;
     private final ScheduleVoteRepository scheduleVoteRepository;
-
-    private final ContentPollRepository contentPollRepository;
     private final ContentVoteRepository contentVoteRepository;
 
     // meetingMemberId로 멤버 한 명 조회
@@ -100,7 +97,7 @@ public class MeetingMemberService {
         Long meetingId,
         Long userId
     ) {
-        // 존재하며 삭제되지 않은 모임인지 확인
+        // 존재하는지, 삭제되지 않은 모임인지 검사
         Meeting meeting = meetingRepository
             .findByIdAndDeletedAtIsNull(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
@@ -110,93 +107,56 @@ public class MeetingMemberService {
             throw new MeetingHostCannotLeaveException(meetingId, userId);
         }
 
-        // 해당 모임의 회원 기록 조회
+        // 존재하는 모임원인지 검사
         MeetingMember meetingMember =
             meetingMemberRepository
                 .findByMeetingIdAndUserId(meetingId, userId)
                 .orElseThrow(() -> new MeetingMemberNotFoundException(meetingId, userId));
 
-        // 이미 탈퇴한 회원인지 확인
+        // 이미 탈퇴한 회원
         if (!meetingMember.isJoined()) {
             throw new MeetingMemberAlreadyLeftException(meetingId, userId);
         }
 
-        // 1. 최종 정산 완료 여부 확인
+        Long meetingMemberId = meetingMember.getId();
+
+        // 최종 정산 완료 여부 확인
         boolean settlementCompleted =
             settlementRepository.findByMeetingId(meetingId)
-                .map(settlement ->
-                    settlement.getStatus() == SettlementStatus.CLOSED
-                )
+                .map(settlement -> settlement.getStatus() == SettlementStatus.CLOSED)
                 .orElse(false);
 
-        // 2. 최종 정산 전이면
-        // 이 회원이 지출의 결제자 또는 참여자인지 확인
+        // 최종 정산 전이라면 지출 참여 여부 검사
         if (!settlementCompleted) {
 
-            Long meetingMemberId = meetingMember.getId();
-
             boolean involvedInExpense =
-                expenseRepository
-                    .findByMeetingIdOrderByIdAsc(meetingId)
-                    .stream()
-                    .anyMatch(expense ->
-                        expense.getPayerMemberId().equals(meetingMemberId)
-                            || expense.getParticipantIds().contains(meetingMemberId)
-                    );
+                expenseRepository.existsMemberInExpense(meetingId, meetingMemberId);
 
             if (involvedInExpense) {
                 throw new MeetingMemberHasUnsettledExpenseException(meetingId, userId);
             }
         }
 
-        // 3. 진행 중인 일정 투표가 있다면
-        // 이 회원의 ScheduleVote만 삭제
-        schedulePollRepository.findByMeetingId(meetingId)
-            .filter(poll ->
-                poll.getStatus() == SchedulePollStatus.OPEN
-                    && LocalDateTime.now().isBefore(poll.getDeadline())
-            )
-            .ifPresent(poll -> {
+        // 같은 시각 기준으로 OPEN 투표 판단
+        LocalDateTime now = LocalDateTime.now();
 
-                var votes =
-                    scheduleVoteRepository
-                        .findAllByScheduleCandidateSchedulePollId(poll.getId())
-                        .stream()
-                        .filter(vote ->
-                            vote.getMeetingMember()
-                                .getId()
-                                .equals(meetingMember.getId())
-                        )
-                        .toList();
+        // 진행 중인 일정 투표의 본인 Vote 삭제
+        scheduleVoteRepository.deleteOpenVotesByMeetingMember(
+            meetingId,
+            meetingMemberId,
+            SchedulePollStatus.OPEN,
+            now
+        );
 
-                scheduleVoteRepository.deleteAll(votes);
-            });
+        // 진행 중인 콘텐츠 투표의 본인 Vote 삭제
+        contentVoteRepository.deleteOpenVotesByMeetingMember(
+            meetingId,
+            meetingMemberId,
+            ContentPollStatus.OPEN,
+            now
+        );
 
-        // 4. 진행 중인 콘텐츠 투표가 있다면
-        // 이 회원의 ContentVote만 삭제
-        contentPollRepository.findByMeetingId(meetingId)
-            .filter(poll ->
-                poll.getStatus() == ContentPollStatus.OPEN
-                    && LocalDateTime.now().isBefore(poll.getDeadline())
-            )
-            .ifPresent(poll -> {
-
-                var votes =
-                    contentVoteRepository
-                        .findByContentCandidate_ContentPoll_Id(
-                            poll.getId()
-                        )
-                        .stream()
-                        .filter(vote ->
-                            vote.getMeetingMemberId()
-                                .equals(meetingMember.getId())
-                        )
-                        .toList();
-
-                contentVoteRepository.deleteAll(votes);
-            });
-
-        // 5. 모임 탈퇴
+        // JOINED → LEFT
         meetingMember.leave();
 
         return MeetingMemberResponse.from(meetingMember);
