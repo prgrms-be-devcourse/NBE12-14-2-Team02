@@ -108,7 +108,7 @@ npm install
 
 ```env
 # frontend/.env.local
-NEXT_PUBLIC_API_URL=http://localhost:8080
+BACKEND_URL=http://localhost:8080
 ```
 
 #### 3. 개발 서버 실행
