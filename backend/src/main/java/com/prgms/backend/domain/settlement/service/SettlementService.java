@@ -32,6 +32,9 @@ public class SettlementService {
         if (!context.leader()) {
             throw new SettlementRequestException(403, "모임장만 정산을 확정할 수 있습니다.");
         }
+        if (!context.meetingOpen()) {
+            throw new SettlementRequestException(409, "종료된 모임은 정산을 확정할 수 없습니다.");
+        }
 
         // 종료된 모임은 정산 불가능
         if (!context.meetingOpen()) {
@@ -61,9 +64,9 @@ public class SettlementService {
         return SettlementResponse.from(settlementRepository.save(settlement));
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public SettlementResponse getResult(long meetingId, Principal principal) {
-        meetingAccess.requireMember(meetingId, principal);
+        meetingAccess.requireMemberForRead(meetingId, principal);
         Settlement settlement = settlementRepository.findByMeetingId(meetingId)
                 .orElseThrow(() -> new SettlementRequestException(404, "아직 확정된 정산이 없습니다."));
         if (settlement.getStatus() != SettlementStatus.CLOSED) {

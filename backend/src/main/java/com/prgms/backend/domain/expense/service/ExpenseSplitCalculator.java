@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.expense.service;
 
 import com.prgms.backend.domain.expense.dto.ExpenseCreateRequest;
+import com.prgms.backend.domain.expense.exception.ExpenseRequestException;
 
 import org.springframework.stereotype.Component;
 import java.util.*;
@@ -66,5 +67,5 @@ public class ExpenseSplitCalculator {
         return new Result(shares, selectedMemberId);
     }
 
-    private IllegalArgumentException invalid(String message) { return new IllegalArgumentException(message); }
+    private ExpenseRequestException invalid(String message) { return new ExpenseRequestException(400, message); }
 }
