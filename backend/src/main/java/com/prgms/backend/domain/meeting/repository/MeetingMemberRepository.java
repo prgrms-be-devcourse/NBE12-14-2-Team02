@@ -3,6 +3,7 @@ package com.prgms.backend.domain.meeting.repository;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -79,5 +80,21 @@ public interface MeetingMemberRepository
     findByMeetingIdAndUserIdForUpdate(
         @Param("meetingId") Long meetingId,
         @Param("userId") Long userId
+    );
+
+    @EntityGraph(attributePaths = "user")
+    @Query("""
+    SELECT mm
+    FROM MeetingMember mm
+    WHERE mm.meeting.id = :meetingId
+      AND mm.joinedAt <= :atTime
+      AND (
+          mm.leftAt IS NULL
+          OR mm.leftAt > :atTime
+      )
+    """)
+    List<MeetingMember> findParticipantsAt(
+        @Param("meetingId") Long meetingId,
+        @Param("atTime") LocalDateTime atTime
     );
 }

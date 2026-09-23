@@ -28,10 +28,6 @@ public class SchedulePollCloseService {
                 .findMeetingIdByPollId(pollId)
                 .orElse(null);
 
-        if (meetingId == null) {
-            return;
-        }
-
         // Meeting을 먼저 공유 잠금
         Meeting meeting = meetingRepository
                 .findByIdAndDeletedAtIsNullForShare(meetingId)

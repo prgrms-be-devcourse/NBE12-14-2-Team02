@@ -19,6 +19,8 @@ import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundExceptio
 import com.prgms.backend.global.exception.custom.UserNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingSettlementNotCompletedException;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,19 +96,50 @@ public class MeetingService {
     @Transactional(readOnly = true)
     public List<MeetingResponse> getMyMeetings(Long userId){
 
-        // 존재하지 않는 회원인 경우
+        // 존재하지 않는 회원인지 검사
         if(!userRepository.existsById(userId)){
             throw new UserNotFoundException(userId);
         }
 
-        return meetingMemberRepository
-            .findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
-                userId,
-                MeetingMemberStatus.JOINED
-            )
-            .stream()
+        // 내가 JOINED 상태로 참여 중이며, soft delete 되지 않은 모임 조회
+        List<MeetingMember> meetingMembers = meetingMemberRepository
+                .findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
+                    userId,
+                    MeetingMemberStatus.JOINED
+                );
+
+        // 참여 중인 모임이 없으면 빈 목록 반환
+        if (meetingMembers.isEmpty()) {
+            return List.of();
+        }
+
+        // meetingId 목록 추출해서 참가자 수 일괄 조회
+        List<Long> meetingIds = meetingMembers.stream()
+                .map(MeetingMember::getMeeting)
+                .map(Meeting::getId)
+                .toList();
+
+        // 각 모임의 JOINED 참가자 수를 GROUP BY 쿼리 한 번으로 조회하여 N+1 해결
+        Map<Long, Long> participantCountMap = meetingMemberRepository
+                .countByMeetingIdsAndStatus(meetingIds, MeetingMemberStatus.JOINED)
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                    )
+                );
+
+        // 이미 조회한 참가자 수 Map을 사용해 추가 DB 조회 없이 응답 생성
+        return meetingMembers.stream()
             .map(MeetingMember::getMeeting)
-            .map(this::toResponse)
+            .map(meeting -> MeetingResponse.from(
+                    meeting,
+                    participantCountMap.getOrDefault(
+                        meeting.getId(),
+                        0L
+                    )
+                )
+            )
             .toList();
     }
 

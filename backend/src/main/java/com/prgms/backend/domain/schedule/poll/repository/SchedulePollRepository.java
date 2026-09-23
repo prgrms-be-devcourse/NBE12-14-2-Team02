@@ -1,5 +1,6 @@
 package com.prgms.backend.domain.schedule.poll.repository;
 
+import com.prgms.backend.domain.meeting.enums.MeetingStatus;
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
 import jakarta.persistence.LockModeType;
@@ -47,14 +48,18 @@ public interface SchedulePollRepository extends JpaRepository<SchedulePoll, Long
     );
 
     @Query("""
-            SELECT sp.id
-            FROM SchedulePoll sp
-            WHERE sp.status = :status
-              AND sp.deadline <= :now
-            """)
+    SELECT sp.id
+    FROM SchedulePoll sp
+    JOIN sp.meeting m
+    WHERE sp.status = :pollStatus
+      AND sp.deadline <= :now
+      AND m.status = :meetingStatus
+      AND m.deletedAt IS NULL
+    """)
     List<Long> findExpiredIds(
-            @Param("status") SchedulePollStatus status,
-            @Param("now") LocalDateTime now
+        @Param("pollStatus") SchedulePollStatus pollStatus,
+        @Param("meetingStatus") MeetingStatus meetingStatus,
+        @Param("now") LocalDateTime now
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
