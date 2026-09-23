@@ -70,8 +70,7 @@ public class SchedulePoll {
         return new SchedulePoll(meeting, deadline);
     }
 
-    //SchedulePoll에 candidate추가하는 메서드
-    public ScheduleCandidate addCandidate(LocalDate candidateDate) {
+     public ScheduleCandidate addCandidate(LocalDate candidateDate) {
         //최대 10개까지만 후보 저장 가능.
         if(candidates.size() >= MAX_CANDIDATE_COUNT){
             throw new ScheduleCandidateLimitExceededException(MAX_CANDIDATE_COUNT);
@@ -110,7 +109,6 @@ public class SchedulePoll {
 
     }
 
-    //중복날짜가 있는 지 없는지를 여기서 검사함.
     public boolean hasDuplicateDate(
             Long excludedCandidateId,
             LocalDate candidateDate
@@ -123,7 +121,6 @@ public class SchedulePoll {
                 );
     }
 
-    //위 메서드와 동일 기능 수행(오버로딩) -> 중복날짜가 있는 지 단일 인자를 가지고 검사.
     public boolean hasDuplicateDate(LocalDate candidateDate) {
         return candidates.stream()
                 .anyMatch(candidate ->

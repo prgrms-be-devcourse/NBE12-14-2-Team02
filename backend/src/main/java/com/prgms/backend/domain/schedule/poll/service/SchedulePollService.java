@@ -11,6 +11,7 @@ import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.global.exception.custom.meeting.MeetingHostRequiredException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberAlreadyLeftException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollAlreadyExistsException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollNotFoundException;
@@ -27,7 +28,6 @@ public class SchedulePollService {
     private final MeetingRepository meetingRepository;
     private final MeetingMemberRepository meetingMemberRepository;
 
-    //schedulePoll생성
     @Transactional
     public SchedulePollResponse.Created create(
             Long meetingId,
@@ -35,15 +35,8 @@ public class SchedulePollService {
             SchedulePollRequest.Create request
     ) {
 
-       Meeting meeting = meetingRepository.findById(meetingId)
-               .orElseThrow(
-                       () ->
-                               new MeetingNotFoundException(meetingId)
-               );
-        //요청하는 애가 호스트임? 맞다면, 통과.
-       validateHost(meeting,userId);
+       Meeting meeting = getActiveMeetingForHost(meetingId, userId);
 
-       //이미 모임에 일정 투표가 등록되어있다면, 예외
        if(schedulePollRepository.existsByMeetingId(meetingId)){
            throw new SchedulePollAlreadyExistsException(meetingId);
        }
@@ -51,11 +44,9 @@ public class SchedulePollService {
        SchedulePoll savedPoll =
                schedulePollRepository.save(SchedulePoll.create(meeting,request.deadline()));
 
-       //DTO로 변환해서 반환
        return SchedulePollResponse.Created.from(savedPoll);
     }
 
-    //SchedulePoll 조회하기
     @Transactional(readOnly = true)
     public SchedulePollResponse.Detail get(Long meetingId, Long userId) {
 
@@ -70,7 +61,6 @@ public class SchedulePollService {
                                 )
                         );
 
-        //탈퇴한 회원이라면 예외
         if(!meetingMember.isJoined()){
             throw new MeetingMemberAlreadyLeftException(meetingId, userId);
         }
@@ -94,12 +84,12 @@ public class SchedulePollService {
             SchedulePollRequest.UpdateDeadline request
             ) {
 
-        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdWithMeeting(meetingId)
+        getActiveMeetingForHost(meetingId, userId);
+
+        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdForUpdate(meetingId)
                         .orElseThrow(
                                 () -> new SchedulePollNotFoundException(meetingId)
                         );
-        validateHost(schedulePoll.getMeeting(),userId);
-
 
         schedulePoll.updateDeadline(request.deadline(),LocalDateTime.now());
 
@@ -109,7 +99,19 @@ public class SchedulePollService {
 
     }
 
-    //호스트인지 아닌지 검증하는 메서드
+    private Meeting getActiveMeetingForHost(Long meetingId, Long userId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+
+        validateHost(meeting, userId);
+
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meetingId);
+        }
+
+        return meeting;
+    }
+
     private void validateHost(
             Meeting meeting,
             Long userId
