@@ -66,4 +66,13 @@ public interface SchedulePollRepository extends JpaRepository<SchedulePoll, Long
     Optional<SchedulePoll> findByIdForUpdate(
             @Param("pollId") Long pollId
     );
+
+    @Query("""
+    SELECT sp.meeting.id
+    FROM SchedulePoll sp
+    WHERE sp.id = :pollId
+    """)
+    Optional<Long> findMeetingIdByPollId(
+        @Param("pollId") Long pollId
+    );
 }

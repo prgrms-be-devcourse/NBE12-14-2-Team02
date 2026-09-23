@@ -16,7 +16,6 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
     Optional<Meeting> findByIdAndDeletedAtIsNull(Long meetingId);
 
-    // Meeting 행 잠그기
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
     SELECT m
@@ -25,6 +24,17 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
       AND m.deletedAt IS NULL
     """)
     Optional<Meeting> findByIdAndDeletedAtIsNullForUpdate(
+        @Param("meetingId") Long meetingId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("""
+    SELECT m
+    FROM Meeting m
+    WHERE m.id = :meetingId
+      AND m.deletedAt IS NULL
+    """)
+    Optional<Meeting> findByIdAndDeletedAtIsNullForShare(
         @Param("meetingId") Long meetingId
     );
 }

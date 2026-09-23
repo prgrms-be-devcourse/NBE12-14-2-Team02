@@ -2,8 +2,10 @@ package com.prgms.backend.domain.meeting.repository;
 
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -64,5 +66,18 @@ public interface MeetingMemberRepository
     List<Object[]> countByMeetingIdsAndStatus(
         @Param("meetingIds") List<Long> meetingIds,
         @Param("status") MeetingMemberStatus status
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT mm
+    FROM MeetingMember mm
+    WHERE mm.meeting.id = :meetingId
+      AND mm.user.id = :userId
+    """)
+    Optional<MeetingMember>
+    findByMeetingIdAndUserIdForUpdate(
+        @Param("meetingId") Long meetingId,
+        @Param("userId") Long userId
     );
 }
