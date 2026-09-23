@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-//schedule_poll하나에 같은 일정이 여러개 있을 수 없게 unique제약조건 추가.
 @Entity
 @Getter
 @Table(
@@ -46,7 +45,7 @@ public class ScheduleCandidate extends BaseCreatedEntity {
         this.schedulePoll = schedulePoll;
         this.candidateDate = candidateDate;
     }
-    //ScheduleCandidate 정적 팩토리 메서드
+
     public static ScheduleCandidate create(
             SchedulePoll schedulePoll,
             LocalDate candidateDate

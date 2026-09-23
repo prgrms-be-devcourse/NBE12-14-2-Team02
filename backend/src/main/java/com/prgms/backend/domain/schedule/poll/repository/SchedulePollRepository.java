@@ -16,9 +16,6 @@ public interface SchedulePollRepository extends JpaRepository<SchedulePoll, Long
     boolean existsByMeetingId(Long meetingId);
     Optional<SchedulePoll> findByMeetingId(Long meetingId);
 
-    List<SchedulePoll> findByStatusAndDeadlineLessThanEqual(SchedulePollStatus schedulePollStatus, LocalDateTime now);
-
-    //FETCH JOIN으로 SchedulePoll을 불러올때, candidates도 함께 불러올 수 있도록.
     @Query("""
         SELECT DISTINCT sp
         FROM SchedulePoll sp
@@ -28,40 +25,45 @@ public interface SchedulePollRepository extends JpaRepository<SchedulePoll, Long
     Optional<SchedulePoll> findByMeetingIdWithCandidates(
             @Param("meetingId") Long meetingId
     );
-
-    //SchedulePoll조회 시 meeting까지 불러올 수 있도록.
-    @Query("""
-        SELECT sp
-        FROM SchedulePoll sp
-        JOIN FETCH sp.meeting
-        WHERE sp.meeting.id = :meetingId
-        """)
-    Optional<SchedulePoll> findByMeetingIdWithMeeting(
-            @Param("meetingId") Long meetingId
-    );
-
-    //meeting과 ScheduleCandidate까지 불러올 수 있도록.
-    @Query("""
-        SELECT DISTINCT sp
-        FROM SchedulePoll sp
-        JOIN FETCH sp.meeting
-        LEFT JOIN FETCH sp.candidates
-        WHERE sp.meeting.id = :meetingId
-        """)
-    Optional<SchedulePoll> findByMeetingIdWithMeetingAndCandidates(
-            @Param("meetingId") Long meetingId
-    );
-
-
-    //조회 시 락을 적용해 다른 요청이 조회할 수 없도록 제어함.
+    //조회 시 락 획득
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT sp
         FROM SchedulePoll sp
-        JOIN FETCH sp.meeting
         WHERE sp.meeting.id = :meetingId
         """)
-    Optional<SchedulePoll> findByMeetingIdWithMeetingForUpdate(
+    Optional<SchedulePoll> findByMeetingIdForUpdate(
             @Param("meetingId") Long meetingId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("""
+        SELECT sp
+        FROM SchedulePoll sp
+        WHERE sp.meeting.id = :meetingId
+        """)
+    Optional<SchedulePoll> findByMeetingIdForShare(
+            @Param("meetingId") Long meetingId
+    );
+
+    @Query("""
+            SELECT sp.id
+            FROM SchedulePoll sp
+            WHERE sp.status = :status
+              AND sp.deadline <= :now
+            """)
+    List<Long> findExpiredIds(
+            @Param("status") SchedulePollStatus status,
+            @Param("now") LocalDateTime now
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT sp
+            FROM SchedulePoll sp
+            WHERE sp.id = :pollId
+            """)
+    Optional<SchedulePoll> findByIdForUpdate(
+            @Param("pollId") Long pollId
     );
 }

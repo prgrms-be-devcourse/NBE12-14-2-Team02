@@ -37,7 +37,6 @@ public class ScheduleResultService {
     private final MeetingMemberRepository meetingMemberRepository;
     private final ScheduleVoteRepository scheduleVoteRepository;
 
-    //후보 별 집계값을 중간에서 전달하기 위한 레코두
     private record CandidateAggregation(
             Long candidateId,
             LocalDate candidateDate,
@@ -48,7 +47,6 @@ public class ScheduleResultService {
     ) {
     }
 
-    // 두 결과 API에서 공통으로 사용하는 조회 결과를 묶는다.
     private record ResultContext(
             SchedulePoll schedulePoll,
             List<MeetingMember> joinedMembers,
@@ -58,7 +56,6 @@ public class ScheduleResultService {
 
     @Transactional(readOnly = true)
     public ScheduleResultResponse.Detail getResults(Long meetingId, Long userId) {
-        // 공통 데이터를 한 번만 조회한 뒤 두 종류의 결과를 각각 조립한다.
         ResultContext context = getResultContext(meetingId, userId);
 
         List<ScheduleResultResponse.CandidateRank> candidateRanks =
@@ -72,13 +69,11 @@ public class ScheduleResultService {
         );
     }
 
-    // 후보마다 점수와 응답 수를 집계한 후 총점순으로 순위를 계산한다.
     private List<ScheduleResultResponse.CandidateRank> createCandidateRanks(
             ResultContext context
     ) {
 
-        //votes를 candidateId별로 분류하고싶음 -> map사용 key : candidateId, value : List<ScheduleVote>
-        //Collectors.groupBy를 통해서 id별로 vote를 구분
+
         Map<Long, List<ScheduleVote>> votesByCandidate =
                 context.votes().stream().collect(
                         Collectors.groupingBy(
@@ -86,55 +81,45 @@ public class ScheduleResultService {
                         )
                 );
 
-        //현재 모임에 참여하고있는 모임원 수
         long joinedMemberCount = context.joinedMembers().size();
 
 
-        //집계 리스트
         List<CandidateAggregation> aggregations =
                 context.schedulePoll().getCandidates().stream()
                         .map(candidate -> {
-                            //해당 후보의 vote를 모두 candidateVotes리스트에 넣고 이후 연산들 진행.
                             List<ScheduleVote> candidateVotes =
                                     votesByCandidate.getOrDefault(
                                             candidate.getId(),
                                             List.of()
                                     );
-                            //candidateVotes에서 해당 후보의 선호도 합
                             int totalScore =
                                     candidateVotes.stream()
                                             .mapToInt(
                                                     ScheduleVote::getScore
                                             )
                                             .sum();
-                            //선호응답 수
                             long preferCount =
                                     countPreference(
                                             candidateVotes,
                                             SchedulePreference.PREFER
                                     );
-                            //가능 응답 수
                             long availableCount =
                                     countPreference(
                                             candidateVotes,
                                             SchedulePreference.AVAILABLE
                                     );
-                            //별로 응답 수
                             long dislikeCount =
                                     countPreference(
                                             candidateVotes,
                                             SchedulePreference.DISLIKE
                                     );
-                            //불가능 응답 수
                             long impossibleCount =
                                     countPreference(
                                             candidateVotes,
                                             SchedulePreference.IMPOSSIBLE
                                     );
-                            //응답자 수
                             long responseCount =
                                     candidateVotes.size();
-                            //미 응답자 수
                             long nonResponseCount =
                                     joinedMemberCount - responseCount;
 
@@ -145,7 +130,6 @@ public class ScheduleResultService {
                                             dislikeCount,
                                             impossibleCount
                                     );
-                            //하나의 집계로 반환
                             return new CandidateAggregation(
                                     candidate.getId(),
                                     candidate.getCandidateDate(),
@@ -159,7 +143,6 @@ public class ScheduleResultService {
 
 
 
-        //총점 순으로 정렬
         List<CandidateAggregation> sorted =
                 aggregations.stream()
                         .sorted(
@@ -203,12 +186,10 @@ public class ScheduleResultService {
         return results;
     }
 
-    // 현재 참여 중인 모임원별로 모든 후보에 대한 응답을 조립한다.
     private List<ScheduleParticipantResponse.MemberResponses> createParticipantResponses(
             ResultContext context
     ) {
-        // 각 참여자의 투표를 candidateId로 바로 찾을 수 있게 변환한다.
-        // 같은 참여자가 같은 후보에 두 번 투표할 수 없으므로 toMap을 사용할 수 있다.
+
         Map<Long, Map<Long, ScheduleVote>> votesByMember =
                 context.votes().stream()
                         .collect(
@@ -221,7 +202,6 @@ public class ScheduleResultService {
                                 )
                         );
 
-        // 모든 참여자에게 같은 후보 순서를 제공하기 위해 날짜순으로 정렬한다.
         List<ScheduleCandidate> candidates =
                 context.schedulePoll().getCandidates().stream()
                         .sorted(Comparator.comparing(ScheduleCandidate::getCandidateDate))
@@ -237,13 +217,10 @@ public class ScheduleResultService {
                 .toList();
     }
 
-    // 결과 조회에 공통으로 필요한 권한 검증, 마감 검증, 참여자·투표 조회를 한곳에서 수행한다.
     private ResultContext getResultContext(Long meetingId, Long userId) {
         validateJoinedMember(meetingId, userId);
-        //마감된 투표를 가져온다.
         SchedulePoll schedulePoll = getClosedSchedulePoll(meetingId);
 
-        //현재 참여중인 모임원
         List<MeetingMember> joinedMembers =
                 meetingMemberRepository.findAllByMeetingIdAndStatus(
                         meetingId,
@@ -256,18 +233,15 @@ public class ScheduleResultService {
                         .map(MeetingMember::getId)
                         .collect(Collectors.toSet());
 
-        //모든 투표를 가져오고, 참여중인 모임원이 한 투표가 아니라면, filter를 통해 제거한다.
         List<ScheduleVote> votes =
                 scheduleVoteRepository
                         .findAllByScheduleCandidateSchedulePollId(schedulePoll.getId())
                         .stream()
                         .filter(vote -> joinedMemberIds.contains(vote.getMeetingMember().getId()))
                         .toList();
-        //SchedulePoll, 참여자 수, vote를 반환
         return new ResultContext(schedulePoll, joinedMembers, votes);
     }
 
-    // 요청한 사용자가 현재 참여 중인 모임원인지 확인한다.
     private void validateJoinedMember(Long meetingId, Long userId) {
         MeetingMember meetingMember =
                 meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
@@ -280,15 +254,12 @@ public class ScheduleResultService {
         }
     }
 
-    //마감된 투표를 가져온다.
     private SchedulePoll getClosedSchedulePoll(Long meetingId) {
-        //투표가 없다면 예외
         SchedulePoll schedulePoll =
                 schedulePollRepository.findByMeetingId(meetingId)
                         .orElseThrow(
                                 () -> new SchedulePollNotFoundException(meetingId)
                         );
-        //투표가 마감되지 않았다면 예외
         if (schedulePoll.getStatus() != SchedulePollStatus.CLOSED) {
             throw new SchedulePollNotClosedException();
         }
@@ -306,7 +277,6 @@ public class ScheduleResultService {
                         .map(candidate -> {
                             ScheduleVote vote = votesByCandidate.get(candidate.getId());
 
-                            // 투표 행이 없으면 null을 내려 미응답 상태를 표현한다.
                             SchedulePreference preference =
                                     vote == null ? null : vote.getPreference();
 
