@@ -1,7 +1,6 @@
 package com.prgms.backend.domain.meeting.service;
 
 import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
-import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.content.repository.ContentVoteRepository;
 import com.prgms.backend.domain.expense.repository.ExpenseRepository;
 import com.prgms.backend.domain.meeting.dto.response.MeetingMemberResponse;
@@ -11,7 +10,6 @@ import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
-import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.domain.schedule.vote.repository.ScheduleVoteRepository;
 import com.prgms.backend.domain.settlement.entity.SettlementStatus;
 import com.prgms.backend.domain.settlement.repository.SettlementRepository;
@@ -99,7 +97,7 @@ public class MeetingMemberService {
     ) {
         // 존재하는지, 삭제되지 않은 모임인지 검사
         Meeting meeting = meetingRepository
-            .findByIdAndDeletedAtIsNull(meetingId)
+            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장은 모임 탈퇴 불가

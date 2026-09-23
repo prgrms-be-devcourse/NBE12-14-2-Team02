@@ -4,6 +4,8 @@ import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -40,6 +42,7 @@ public interface MeetingMemberRepository
     );
 
     // 삭제(soft delete)된 모임인지 검사
+    @EntityGraph(attributePaths = {"meeting", "meeting.host"})
     List<MeetingMember> findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
         Long userId,
         MeetingMemberStatus status
@@ -49,5 +52,17 @@ public interface MeetingMemberRepository
     long countByMeetingIdAndStatus(
         Long meetingId,
         MeetingMemberStatus status
+    );
+
+    @Query("""
+    SELECT mm.meeting.id, COUNT(mm)
+    FROM MeetingMember mm
+    WHERE mm.meeting.id IN :meetingIds
+      AND mm.status = :status
+    GROUP BY mm.meeting.id
+    """)
+    List<Object[]> countByMeetingIdsAndStatus(
+        @Param("meetingIds") List<Long> meetingIds,
+        @Param("status") MeetingMemberStatus status
     );
 }

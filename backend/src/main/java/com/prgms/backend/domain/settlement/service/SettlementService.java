@@ -33,6 +33,14 @@ public class SettlementService {
             throw new SettlementRequestException(403, "모임장만 정산을 확정할 수 있습니다.");
         }
 
+        // 종료된 모임은 정산 불가능
+        if (!context.meetingOpen()) {
+            throw new SettlementRequestException(
+                409,
+                "진행 중인 모임에서만 정산을 확정할 수 있습니다."
+            );
+        }
+
         // 지출 상시 등록,모임장의 정산 확정 요청을 통해 정산 데이터 생성
         Settlement settlement = settlementRepository.findByMeetingId(meetingId)
                 .orElseGet(() -> new Settlement(meetingId));

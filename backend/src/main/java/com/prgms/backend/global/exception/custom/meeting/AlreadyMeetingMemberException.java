@@ -1,7 +1,6 @@
 package com.prgms.backend.global.exception.custom.meeting;
 
 import com.prgms.backend.global.exception.BusinessException;
-import org.hibernate.usertype.BaseUserTypeSupport;
 
 public class AlreadyMeetingMemberException extends BusinessException {
 

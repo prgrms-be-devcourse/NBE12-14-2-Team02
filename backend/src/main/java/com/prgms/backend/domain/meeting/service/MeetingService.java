@@ -118,7 +118,8 @@ public class MeetingService {
         MeetingUpdateRequest request
     ){
         // 진행 중인 미팅인지 검사
-        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNull(meetingId)
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장이 아닌 참여자가 모임 수정을 시도하는 경우
@@ -145,8 +146,9 @@ public class MeetingService {
         Long userId
     ) {
         // 존재하며 soft delete되지 않은 모임인지 확인
+        // 모임 종료와 동시에 다른 요청 들어오는 것 방지
         Meeting meeting = meetingRepository
-            .findByIdAndDeletedAtIsNull(meetingId)
+            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장만 종료 가능
@@ -164,18 +166,12 @@ public class MeetingService {
             expenseRepository.existsByMeetingId(meetingId);
 
         // 지출 내역이 있는 경우에만 최종 정산 완료 여부 확인
-        if (hasExpense) {
-
-            boolean settlementCompleted =
-                settlementRepository.findByMeetingId(meetingId)
-                    .map(settlement ->
-                        settlement.getStatus() == SettlementStatus.CLOSED
-                    )
-                    .orElse(false);
-
-            if (!settlementCompleted) {
-                throw new MeetingSettlementNotCompletedException(meetingId);
-            }
+        if (hasExpense &&
+            !settlementRepository.existsByMeetingIdAndStatus(
+                meetingId,
+                SettlementStatus.CLOSED
+            )) {
+            throw new MeetingSettlementNotCompletedException(meetingId);
         }
 
         // 지출이 없거나 최종 정산이 완료되었다면 모임 종료

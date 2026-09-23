@@ -34,7 +34,7 @@ public class MeetingAccessAdapter implements MeetingAccessPort {
 
         // 아직 정산 데이터가 없어도 존재하는 모임 행을 잠가 최초 확정 요청까지 보호합니다.
         Meeting meeting = entityManager.find(Meeting.class, meetingId, LockModeType.PESSIMISTIC_WRITE);
-        if (meeting == null) {
+        if (meeting == null || meeting.isDeleted()) {
             throw new SettlementRequestException(404, "모임을 찾을 수 없습니다.");
         }
         MeetingMember member = memberRepository.findByMeetingIdAndUserId(meetingId, userId)
@@ -45,6 +45,6 @@ public class MeetingAccessAdapter implements MeetingAccessPort {
         Set<Long> memberIds = new HashSet<>(entityManager.createQuery(
                 "select m.id from MeetingMember m where m.meeting.id = :meetingId", Long.class)
                 .setParameter("meetingId", meetingId).getResultList());
-        return new Context(member.getId(), meeting.isHost(userId), true, memberIds);
+        return new Context(member.getId(), meeting.isHost(userId), meeting.isActive(), memberIds);
     }
 }

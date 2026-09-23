@@ -8,6 +8,7 @@ import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.settlement.integration.MeetingAccessPort;
 import com.prgms.backend.domain.settlement.repository.SettlementRepository;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,8 +57,9 @@ public class ExpenseService {
     }
 
     private void checkRegistrationAllowed(long meetingId, MeetingAccessPort.Context context) {
+        // 종료된 모임에 지출 등록 불가
         if (!context.meetingOpen()) {
-            throw new IllegalStateException("종료된 모임에는 등록할 수 없습니다.");
+            throw new MeetingNotActiveException(meetingId);
         }
 
         //정산 데이터가 없거나 마감 안했으면 등록 가능(open상태), 확정 누르면 closed로 등록 안됨
