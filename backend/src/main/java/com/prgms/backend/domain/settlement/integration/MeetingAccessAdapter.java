@@ -24,6 +24,15 @@ public class MeetingAccessAdapter implements MeetingAccessPort {
 
     @Override
     public Context requireMember(long meetingId, Principal principal) {
+        return requireMember(meetingId, principal, true);
+    }
+
+    @Override
+    public Context requireMemberForRead(long meetingId, Principal principal) {
+        return requireMember(meetingId, principal, false);
+    }
+
+    private Context requireMember(long meetingId, Principal principal, boolean lock) {
         if (!(principal instanceof Authentication authentication) || !authentication.isAuthenticated()
                 || !(authentication.getPrincipal() instanceof SecurityUser)) {
             throw new SettlementRequestException(401, "로그인이 필요합니다.");
@@ -32,9 +41,11 @@ public class MeetingAccessAdapter implements MeetingAccessPort {
         SecurityUser loginUser = (SecurityUser) authentication.getPrincipal();
         long userId = loginUser.getId();
 
-        // 아직 정산 데이터가 없어도 존재하는 모임 행을 잠가 최초 확정 요청까지 보호합니다.
-        Meeting meeting = entityManager.find(Meeting.class, meetingId, LockModeType.PESSIMISTIC_WRITE);
-        if (meeting == null) {
+        // 아직 정산 데이터가 없어도 존재하는 모임 행을 잠가 최초 확정 요청
+        Meeting meeting = lock
+                ? entityManager.find(Meeting.class, meetingId, LockModeType.PESSIMISTIC_WRITE)
+                : entityManager.find(Meeting.class, meetingId);
+        if (meeting == null || meeting.isDeleted()) {
             throw new SettlementRequestException(404, "모임을 찾을 수 없습니다.");
         }
         MeetingMember member = memberRepository.findByMeetingIdAndUserId(meetingId, userId)
@@ -45,6 +56,6 @@ public class MeetingAccessAdapter implements MeetingAccessPort {
         Set<Long> memberIds = new HashSet<>(entityManager.createQuery(
                 "select m.id from MeetingMember m where m.meeting.id = :meetingId", Long.class)
                 .setParameter("meetingId", meetingId).getResultList());
-        return new Context(member.getId(), meeting.isHost(userId), true, memberIds);
+        return new Context(member.getId(), meeting.isHost(userId), meeting.isActive(), memberIds);
     }
 }

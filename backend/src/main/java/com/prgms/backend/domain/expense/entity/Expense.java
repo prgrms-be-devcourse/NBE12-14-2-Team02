@@ -75,6 +75,21 @@ public class Expense {
 
     public Set<Long> getParticipantIds() { return Set.copyOf(participantIds); }
 
+    // 결제자와 등록 시각은 유지하고, 수정한 분담 결과만 교체합니다.
+    public void update(String title, long amount, String memo, Map<Long, Long> shares,
+                       String splitMode, Integer roundingUnit, Long remainderMemberId) {
+        this.title = title.strip();
+        this.amount = amount;
+        this.memo = memo;
+        this.participantIds.clear();
+        this.participantIds.addAll(shares.keySet());
+        this.participantAmounts.clear();
+        this.participantAmounts.putAll(shares);
+        this.splitMode = splitMode;
+        this.roundingUnit = roundingUnit;
+        this.remainderMemberId = remainderMemberId;
+    }
+
     // 영수증은 파일경로랑 DB에 저장하는 방식이 있는데 DB에 저장하는 건 부담이 될 거 같아 우선 로컬 파일 경로로 테스트 진행 예정
     public void attachReceipt(String storageKey) {
         receiptKey = storageKey;
