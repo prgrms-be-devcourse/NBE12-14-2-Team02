@@ -112,6 +112,7 @@ public class ExpenseService {
     }
 
     private void checkRegistrationAllowed(long meetingId, MeetingAccessPort.Context context) {
+        // 종료된 모임에 지출 등록 불가
         if (!context.meetingOpen()) {
             throw new ExpenseRequestException(409, "종료된 모임의 지출은 변경할 수 없습니다.");
         }

@@ -19,6 +19,8 @@ import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundExceptio
 import com.prgms.backend.global.exception.custom.UserNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingSettlementNotCompletedException;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,19 +96,50 @@ public class MeetingService {
     @Transactional(readOnly = true)
     public List<MeetingResponse> getMyMeetings(Long userId){
 
-        // 존재하지 않는 회원인 경우
+        // 존재하지 않는 회원인지 검사
         if(!userRepository.existsById(userId)){
             throw new UserNotFoundException(userId);
         }
 
-        return meetingMemberRepository
-            .findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
-                userId,
-                MeetingMemberStatus.JOINED
-            )
-            .stream()
+        // 내가 JOINED 상태로 참여 중이며, soft delete 되지 않은 모임 조회
+        List<MeetingMember> meetingMembers = meetingMemberRepository
+                .findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
+                    userId,
+                    MeetingMemberStatus.JOINED
+                );
+
+        // 참여 중인 모임이 없으면 빈 목록 반환
+        if (meetingMembers.isEmpty()) {
+            return List.of();
+        }
+
+        // meetingId 목록 추출해서 참가자 수 일괄 조회
+        List<Long> meetingIds = meetingMembers.stream()
+                .map(MeetingMember::getMeeting)
+                .map(Meeting::getId)
+                .toList();
+
+        // 각 모임의 JOINED 참가자 수를 GROUP BY 쿼리 한 번으로 조회하여 N+1 해결
+        Map<Long, Long> participantCountMap = meetingMemberRepository
+                .countByMeetingIdsAndStatus(meetingIds, MeetingMemberStatus.JOINED)
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                    )
+                );
+
+        // 이미 조회한 참가자 수 Map을 사용해 추가 DB 조회 없이 응답 생성
+        return meetingMembers.stream()
             .map(MeetingMember::getMeeting)
-            .map(this::toResponse)
+            .map(meeting -> MeetingResponse.from(
+                    meeting,
+                    participantCountMap.getOrDefault(
+                        meeting.getId(),
+                        0L
+                    )
+                )
+            )
             .toList();
     }
 
@@ -118,7 +151,8 @@ public class MeetingService {
         MeetingUpdateRequest request
     ){
         // 진행 중인 미팅인지 검사
-        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNull(meetingId)
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장이 아닌 참여자가 모임 수정을 시도하는 경우
@@ -145,8 +179,9 @@ public class MeetingService {
         Long userId
     ) {
         // 존재하며 soft delete되지 않은 모임인지 확인
+        // 모임 종료와 동시에 다른 요청 들어오는 것 방지
         Meeting meeting = meetingRepository
-            .findByIdAndDeletedAtIsNull(meetingId)
+            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장만 종료 가능
@@ -164,18 +199,12 @@ public class MeetingService {
             expenseRepository.existsByMeetingId(meetingId);
 
         // 지출 내역이 있는 경우에만 최종 정산 완료 여부 확인
-        if (hasExpense) {
-
-            boolean settlementCompleted =
-                settlementRepository.findByMeetingId(meetingId)
-                    .map(settlement ->
-                        settlement.getStatus() == SettlementStatus.CLOSED
-                    )
-                    .orElse(false);
-
-            if (!settlementCompleted) {
-                throw new MeetingSettlementNotCompletedException(meetingId);
-            }
+        if (hasExpense &&
+            !settlementRepository.existsByMeetingIdAndStatus(
+                meetingId,
+                SettlementStatus.CLOSED
+            )) {
+            throw new MeetingSettlementNotCompletedException(meetingId);
         }
 
         // 지출이 없거나 최종 정산이 완료되었다면 모임 종료

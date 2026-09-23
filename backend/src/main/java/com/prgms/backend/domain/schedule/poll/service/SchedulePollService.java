@@ -35,7 +35,15 @@ public class SchedulePollService {
             SchedulePollRequest.Create request
     ) {
 
-       Meeting meeting = getActiveMeetingForHost(meetingId, userId);
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+
+        validateHost(meeting, userId);
+
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meetingId);
+        }
 
        if(schedulePollRepository.existsByMeetingId(meetingId)){
            throw new SchedulePollAlreadyExistsException(meetingId);
@@ -50,7 +58,10 @@ public class SchedulePollService {
     @Transactional(readOnly = true)
     public SchedulePollResponse.Detail get(Long meetingId, Long userId) {
 
-
+        // soft delete 되지 않은 모임인지 검사
+        meetingRepository
+            .findByIdAndDeletedAtIsNull(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         MeetingMember meetingMember =
                 meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
@@ -84,7 +95,7 @@ public class SchedulePollService {
             SchedulePollRequest.UpdateDeadline request
             ) {
 
-        getActiveMeetingForHost(meetingId, userId);
+        getActiveMeetingForHostForShare(meetingId, userId);
 
         SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdForUpdate(meetingId)
                         .orElseThrow(
@@ -99,8 +110,8 @@ public class SchedulePollService {
 
     }
 
-    private Meeting getActiveMeetingForHost(Long meetingId, Long userId) {
-        Meeting meeting = meetingRepository.findById(meetingId)
+    private Meeting getActiveMeetingForHostForShare(Long meetingId, Long userId) {
+        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         validateHost(meeting, userId);
