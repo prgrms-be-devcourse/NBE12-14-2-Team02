@@ -1,6 +1,6 @@
 package com.prgms.backend.domain.user.service;
 
-import com.prgms.backend.domain.user.dto.LogInRequest;
+import com.prgms.backend.domain.user.dto.request.LogInRequest;
 import com.prgms.backend.domain.user.dto.TokenPair;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
@@ -73,7 +73,7 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    // refresh token 재발급
+    // access token 재발급
     public String reissue(String refreshToken) {
         if (jwtTokenProvider.validateToken(refreshToken)) {
             Long userId = jwtTokenProvider.getUserId(refreshToken);

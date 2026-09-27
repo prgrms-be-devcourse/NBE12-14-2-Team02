@@ -1,8 +1,7 @@
 package com.prgms.backend.domain.user.service;
 
-import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
-import com.prgms.backend.domain.user.dto.ProfileResponse;
+import com.prgms.backend.domain.user.dto.response.ProfileResponse;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
 import com.prgms.backend.domain.user.exception.PasswordMismatchException;
@@ -14,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
