@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { Card, Field, Message } from "@/app/_components/ui";
 import { apiFetch, jsonBody } from "@/app/_lib/api";
 
@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [nickname, setNickname] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
   // 중복확인을 통과한 값. 입력값이 이 값과 달라지면 다시 확인해야 한다.
   const [checkedEmail, setCheckedEmail] = useState<string | null>(null);
   const [checkedNickname, setCheckedNickname] = useState<string | null>(null);
@@ -21,32 +22,39 @@ export default function SignupPage() {
   async function check(kind: "email" | "nickname") {
     setMessage("");
     setError("");
+
     const value = (kind === "email" ? email : nickname).trim();
+
     if (!value) {
       setError(`${LABELS[kind]}을 입력해 주세요.`);
       return;
     }
+
     if (kind === "email" && !EMAIL_PATTERN.test(value)) {
       setError("이메일 형식이 올바르지 않습니다.");
       return;
     }
+
     try {
       const data = await apiFetch<{ available: boolean }>(
         `/api/user/check-${kind}?${kind}=${encodeURIComponent(value)}`
       );
+
       if (!data.available) {
         setError(`이미 사용 중인 ${LABELS[kind]}입니다.`);
         return;
       }
+
       if (kind === "email") setCheckedEmail(value);
       else setCheckedNickname(value);
+      
       setMessage(`사용할 수 있는 ${LABELS[kind]}입니다.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "확인하지 못했습니다.");
     }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setError("");

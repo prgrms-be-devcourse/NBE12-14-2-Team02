@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/app/_components/AppShell";
 import { Card, Field, Message, PageTitle } from "@/app/_components/ui";
@@ -19,7 +19,7 @@ export default function MyPage() {
       .catch((e) => setError(e.message));
   }, []);
 
-  async function nickname(event: FormEvent<HTMLFormElement>) {
+  async function nickname(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     try {
@@ -34,7 +34,7 @@ export default function MyPage() {
     }
   }
 
-  async function password(event: FormEvent<HTMLFormElement>) {
+  async function password(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     try {
