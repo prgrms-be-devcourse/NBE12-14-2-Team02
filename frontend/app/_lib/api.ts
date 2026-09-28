@@ -78,3 +78,10 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = 
 }
 
 export const jsonBody = (value: unknown) => JSON.stringify(value);
+
+export const NOTIFICATIONS_CHANGED = "moim-notifications-changed";
+
+export function notifyNotificationsChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+}
