@@ -403,6 +403,29 @@ class MeetingServiceTest {
         );
     }
 
+    @Test
+    @DisplayName("참여 중인 모임이 없으면 빈 목록을 반환한다")
+    void getMyMeetings_empty() {
+
+        // given
+        when(userRepository.existsById(1L))
+            .thenReturn(true);
+
+        when(
+            meetingMemberRepository
+                .findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
+                    1L,
+                    MeetingMemberStatus.JOINED
+                )
+        ).thenReturn(List.of());
+
+        // when
+        var responses =
+            meetingService.getMyMeetings(1L);
+
+        // then
+        assertEquals(0, responses.size());
+    }
 
     @Test
     @DisplayName("존재하지 않는 회원은 참여 중인 모임 목록을 조회할 수 없다")
@@ -476,6 +499,32 @@ class MeetingServiceTest {
         );
     }
 
+    @Test
+    @DisplayName("존재하지 않는 모임은 수정할 수 없다")
+    void updateMeeting_notFound() {
+
+        // given
+        MeetingUpdateRequest request =
+            new MeetingUpdateRequest(
+                "수정된 모임",
+                "수정된 설명"
+            );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.empty());
+
+        // when & then
+        assertThrows(
+            MeetingNotFoundException.class,
+            () -> meetingService.updateMeeting(
+                10L,
+                1L,
+                request
+            )
+        );
+    }
 
     @Test
     @DisplayName("모임장이 아니면 모임 정보를 수정할 수 없다")
@@ -515,7 +564,6 @@ class MeetingServiceTest {
             )
         );
     }
-
 
     @Test
     @DisplayName("종료된 모임은 수정할 수 없다")
@@ -607,7 +655,6 @@ class MeetingServiceTest {
             response.status()
         );
     }
-
 
     @Test
     @DisplayName("지출 내역이 있고 정산이 완료되었다면 모임을 종료할 수 있다")
@@ -713,6 +760,92 @@ class MeetingServiceTest {
         assertEquals(
             MeetingStatus.ACTIVE,
             meeting.getStatus()
+        );
+    }
+
+    @Test
+    @DisplayName("모임장이 아니면 모임을 종료할 수 없다")
+    void completeMeeting_notHost() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        // when & then
+        assertThrows(
+            MeetingAccessDeniedException.class,
+            () -> meetingService.completeMeeting(
+                10L,
+                2L
+            )
+        );
+    }
+
+    @Test
+    @DisplayName("이미 종료된 모임은 다시 종료할 수 없다")
+    void completeMeeting_alreadyCompleted() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        meeting.complete();
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        // when & then
+        assertThrows(
+            MeetingNotActiveException.class,
+            () -> meetingService.completeMeeting(
+                10L,
+                1L
+            )
+        );
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 모임은 종료할 수 없다")
+    void completeMeeting_notFound() {
+
+        // given
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.empty());
+
+        // when & then
+        assertThrows(
+            MeetingNotFoundException.class,
+            () -> meetingService.completeMeeting(
+                10L,
+                1L
+            )
         );
     }
 
