@@ -58,6 +58,12 @@ async function reissueAccessToken() {
   return envelope.data.accessToken;
 }
 
+export async function ensureAccessToken() {
+  const current = getAccessToken();
+  if (current) return current;
+  return reissueAccessToken();
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const headers = new Headers(init.headers);
   const token = getAccessToken();
