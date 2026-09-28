@@ -16,8 +16,8 @@ import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
-import com.prgms.backend.global.exception.custom.UserNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingSettlementNotCompletedException;
+import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,7 +43,7 @@ public class MeetingService {
     ){
         // 모임장이 존재하는 회원인지 검사
         User host = userRepository.findById(userId)
-            .orElseThrow(() -> new UserNotFoundException(userId));
+            .orElseThrow(() -> new UserNotFoundException("존재하지 않는 회원입니다."));
 
         // 모임 객체 생성
         Meeting meeting = new Meeting(
@@ -98,7 +98,7 @@ public class MeetingService {
 
         // 존재하지 않는 회원인지 검사
         if(!userRepository.existsById(userId)){
-            throw new UserNotFoundException(userId);
+            throw new UserNotFoundException("존재하지 않는 회원입니다.");
         }
 
         // 내가 JOINED 상태로 참여 중이며, soft delete 되지 않은 모임 조회
