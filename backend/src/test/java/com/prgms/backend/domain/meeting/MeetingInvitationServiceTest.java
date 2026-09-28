@@ -2,16 +2,22 @@ package com.prgms.backend.domain.meeting;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
+import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingInvitationRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.meeting.service.MeetingInvitationService;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
+import com.prgms.backend.global.exception.custom.meeting.AlreadyMeetingMemberException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationExpiredException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -197,6 +204,318 @@ class MeetingInvitationServiceTest {
         );
     }
 
+    @Test
+    @DisplayName("초대를 통해 처음 모임에 참여할 수 있다")
+    void joinMeeting_newMember() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        User user = createUser(
+            2L,
+            "user@test.com",
+            "회원"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation = createInvitation(
+            100L,
+            meeting,
+            "invite-code",
+            LocalDateTime.now().plusDays(1)
+        );
+
+        when(
+            meetingInvitationRepository
+                .findByInviteCode("invite-code")
+        ).thenReturn(Optional.of(invitation));
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(userRepository.findById(2L))
+            .thenReturn(Optional.of(user));
+
+        when(
+            meetingMemberRepository
+                .findByMeetingIdAndUserId(
+                    10L,
+                    2L
+                )
+        ).thenReturn(Optional.empty());
+
+        when(
+            meetingMemberRepository
+                .save(any(MeetingMember.class))
+        ).thenAnswer(invocation -> {
+
+            MeetingMember member =
+                invocation.getArgument(0);
+
+            ReflectionTestUtils.setField(
+                member,
+                "id",
+                200L
+            );
+
+            return member;
+        });
+
+        // when
+        var response =
+            meetingInvitationService.joinMeeting(
+                "invite-code",
+                2L
+            );
+
+        // then
+        assertEquals(200L, response.id());
+        assertEquals(10L, response.meetingId());
+        assertEquals(2L, response.userId());
+        assertEquals(
+            MeetingMemberStatus.JOINED,
+            response.status()
+        );
+
+        verify(meetingMemberRepository)
+            .save(any(MeetingMember.class));
+    }
+
+
+    @Test
+    @DisplayName("탈퇴했던 회원은 초대를 통해 다시 가입할 수 있다")
+    void joinMeeting_rejoin() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        User user = createUser(
+            2L,
+            "user@test.com",
+            "회원"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation = createInvitation(
+            100L,
+            meeting,
+            "invite-code",
+            LocalDateTime.now().plusDays(1)
+        );
+
+        MeetingMember member =
+            new MeetingMember(
+                meeting,
+                user
+            );
+
+        ReflectionTestUtils.setField(
+            member,
+            "id",
+            200L
+        );
+
+        // 기존 회원이 탈퇴한 상태
+        member.leave();
+
+        when(
+            meetingInvitationRepository
+                .findByInviteCode("invite-code")
+        ).thenReturn(Optional.of(invitation));
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(userRepository.findById(2L))
+            .thenReturn(Optional.of(user));
+
+        when(
+            meetingMemberRepository
+                .findByMeetingIdAndUserId(
+                    10L,
+                    2L
+                )
+        ).thenReturn(Optional.of(member));
+
+        // when
+        var response =
+            meetingInvitationService.joinMeeting(
+                "invite-code",
+                2L
+            );
+
+        // then
+        assertEquals(
+            MeetingMemberStatus.JOINED,
+            response.status()
+        );
+
+        assertEquals(200L, response.id());
+        assertEquals(10L, response.meetingId());
+        assertEquals(2L, response.userId());
+
+        // 재가입 시 기존 MeetingMember를 사용하므로 새로 저장하지 않음
+        verify(meetingMemberRepository, never())
+            .save(any(MeetingMember.class));
+    }
+
+
+    @Test
+    @DisplayName("이미 참여 중인 회원은 다시 가입할 수 없다")
+    void joinMeeting_alreadyJoined() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        User user = createUser(
+            2L,
+            "user@test.com",
+            "회원"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation = createInvitation(
+            100L,
+            meeting,
+            "invite-code",
+            LocalDateTime.now().plusDays(1)
+        );
+
+        MeetingMember member =
+            new MeetingMember(
+                meeting,
+                user
+            );
+
+        when(
+            meetingInvitationRepository
+                .findByInviteCode("invite-code")
+        ).thenReturn(Optional.of(invitation));
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(userRepository.findById(2L))
+            .thenReturn(Optional.of(user));
+
+        when(
+            meetingMemberRepository
+                .findByMeetingIdAndUserId(
+                    10L,
+                    2L
+                )
+        ).thenReturn(Optional.of(member));
+
+        // when & then
+        assertThrows(
+            AlreadyMeetingMemberException.class,
+            () -> meetingInvitationService.joinMeeting(
+                "invite-code",
+                2L
+            )
+        );
+    }
+
+
+    @Test
+    @DisplayName("존재하지 않는 초대 코드로는 모임에 가입할 수 없다")
+    void joinMeeting_invitationNotFound() {
+
+        // given
+        when(
+            meetingInvitationRepository
+                .findByInviteCode("invalid-code")
+        ).thenReturn(Optional.empty());
+
+        // when & then
+        assertThrows(
+            MeetingInvitationNotFoundException.class,
+            () -> meetingInvitationService.joinMeeting(
+                "invalid-code",
+                2L
+            )
+        );
+    }
+
+
+    @Test
+    @DisplayName("만료된 초대로는 모임에 가입할 수 없다")
+    void joinMeeting_expiredInvitation() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation expiredInvitation =
+            createInvitation(
+                100L,
+                meeting,
+                "expired-code",
+                LocalDateTime.now().minusDays(1)
+            );
+
+        when(
+            meetingInvitationRepository
+                .findByInviteCode("expired-code")
+        ).thenReturn(Optional.of(expiredInvitation));
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        // when & then
+        assertThrows(
+            MeetingInvitationExpiredException.class,
+            () -> meetingInvitationService.joinMeeting(
+                "expired-code",
+                2L
+            )
+        );
+    }
+
     private User createUser(
         Long id,
         String email,
@@ -235,5 +554,27 @@ class MeetingInvitationServiceTest {
         );
 
         return meeting;
+    }
+
+    private MeetingInvitation createInvitation(
+        Long id,
+        Meeting meeting,
+        String inviteCode,
+        LocalDateTime expiresAt
+    ) {
+        MeetingInvitation invitation =
+            new MeetingInvitation(
+                meeting,
+                inviteCode,
+                expiresAt
+            );
+
+        ReflectionTestUtils.setField(
+            invitation,
+            "id",
+            id
+        );
+
+        return invitation;
     }
 }
