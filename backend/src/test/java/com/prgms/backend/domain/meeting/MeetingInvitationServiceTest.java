@@ -18,6 +18,7 @@ import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveExcepti
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -292,7 +294,6 @@ class MeetingInvitationServiceTest {
             .save(any(MeetingMember.class));
     }
 
-
     @Test
     @DisplayName("탈퇴했던 회원은 초대를 통해 다시 가입할 수 있다")
     void joinMeeting_rejoin() {
@@ -381,7 +382,6 @@ class MeetingInvitationServiceTest {
             .save(any(MeetingMember.class));
     }
 
-
     @Test
     @DisplayName("이미 참여 중인 회원은 다시 가입할 수 없다")
     void joinMeeting_alreadyJoined() {
@@ -449,7 +449,6 @@ class MeetingInvitationServiceTest {
         );
     }
 
-
     @Test
     @DisplayName("존재하지 않는 초대 코드로는 모임에 가입할 수 없다")
     void joinMeeting_invitationNotFound() {
@@ -469,7 +468,6 @@ class MeetingInvitationServiceTest {
             )
         );
     }
-
 
     @Test
     @DisplayName("만료된 초대로는 모임에 가입할 수 없다")
@@ -513,6 +511,241 @@ class MeetingInvitationServiceTest {
                 "expired-code",
                 2L
             )
+        );
+    }
+
+    @Test
+    @DisplayName("모임장은 초대 코드 목록을 조회할 수 있다")
+    void getInvitations() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation1 =
+            createInvitation(
+                100L,
+                meeting,
+                "invite-code-1",
+                LocalDateTime.now().plusDays(1)
+            );
+
+        MeetingInvitation invitation2 =
+            createInvitation(
+                200L,
+                meeting,
+                "invite-code-2",
+                LocalDateTime.now().plusDays(2)
+            );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNull(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(
+            meetingInvitationRepository
+                .findAllByMeetingId(10L)
+        ).thenReturn(
+            List.of(
+                invitation1,
+                invitation2
+            )
+        );
+
+        // when
+        var responses =
+            meetingInvitationService.getInvitations(
+                10L,
+                1L
+            );
+
+        // then
+        assertEquals(2, responses.size());
+
+        assertEquals(
+            "invite-code-1",
+            responses.get(0).inviteCode()
+        );
+
+        assertEquals(
+            "invite-code-2",
+            responses.get(1).inviteCode()
+        );
+
+        assertEquals(
+            10L,
+            responses.get(0).meetingId()
+        );
+    }
+
+    @Test
+    @DisplayName("모임장이 아니면 초대 코드 목록을 조회할 수 없다")
+    void getInvitations_notHost() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNull(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        // when & then
+        assertThrows(
+            MeetingAccessDeniedException.class,
+            () -> meetingInvitationService.getInvitations(
+                10L,
+                2L
+            )
+        );
+    }
+
+    @Test
+    @DisplayName("유효한 초대 코드로 초대받은 모임 정보를 조회할 수 있다")
+    void getInvitation() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation =
+            createInvitation(
+                100L,
+                meeting,
+                "invite-code",
+                LocalDateTime.now().plusDays(1)
+            );
+
+        when(
+            meetingInvitationRepository
+                .findByInviteCode("invite-code")
+        ).thenReturn(Optional.of(invitation));
+
+        when(
+            meetingMemberRepository
+                .existsByMeetingIdAndUserIdAndStatus(
+                    10L,
+                    2L,
+                    MeetingMemberStatus.JOINED
+                )
+        ).thenReturn(false);
+
+        // when
+        var response =
+            meetingInvitationService.getInvitation(
+                "invite-code",
+                2L
+            );
+
+        // then
+        assertEquals(
+            "invite-code",
+            response.inviteCode()
+        );
+
+        assertEquals(
+            10L,
+            response.meetingId()
+        );
+
+        assertEquals(
+            "제주도 여행",
+            response.meetingName()
+        );
+
+        assertFalse(
+            response.alreadyJoined()
+        );
+    }
+
+    @Test
+    @DisplayName("이미 참여 중인 회원이 초대를 조회하면 참여 중으로 표시된다")
+    void getInvitation_alreadyJoined() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation =
+            createInvitation(
+                100L,
+                meeting,
+                "invite-code",
+                LocalDateTime.now().plusDays(1)
+            );
+
+        when(
+            meetingInvitationRepository
+                .findByInviteCode("invite-code")
+        ).thenReturn(Optional.of(invitation));
+
+        when(
+            meetingMemberRepository
+                .existsByMeetingIdAndUserIdAndStatus(
+                    10L,
+                    2L,
+                    MeetingMemberStatus.JOINED
+                )
+        ).thenReturn(true);
+
+        // when
+        var response =
+            meetingInvitationService.getInvitation(
+                "invite-code",
+                2L
+            );
+
+        // then
+        assertEquals(
+            10L,
+            response.meetingId()
+        );
+
+        assertEquals(
+            "제주도 여행",
+            response.meetingName()
+        );
+
+        assertTrue(
+            response.alreadyJoined()
         );
     }
 
