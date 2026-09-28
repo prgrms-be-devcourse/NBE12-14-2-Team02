@@ -1,4 +1,4 @@
-package com.prgms.backend.domain.user.exception;
+package com.prgms.backend.global.exception.custom.user;
 
 import com.prgms.backend.global.exception.BusinessException;
 
