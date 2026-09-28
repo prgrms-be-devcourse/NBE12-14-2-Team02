@@ -2,15 +2,16 @@ package com.prgms.backend.domain.settlement.service;
 
 import com.prgms.backend.domain.expense.entity.Expense;
 import com.prgms.backend.domain.expense.repository.ExpenseRepository;
+import com.prgms.backend.domain.notification.service.NotificationService;
 import com.prgms.backend.domain.settlement.dto.SettlementResponse;
 import com.prgms.backend.domain.settlement.entity.Settlement;
 import com.prgms.backend.domain.settlement.entity.SettlementBalance;
-import com.prgms.backend.domain.settlement.entity.SettlementTransfer;
 import com.prgms.backend.domain.settlement.entity.SettlementStatus;
+import com.prgms.backend.domain.settlement.entity.SettlementTransfer;
 import com.prgms.backend.domain.settlement.integration.MeetingAccessPort;
 import com.prgms.backend.domain.settlement.repository.SettlementRepository;
-import lombok.RequiredArgsConstructor;
 import com.prgms.backend.global.exception.custom.settlement.SettlementRequestException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class SettlementService {
     private final ExpenseRepository expenseRepository;
     private final SettlementRepository settlementRepository;
     private final SettlementCalculator calculator;
+    private final NotificationService notificationService;
 
     @Transactional
     public SettlementResponse confirm(long meetingId, Principal principal) {
@@ -61,6 +63,7 @@ public class SettlementService {
         // 결과 저장과 상태 변경은 함께 성공 또는 취소
         settlement.saveResult(balances, transfers);
         settlement.close(context.memberId());
+        notificationService.notifySettlementClosed(meetingId);
         return SettlementResponse.from(settlementRepository.save(settlement));
     }
 
