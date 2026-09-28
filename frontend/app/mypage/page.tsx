@@ -13,12 +13,14 @@ export default function MyPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  // 내 정보(이메일, 닉네임) 조회
   useEffect(() => {
     apiFetch<Profile>("/api/user/me")
       .then(setProfile)
       .catch((e) => setError(e.message));
   }, []);
 
+  // 닉네임 변경
   async function nickname(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -34,6 +36,7 @@ export default function MyPage() {
     }
   }
 
+  // 비밀번호 변경 (현재 비밀번호 확인 후 새 비밀번호로 변경)
   async function password(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -52,6 +55,7 @@ export default function MyPage() {
     }
   }
 
+  // 로그아웃: 서버 요청 성공 여부와 관계없이 토큰을 지우고 로그인 페이지로 이동
   async function logout() {
     try {
       await apiFetch<void>("/api/auth/logout", { method: "POST" });
@@ -81,6 +85,7 @@ export default function MyPage() {
                 className="input"
                 name="nickname"
                 defaultValue={profile?.nickname || ""}
+                // 프로필을 불러오거나 닉네임이 바뀌면 key가 달라져 입력칸이 새 값으로 다시 그려진다
                 key={profile?.nickname}
                 required
               />

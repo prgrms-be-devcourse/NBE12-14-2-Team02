@@ -5,7 +5,9 @@ import { useState, type SubmitEvent } from "react";
 import { Card, Field, Message } from "@/app/_components/ui";
 import { apiFetch, jsonBody } from "@/app/_lib/api";
 
+// 아이디@도메인.최상위도메인 형태만 허용 (백엔드 @Email보다 조금 엄격함)
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// 안내 메시지에 들어갈 필드 이름
 const LABELS = { email: "이메일", nickname: "닉네임" };
 
 export default function SignupPage() {
@@ -19,12 +21,15 @@ export default function SignupPage() {
   const [checkedEmail, setCheckedEmail] = useState<string | null>(null);
   const [checkedNickname, setCheckedNickname] = useState<string | null>(null);
 
+  // 이메일/닉네임 중복확인
   async function check(kind: "email" | "nickname") {
+    // 이전 확인 결과 메시지 초기화
     setMessage("");
     setError("");
 
     const value = (kind === "email" ? email : nickname).trim();
 
+    // 빈 값이나 잘못된 형식은 API를 호출하지 않고 바로 막는다
     if (!value) {
       setError(`${LABELS[kind]}을 입력해 주세요.`);
       return;
@@ -45,6 +50,7 @@ export default function SignupPage() {
         return;
       }
 
+      // 사용 가능한 경우에만 확인 통과 값으로 저장
       if (kind === "email") setCheckedEmail(value);
       else setCheckedNickname(value);
       
@@ -54,10 +60,13 @@ export default function SignupPage() {
     }
   }
 
+  // 회원가입 제출
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setError("");
+
+    // 중복확인을 안 했거나, 확인 후 값을 바꿨으면 제출하지 않는다
     if (checkedEmail !== email.trim()) {
       setError("이메일 중복확인을 해주세요.");
       return;
@@ -66,6 +75,8 @@ export default function SignupPage() {
       setError("닉네임 중복확인을 해주세요.");
       return;
     }
+
+    // 비밀번호는 state 없이 폼에서 바로 읽는다
     const values = new FormData(event.currentTarget);
     try {
       await apiFetch<{ userId: number }>("/api/user/sign-up", {
@@ -77,6 +88,7 @@ export default function SignupPage() {
           confirmPassword: values.get("confirmPassword"),
         }),
       });
+      // 가입만으로는 로그인되지 않으므로 로그인 페이지로 이동
       router.push("/login");
     } catch (e) {
       setError(e instanceof Error ? e.message : "가입하지 못했습니다.");
@@ -93,6 +105,7 @@ export default function SignupPage() {
         <p>모임 준비를 한곳에서 시작해 보세요.</p>
 
         <form className="stack" onSubmit={submit}>
+          {/* 중복확인 버튼은 type="button"이라 폼을 제출하지 않는다 */}
           <Field label="이메일">
             <div className="row">
               <input
