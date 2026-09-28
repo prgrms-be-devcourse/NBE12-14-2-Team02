@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 
 @Slf4j
@@ -28,6 +29,18 @@ public class GlobalExceptionHandler {
         String message = e.getBindingResult().getFieldError() != null
                 ? e.getBindingResult().getFieldError().getDefaultMessage()
                 : "잘못된 요청입니다.";
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, message));
+    }
+
+    // @RequestParam, @PathVariable 등 메서드 파라미터 검증 실패 시 Spring이 자동으로 던지는 예외.
+    // 여러 검증 오류가 발생할 수 있지만, 우선 첫 번째 에러 메시지만 내려준다.
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodValidationException(
+            HandlerMethodValidationException e
+    ) {
+        String message = e.getAllErrors().get(0).getDefaultMessage();
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(400, message));
     }
