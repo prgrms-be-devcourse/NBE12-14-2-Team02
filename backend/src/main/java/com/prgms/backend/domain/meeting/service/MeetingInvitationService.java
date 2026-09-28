@@ -12,13 +12,13 @@ import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
-import com.prgms.backend.global.exception.custom.UserNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.AlreadyMeetingMemberException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationExpiredException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
+import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -117,7 +117,7 @@ public class MeetingInvitationService {
         // 존재하는 회원인지 검사
         User user = userRepository
             .findById(userId)
-            .orElseThrow(() -> new UserNotFoundException(userId));
+            .orElseThrow(() -> new UserNotFoundException("존재하지 않는 회원입니다."));
 
         // 해당 모임의 모임원 목록에 있는 회원인지 검사
         Optional<MeetingMember> existingMember = meetingMemberRepository
