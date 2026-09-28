@@ -749,6 +749,233 @@ class MeetingInvitationServiceTest {
         );
     }
 
+    @Test
+    @DisplayName("모임장은 초대 코드를 삭제할 수 있다")
+    void deleteInvitation() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation =
+            createInvitation(
+                100L,
+                meeting,
+                "invite-code",
+                LocalDateTime.now().plusDays(1)
+            );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForShare(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(
+            meetingInvitationRepository
+                .findById(100L)
+        ).thenReturn(Optional.of(invitation));
+
+        // when
+        meetingInvitationService.deleteInvitation(
+            10L,
+            100L,
+            1L
+        );
+
+        // then
+        verify(meetingInvitationRepository)
+            .delete(invitation);
+    }
+
+    @Test
+    @DisplayName("모임장이 아니면 초대 코드를 삭제할 수 없다")
+    void deleteInvitation_notHost() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForShare(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        // when & then
+        assertThrows(
+            MeetingAccessDeniedException.class,
+            () -> meetingInvitationService.deleteInvitation(
+                10L,
+                100L,
+                2L
+            )
+        );
+
+        verify(
+            meetingInvitationRepository,
+            never()
+        ).delete(any(MeetingInvitation.class));
+    }
+
+    @Test
+    @DisplayName("종료된 모임의 초대 코드는 삭제할 수 없다")
+    void deleteInvitation_completedMeeting() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        meeting.complete();
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForShare(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        // when & then
+        assertThrows(
+            MeetingNotActiveException.class,
+            () -> meetingInvitationService.deleteInvitation(
+                10L,
+                100L,
+                1L
+            )
+        );
+
+        verify(
+            meetingInvitationRepository,
+            never()
+        ).delete(any(MeetingInvitation.class));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 초대 코드는 삭제할 수 없다")
+    void deleteInvitation_notFound() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForShare(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(
+            meetingInvitationRepository
+                .findById(100L)
+        ).thenReturn(Optional.empty());
+
+        // when & then
+        assertThrows(
+            MeetingInvitationNotFoundException.class,
+            () -> meetingInvitationService.deleteInvitation(
+                10L,
+                100L,
+                1L
+            )
+        );
+
+        verify(
+            meetingInvitationRepository,
+            never()
+        ).delete(any(MeetingInvitation.class));
+    }
+
+    @Test
+    @DisplayName("다른 모임의 초대 코드는 삭제할 수 없다")
+    void deleteInvitation_otherMeeting() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        Meeting otherMeeting = createMeeting(
+            20L,
+            host,
+            "부산 여행"
+        );
+
+        // 100번 초대는 10번 모임이 아니라
+        // 20번 모임의 초대
+        MeetingInvitation invitation =
+            createInvitation(
+                100L,
+                otherMeeting,
+                "other-invite-code",
+                LocalDateTime.now().plusDays(1)
+            );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForShare(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(
+            meetingInvitationRepository
+                .findById(100L)
+        ).thenReturn(Optional.of(invitation));
+
+        // when & then
+        assertThrows(
+            MeetingInvitationNotFoundException.class,
+            () -> meetingInvitationService.deleteInvitation(
+                10L,
+                100L,
+                1L
+            )
+        );
+
+        verify(
+            meetingInvitationRepository,
+            never()
+        ).delete(any(MeetingInvitation.class));
+    }
+
     private User createUser(
         Long id,
         String email,
