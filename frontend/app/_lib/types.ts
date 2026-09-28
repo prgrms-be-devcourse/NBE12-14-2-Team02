@@ -1,5 +1,38 @@
-export type Meeting = { id: number; hostId: number; name: string; description: string | null; status: string; participantCount: number };
-export type MeetingMember = { id: number; meetingId: number; userId: number; nickname: string; status: string; joinedAt: string; leftAt: string | null };
+export type Meeting = {
+  id: number;
+  hostId: number;
+  name: string;
+  description: string | null;
+  status: string;
+  participantCount: number;
+};
+
+export type MeetingMember = {
+  id: number;
+  meetingId: number;
+  userId: number;
+  nickname: string;
+  status: string;
+  joinedAt: string;
+  leftAt: string | null;
+};
+
+export type MeetingInvitation = {
+  id: number;
+  meetingId: number;
+  inviteCode: string;
+  expiresAt: string;
+};
+
+export type MeetingInvitationDetail = {
+  inviteCode: string;
+  meetingId: number;
+  meetingName: string;
+  expiresAt: string;
+  alreadyJoined: boolean;
+  participantCount: number;
+};
+
 export type ScheduleCandidate = { id: number; candidateDate: string };
 export type SchedulePoll = { id: number; meetingId: number; deadline: string; status: "OPEN" | "CLOSED"; candidates: ScheduleCandidate[] };
 export type ScheduleResult = {

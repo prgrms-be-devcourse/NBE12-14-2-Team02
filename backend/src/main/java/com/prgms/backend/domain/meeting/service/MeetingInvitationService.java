@@ -189,9 +189,17 @@ public class MeetingInvitationService {
                 MeetingMemberStatus.JOINED
             );
 
+        // 현재 JOINED 상태인 모임원 수 조회
+        long participantCount =
+            meetingMemberRepository.countByMeetingIdAndStatus(
+                meetingId,
+                MeetingMemberStatus.JOINED
+            );
+
         return MeetingInvitationDetailResponse.from(
             invitation,
-            alreadyJoined
+            alreadyJoined,
+            participantCount
         );
     }
 
