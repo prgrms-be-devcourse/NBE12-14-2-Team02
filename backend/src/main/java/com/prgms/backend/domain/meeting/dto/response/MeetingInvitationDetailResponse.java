@@ -8,19 +8,22 @@ public record MeetingInvitationDetailResponse(
     Long meetingId,
     String meetingName,
     LocalDateTime expiresAt,
-    boolean alreadyJoined
+    boolean alreadyJoined,
+    long participantCount
 ) {
 
     public static MeetingInvitationDetailResponse from(
         MeetingInvitation invitation,
-        boolean alreadyJoined
+        boolean alreadyJoined,
+        long participantCount
     ) {
         return new MeetingInvitationDetailResponse(
             invitation.getInviteCode(),
             invitation.getMeeting().getId(),
             invitation.getMeeting().getName(),
             invitation.getExpiresAt(),
-            alreadyJoined
+            alreadyJoined,
+            participantCount
         );
     }
 }
