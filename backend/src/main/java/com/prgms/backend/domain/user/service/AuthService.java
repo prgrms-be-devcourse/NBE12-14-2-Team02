@@ -1,12 +1,12 @@
 package com.prgms.backend.domain.user.service;
 
-import com.prgms.backend.domain.user.dto.LogInRequest;
+import com.prgms.backend.domain.user.dto.request.LogInRequest;
 import com.prgms.backend.domain.user.dto.TokenPair;
 import com.prgms.backend.domain.user.entity.User;
-import com.prgms.backend.domain.user.exception.DuplicateEmailNickname;
-import com.prgms.backend.domain.user.exception.LoginFailException;
-import com.prgms.backend.domain.user.exception.PasswordMismatchException;
-import com.prgms.backend.domain.user.exception.UserNotFoundException;
+import com.prgms.backend.global.exception.custom.user.DuplicateEmailNickname;
+import com.prgms.backend.global.exception.custom.user.LoginFailException;
+import com.prgms.backend.global.exception.custom.user.PasswordMismatchException;
+import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +59,7 @@ public class AuthService {
     public TokenPair login(LogInRequest request) {
 
         User user = userRepository.findByEmail(request.email()).orElseThrow(()->
-                new UsernameNotFoundException("존재하지 않는 사용자"));
+                new UserNotFoundException("가입되지 않은 이메일입니다."));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new LoginFailException();
@@ -73,7 +73,7 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    // refresh token 재발급
+    // access token 재발급
     public String reissue(String refreshToken) {
         if (jwtTokenProvider.validateToken(refreshToken)) {
             Long userId = jwtTokenProvider.getUserId(refreshToken);

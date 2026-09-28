@@ -1,16 +1,21 @@
 package com.prgms.backend.domain.user.controller;
 
-import com.prgms.backend.domain.user.dto.ProfileResponse;
-import com.prgms.backend.domain.user.dto.SignUpRequest;
-import com.prgms.backend.domain.user.dto.UpdatePasswordRequest;
+import com.prgms.backend.domain.user.dto.request.NicknameRequest;
+import com.prgms.backend.domain.user.dto.response.EmailCheckResponse;
+import com.prgms.backend.domain.user.dto.response.NicknameCheckResponse;
+import com.prgms.backend.domain.user.dto.response.ProfileResponse;
+import com.prgms.backend.domain.user.dto.request.SignUpRequest;
+import com.prgms.backend.domain.user.dto.request.UpdatePasswordRequest;
+import com.prgms.backend.domain.user.dto.response.SignUpResponse;
 import com.prgms.backend.domain.user.entity.SecurityUser;
 import com.prgms.backend.domain.user.service.AuthService;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.global.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,11 +30,6 @@ public class UserController {
     private final AuthService authService;
     private final UserService userService;
 
-    public record EmailCheckResponse(
-            Boolean available
-    ) {
-    }
-
     @Operation(
             summary = "이메일 중복 확인",
             description = "사용자가 입력한 이메일이 이용중인지 중복을 확인합니다. "
@@ -37,7 +37,7 @@ public class UserController {
     @GetMapping("/check-email")
     @SecurityRequirements
     public ResponseEntity<ApiResponse<EmailCheckResponse>> checkEmail(
-            @RequestParam String email
+            @RequestParam @Email @NotNull String email
     ) {
         boolean exists = authService.checkEmail(email);
 
@@ -48,10 +48,6 @@ public class UserController {
                 .body(ApiResponse.success(200, response));
     }
 
-    public record NicknameCheckResponse(
-            Boolean available
-    ) {
-    }
 
     @Operation(
             summary = "닉네임 중복 확인",
@@ -60,7 +56,7 @@ public class UserController {
     @SecurityRequirements
     @GetMapping("/check-nickname")
     public ResponseEntity<ApiResponse<NicknameCheckResponse>> checkNickname (
-            @RequestParam String nickname
+            @RequestParam @NotNull String nickname
     ) {
         boolean exists = authService.checkNickname(nickname);
 
@@ -71,10 +67,6 @@ public class UserController {
                 .body(ApiResponse.success(200, response));
     }
 
-    public record SignUpResponse(
-            Long userId
-    ) {
-    }
 
     @Operation(
             summary = "회원가입",
@@ -110,11 +102,6 @@ public class UserController {
                 .body(ApiResponse.success(200,response));
     }
 
-    public record UpdateNicknameRequest(
-            @Schema(description = "새 닉네임", example = "홍길동")
-            String newNickname
-    ) {
-    }
 
     @Operation(
             summary = "닉네임 변경",
@@ -123,10 +110,10 @@ public class UserController {
     @PatchMapping("/me/nickname")
     public ResponseEntity<ApiResponse<ProfileResponse>> updateNickname(
             @AuthenticationPrincipal SecurityUser securityUser,
-            @RequestBody UpdateNicknameRequest request
+            @RequestBody @Valid NicknameRequest request
     ) {
         Long userId = securityUser.getId();
-        ProfileResponse response = userService.updateNickname(userId, request.newNickname());
+        ProfileResponse response = userService.updateNickname(userId, request.nickname());
 
         return ResponseEntity
                 .status(HttpStatus.OK)
