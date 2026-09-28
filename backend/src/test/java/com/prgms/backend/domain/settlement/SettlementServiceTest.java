@@ -2,15 +2,25 @@ package com.prgms.backend.domain.settlement;
 
 import com.prgms.backend.domain.expense.entity.Expense;
 import com.prgms.backend.domain.expense.repository.ExpenseRepository;
-import com.prgms.backend.domain.settlement.entity.*;
+import com.prgms.backend.domain.notification.service.NotificationService;
+import com.prgms.backend.domain.settlement.entity.Settlement;
+import com.prgms.backend.domain.settlement.entity.SettlementStatus;
 import com.prgms.backend.domain.settlement.integration.MeetingAccessPort;
 import com.prgms.backend.domain.settlement.repository.SettlementRepository;
-import com.prgms.backend.domain.settlement.service.*;
+import com.prgms.backend.domain.settlement.service.SettlementCalculator;
+import com.prgms.backend.domain.settlement.service.SettlementService;
 import com.prgms.backend.global.exception.BusinessException;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+
 import java.security.Principal;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -18,7 +28,8 @@ class SettlementServiceTest {
     private final MeetingAccessPort access = mock(MeetingAccessPort.class);
     private final ExpenseRepository expenses = mock(ExpenseRepository.class);
     private final SettlementRepository settlements = mock(SettlementRepository.class);
-    private final SettlementService service = new SettlementService(access, expenses, settlements, new SettlementCalculator());
+    private final NotificationService notificationService = mock(NotificationService.class);
+    private final SettlementService service = new SettlementService(access, expenses, settlements, new SettlementCalculator(), notificationService);
     private final Principal principal = () -> "host";
 
     @BeforeEach void setup() {
