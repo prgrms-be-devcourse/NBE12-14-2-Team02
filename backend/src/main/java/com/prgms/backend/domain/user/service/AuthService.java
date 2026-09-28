@@ -10,7 +10,6 @@ import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
