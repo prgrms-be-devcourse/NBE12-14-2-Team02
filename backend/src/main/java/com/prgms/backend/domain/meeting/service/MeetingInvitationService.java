@@ -48,7 +48,7 @@ public class MeetingInvitationService {
     ){
         // 없는 미팅에 대한 초대인지 검사
         Meeting meeting = meetingRepository
-            .findByIdAndDeletedAtIsNull(meetingId)
+            .findByIdAndDeletedAtIsNullForShare(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장이 아닌 사람이 초대를 생성하는지 검사
@@ -87,35 +87,52 @@ public class MeetingInvitationService {
         String inviteCode,
         Long userId
     ) {
-        // 유효한 초대인지 검사
-        MeetingInvitation invitation = getValidInvitation(inviteCode);
+        // Meeting ID 확인용 1차 조회
+        MeetingInvitation initialInvitation = meetingInvitationRepository
+                .findByInviteCode(inviteCode)
+                .orElseThrow(() -> new MeetingInvitationNotFoundException(inviteCode));
+
+        Long meetingId = initialInvitation.getMeeting().getId();
+
+        // 모임의 멤버 구성이 바뀌므로 WRITE LOCK
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+
+        // Lock 획득 후 Invitation 다시 확인
+        MeetingInvitation invitation = meetingInvitationRepository
+                .findByInviteCode(inviteCode)
+                .orElseThrow(() -> new MeetingInvitationNotFoundException(inviteCode));
+
+        // 초대가 만료됐는지 검사
+        if (invitation.isExpired()) {
+            throw new MeetingInvitationExpiredException();
+        }
+
+        // 진행 중인 모임인지 검사
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meetingId);
+        }
 
         // 존재하는 회원인지 검사
-        User user = userRepository.findById(userId)
+        User user = userRepository
+            .findById(userId)
             .orElseThrow(() -> new UserNotFoundException(userId));
 
-        // 초대에서 미팅 객체 가져오기
-        Meeting meeting = invitation.getMeeting();
-
         // 해당 모임의 모임원 목록에 있는 회원인지 검사
-        Optional<MeetingMember> existingMember =
-            meetingMemberRepository.findByMeetingIdAndUserId(
-                meeting.getId(),
-                userId
-            );
+        Optional<MeetingMember> existingMember = meetingMemberRepository
+                .findByMeetingIdAndUserId(meetingId, userId);
 
         MeetingMember meetingMember;
 
         // 모임원 목록에 있는 회원인 경우
         if (existingMember.isPresent()) {
+
             meetingMember = existingMember.get();
 
             // 현재 참여 중인 모임원인 경우
             if (meetingMember.isJoined()) {
-                throw new AlreadyMeetingMemberException(
-                    meeting.getId(),
-                    userId
-                );
+                throw new AlreadyMeetingMemberException(meetingId, userId);
             }
 
             // 현재 참여 중이 아니면(LEFT) 재가입
@@ -123,7 +140,9 @@ public class MeetingInvitationService {
 
             // 모임에 가입한 적 없는 회원인 경우 모임원에 등록
         } else {
+
             meetingMember = new MeetingMember(meeting, user);
+
             meetingMemberRepository.save(meetingMember);
         }
 
@@ -212,7 +231,7 @@ public class MeetingInvitationService {
     ) {
         // 존재하는 모임인지 검사
         Meeting meeting = meetingRepository
-            .findByIdAndDeletedAtIsNull(meetingId)
+            .findByIdAndDeletedAtIsNullForShare(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
         // 모임장만 초대 취소 가능

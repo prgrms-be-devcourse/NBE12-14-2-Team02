@@ -3,6 +3,7 @@ package com.prgms.backend.domain.schedule.poll.service;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
+import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
 import com.prgms.backend.domain.schedule.poll.dto.ScheduleParticipantResponse;
 import com.prgms.backend.domain.schedule.poll.dto.ScheduleResultResponse;
@@ -14,6 +15,7 @@ import com.prgms.backend.domain.schedule.vote.entity.ScheduleVote;
 import com.prgms.backend.domain.schedule.vote.repository.ScheduleVoteRepository;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberAlreadyLeftException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollNotClosedException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class ScheduleResultService {
     private final SchedulePollRepository schedulePollRepository;
     private final MeetingMemberRepository meetingMemberRepository;
     private final ScheduleVoteRepository scheduleVoteRepository;
+    private final MeetingRepository meetingRepository;
 
     private record CandidateAggregation(
             Long candidateId,
@@ -218,6 +221,10 @@ public class ScheduleResultService {
     }
 
     private ResultContext getResultContext(Long meetingId, Long userId) {
+        meetingRepository
+            .findByIdAndDeletedAtIsNull(meetingId)
+            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+
         validateJoinedMember(meetingId, userId);
         SchedulePoll schedulePoll = getClosedSchedulePoll(meetingId);
 

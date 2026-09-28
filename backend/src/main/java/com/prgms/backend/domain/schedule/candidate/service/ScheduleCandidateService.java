@@ -120,7 +120,7 @@ public class ScheduleCandidateService {
             Long meetingId,
             Long userId
     ) {
-        Meeting meeting = meetingRepository.findById(meetingId)
+        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
                 .orElseThrow(
                         () -> new MeetingNotFoundException(meetingId)
                 );

@@ -12,6 +12,7 @@ import com.prgms.backend.domain.schedule.vote.dto.ScheduleVoteRequest;
 import com.prgms.backend.domain.schedule.vote.dto.ScheduleVoteResponse;
 import com.prgms.backend.domain.schedule.vote.entity.ScheduleVote;
 import com.prgms.backend.domain.schedule.vote.repository.ScheduleVoteRepository;
+import com.prgms.backend.global.exception.custom.meeting.MeetingMemberAlreadyLeftException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
@@ -41,33 +42,36 @@ public class ScheduleVoteService {
             Long userId,
             ScheduleVoteRequest.Submit request
     ) {
-        Meeting meeting = meetingRepository.findById(meetingId)
-                .orElseThrow(
-                        () -> new MeetingNotFoundException(meetingId)
-                );
+        Meeting meeting = meetingRepository
+            .findByIdAndDeletedAtIsNullForShare(meetingId)
+            .orElseThrow(
+                () -> new MeetingNotFoundException(meetingId)
+            );
 
         if (!meeting.isActive()) {
             throw new MeetingNotActiveException(meetingId);
         }
 
+        SchedulePoll schedulePoll =
+            schedulePollRepository.findByMeetingIdForShare(meetingId)
+                .orElseThrow(
+                    () -> new SchedulePollNotFoundException(meetingId)
+                );
+
+        schedulePoll.validateOpen(LocalDateTime.now());
+
         MeetingMember meetingMember =
                 meetingMemberRepository
-                        .findByMeetingIdAndUserId(meetingId, userId)
+                        .findByMeetingIdAndUserIdForUpdate(meetingId, userId)
                         .orElseThrow(
-                                () -> new MeetingMemberNotFoundException(userId)
+                                () -> new MeetingMemberNotFoundException(meetingId, userId)
                         );
 
         if (!meetingMember.isJoined()) {
-            throw new MeetingMemberNotFoundException(userId);
+            throw new MeetingMemberAlreadyLeftException(meetingId, userId);
         }
 
-        SchedulePoll schedulePoll =
-                schedulePollRepository.findByMeetingIdForShare(meetingId)
-                        .orElseThrow(
-                                () -> new SchedulePollNotFoundException(meetingId)
-                        );
 
-        schedulePoll.validateOpen(LocalDateTime.now());
 
         ScheduleCandidate candidate =
                 scheduleCandidateRepository

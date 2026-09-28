@@ -114,7 +114,7 @@ public class MeetingInvitationController {
         );
 
         return ResponseEntity.ok(
-            ApiResponse.success(204, null)
+            ApiResponse.success(200, null)
         );
     }
 }
