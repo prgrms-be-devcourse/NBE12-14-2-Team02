@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.user.controller;
 
-import com.prgms.backend.domain.user.dto.request.UpdateNicknameRequest;
+import com.prgms.backend.domain.user.dto.request.EmailRequest;
+import com.prgms.backend.domain.user.dto.request.NicknameRequest;
 import com.prgms.backend.domain.user.dto.response.EmailCheckResponse;
 import com.prgms.backend.domain.user.dto.response.NicknameCheckResponse;
 import com.prgms.backend.domain.user.dto.response.ProfileResponse;
@@ -14,8 +15,6 @@ import com.prgms.backend.global.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,9 +36,9 @@ public class UserController {
     @GetMapping("/check-email")
     @SecurityRequirements
     public ResponseEntity<ApiResponse<EmailCheckResponse>> checkEmail(
-            @RequestParam @Email @NotBlank String email
+            @RequestParam EmailRequest emailRequest
     ) {
-        boolean exists = authService.checkEmail(email);
+        boolean exists = authService.checkEmail(emailRequest.email());
 
         EmailCheckResponse response = new EmailCheckResponse(!exists);
 
@@ -56,9 +55,9 @@ public class UserController {
     @SecurityRequirements
     @GetMapping("/check-nickname")
     public ResponseEntity<ApiResponse<NicknameCheckResponse>> checkNickname (
-            @RequestParam @NotBlank String nickname
+            @RequestParam NicknameRequest nicknameRequest
     ) {
-        boolean exists = authService.checkNickname(nickname);
+        boolean exists = authService.checkNickname(nicknameRequest.nickname());
 
         NicknameCheckResponse response = new NicknameCheckResponse(!exists);
 
@@ -110,10 +109,10 @@ public class UserController {
     @PatchMapping("/me/nickname")
     public ResponseEntity<ApiResponse<ProfileResponse>> updateNickname(
             @AuthenticationPrincipal SecurityUser securityUser,
-            @RequestBody UpdateNicknameRequest request
+            @RequestBody NicknameRequest request
     ) {
         Long userId = securityUser.getId();
-        ProfileResponse response = userService.updateNickname(userId, request.newNickname());
+        ProfileResponse response = userService.updateNickname(userId, request.nickname());
 
         return ResponseEntity
                 .status(HttpStatus.OK)
