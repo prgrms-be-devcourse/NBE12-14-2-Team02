@@ -1,6 +1,8 @@
 package com.prgms.backend.security;
 
 import com.prgms.backend.domain.user.entity.SecurityUser;
+import com.prgms.backend.domain.user.enums.UserStatus;
+import com.prgms.backend.domain.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,20 +11,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     // 토큰 분리
     private String resolveToken(HttpServletRequest request) {
@@ -47,13 +46,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 토큰이 유효한 경우 인증 정보를 가져온다.
             Long userId = jwtTokenProvider.getUserId(token);
 
-            // 필터 — DB 조회 없이 JWT payload의 userId로 바로 조립
-            SecurityUser securityUser = new SecurityUser(userId);
+            // 발급 이후 탈퇴한 회원도 차단하도록 현재 상태를 확인한다.
+            boolean activeUser = userRepository.existsByIdAndStatusAndDeletedAtIsNull(
+                    userId, UserStatus.ACTIVE);
 
-            Authentication authentication = new UsernamePasswordAuthenticationToken(
-                    securityUser, null, securityUser.getAuthorities());
+            if (activeUser) {
+                SecurityUser securityUser = new SecurityUser(userId);
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        securityUser, null, securityUser.getAuthorities());
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            } else {
+                // 보호된 API의 401 응답은 SecurityConfig의 인증 진입점에서 처리한다.
+                SecurityContextHolder.clearContext();
+            }
         }
 
         filterChain.doFilter(request, response);
