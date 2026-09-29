@@ -80,8 +80,8 @@ public class AuthService {
     // access token, refresh token 재발급
     @Transactional
     public TokenPair reissue(String refreshToken) {
-        if (jwtTokenProvider.validateToken(refreshToken)) {
-            Long userId = jwtTokenProvider.getUserId(refreshToken);
+        if (jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            Long userId = jwtTokenProvider.getRefreshUserId(refreshToken);
 
             User user = userRepository.findById(userId).orElseThrow(
                     () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")

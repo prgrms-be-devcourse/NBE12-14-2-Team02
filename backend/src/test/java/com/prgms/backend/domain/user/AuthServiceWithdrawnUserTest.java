@@ -92,9 +92,9 @@ class AuthServiceWithdrawnUserTest {
     void reissueWithdrawnUser() {
 
         // given
-        when(jwtTokenProvider.validateToken("old-refresh-token"))
+        when(jwtTokenProvider.validateRefreshToken("old-refresh-token"))
             .thenReturn(true);
-        when(jwtTokenProvider.getUserId("old-refresh-token"))
+        when(jwtTokenProvider.getRefreshUserId("old-refresh-token"))
             .thenReturn(1L);
         when(userRepository.findById(1L))
             .thenReturn(Optional.of(withdrawnUser));

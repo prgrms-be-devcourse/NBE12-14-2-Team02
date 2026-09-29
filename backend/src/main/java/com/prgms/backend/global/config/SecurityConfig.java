@@ -64,7 +64,11 @@ public class SecurityConfig {
 
 
     @Bean
-    public SecretKey secretKey(@Value("${custom.jwt.secret}") String secret) {
+    public SecretKey accessSecretKey(@Value("${custom.jwt.access-secret}") String secret) {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+    @Bean
+    public SecretKey refreshSecretKey(@Value("${custom.jwt.refresh-secret}") String secret) {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -41,10 +41,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
 
-        if (token != null && jwtTokenProvider.validateToken(token)) {
+        if (token != null && jwtTokenProvider.validateAccessToken(token)) {
 
             // 토큰이 유효한 경우 인증 정보를 가져온다.
-            Long userId = jwtTokenProvider.getUserId(token);
+            Long userId = jwtTokenProvider.getAccessUserId(token);
 
             // 발급 이후 탈퇴한 회원도 차단하도록 현재 상태를 확인한다.
             boolean activeUser = userRepository.existsByIdAndStatusAndDeletedAtIsNull(

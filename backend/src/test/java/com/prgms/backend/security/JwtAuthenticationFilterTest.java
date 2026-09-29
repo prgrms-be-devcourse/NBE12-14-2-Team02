@@ -72,13 +72,13 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("유효하지 않은 토큰은 회원 DB를 조회하지 않는다")
     void invalidTokenDoesNotQueryUser() throws Exception {
-        when(tokenProvider.validateToken("token")).thenReturn(false);
+        when(tokenProvider.validateAccessToken("token")).thenReturn(false);
 
         filter.doFilter(requestWithToken(), new MockHttpServletResponse(), (request, response) ->
                 assertNull(SecurityContextHolder.getContext().getAuthentication()));
 
         verifyNoInteractions(userRepository);
-        verify(tokenProvider, never()).getUserId(anyString());
+        verify(tokenProvider, never()).getAccessUserId(anyString());
     }
 
     @Test
@@ -93,8 +93,8 @@ class JwtAuthenticationFilterTest {
     }
 
     private void givenValidToken() {
-        when(tokenProvider.validateToken("token")).thenReturn(true);
-        when(tokenProvider.getUserId("token")).thenReturn(1L);
+        when(tokenProvider.validateAccessToken("token")).thenReturn(true);
+        when(tokenProvider.getAccessUserId("token")).thenReturn(1L);
     }
 
     private MockHttpServletRequest requestWithToken() {

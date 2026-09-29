@@ -58,7 +58,8 @@ import static org.mockito.Mockito.doAnswer;
 @SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create",
         "spring.jpa.show-sql=false",
-        "custom.jwt.secret=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "custom.jwt.access-secret=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "custom.jwt.refresh-secret=abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 })
 @Testcontainers(disabledWithoutDocker = true)
 class ScheduleConcurrencyIntegrationTest {
