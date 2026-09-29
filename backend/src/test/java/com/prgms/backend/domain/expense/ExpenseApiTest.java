@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ExpenseApiTest {
     private final ExpenseService expenses = mock(ExpenseService.class);
     private final SettlementService settlements = mock(SettlementService.class);
+    private final com.prgms.backend.domain.settlement.service.SettlementAccountService accounts = mock(com.prgms.backend.domain.settlement.service.SettlementAccountService.class);
     private final Principal principal = () -> "user";
     private MockMvc mvc;
     private static final String URL = "/api/meetings/10/expenses";
@@ -33,14 +34,14 @@ class ExpenseApiTest {
             """;
 
     @BeforeEach void setup() {
-        mvc = MockMvcBuilders.standaloneSetup(new ExpenseController(expenses), new SettlementController(settlements))
+        mvc = MockMvcBuilders.standaloneSetup(new ExpenseController(expenses), new SettlementController(settlements, accounts))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 
     @Test @DisplayName("등록 201, 목록·상세·수정 200, 삭제 204와 빈 본문")
     void successResponses() throws Exception {
         ExpenseResponse response = new ExpenseResponse(7L, 10L, 1L, "식사", 100, null, "EXACT", null,
-                null, List.of(new ExpenseResponse.Share(1, 100)), null);
+                null, List.of(new ExpenseResponse.Share(1, 100)), null, false);
         when(expenses.create(eq(10L), eq(principal), any())).thenReturn(response);
         when(expenses.list(10, principal)).thenReturn(new ExpenseListResponse(1, true, true, List.of(response)));
         when(expenses.get(10, 7, principal)).thenReturn(response);

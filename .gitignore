@@ -17,6 +17,7 @@ backend/.gradle/
 backend/build/
 !backend/gradle/wrapper/gradle-wrapper.jar
 backend/out/
+backend/uploads/
 backend/bin/
 *.class
 *.log

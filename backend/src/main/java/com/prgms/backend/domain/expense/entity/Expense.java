@@ -25,8 +25,7 @@ public class Expense {
     @Column(length = 2000)
     private String memo;
 
-    //관련 첨부파일 관련해서는 추후 수정 예정
-    //영수증은 파일 경로로 우선 저장, 지금은 DB에는 경로만,나중에 영수증 파일 자체를 저장하도록 수정 예쩡
+    // 인증된 영수증 API에서 사용하는 비공개 로컬 저장소의 파일 키 (지출당 1장)
     @Column(length = 500)
     private String receiptKey;
     @Column(nullable = false, updatable = false)
@@ -90,7 +89,7 @@ public class Expense {
         this.remainderMemberId = remainderMemberId;
     }
 
-    // 영수증은 파일경로랑 DB에 저장하는 방식이 있는데 DB에 저장하는 건 부담이 될 거 같아 우선 로컬 파일 경로로 테스트 진행 예정
+    // null이면 영수증 첨부를 해제합니다.
     public void attachReceipt(String storageKey) {
         receiptKey = storageKey;
     }
