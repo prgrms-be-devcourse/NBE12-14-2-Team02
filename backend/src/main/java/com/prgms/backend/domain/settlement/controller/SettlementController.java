@@ -1,6 +1,10 @@
 package com.prgms.backend.domain.settlement.controller;
 
 import com.prgms.backend.domain.settlement.dto.SettlementResponse;
+import com.prgms.backend.domain.settlement.dto.AccountRequest;
+import com.prgms.backend.domain.settlement.dto.AccountResponse;
+import com.prgms.backend.domain.settlement.service.SettlementAccountService;
+import jakarta.validation.Valid;
 import com.prgms.backend.domain.settlement.service.SettlementService;
 import com.prgms.backend.global.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +16,18 @@ import java.security.Principal;
 @RequestMapping("/api/meetings/{meetingId}/settlement")
 public class SettlementController {
     private final SettlementService settlementService;
+    private final SettlementAccountService accountService;
+
+    @GetMapping("/account")
+    public ApiResponse<AccountResponse> account(@PathVariable long meetingId, Principal principal) {
+        return ApiResponse.success(200, accountService.get(meetingId, principal));
+    }
+
+    @PutMapping("/account")
+    public ApiResponse<AccountResponse> saveAccount(@PathVariable long meetingId, Principal principal,
+            @Valid @RequestBody AccountRequest request) {
+        return ApiResponse.success(200, accountService.save(meetingId, principal, request));
+    }
 
     // 모임장의 정산 확정 버튼에서 호출합니다. 사용자 ID는 요청으로 받지 않습니다.
     @PostMapping("/confirm")

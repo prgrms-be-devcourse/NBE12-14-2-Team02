@@ -5,7 +5,7 @@ export type Expense = {
   id: number; meetingId: number; payerMemberId: number; title: string;
   amount: number; memo: string | null; splitMode: "EQUAL" | "EXACT" | null;
   roundingUnit: number | null; remainderMemberId: number | null;
-  participants: Array<{ memberId: number; amount: number }>; createdAt: string;
+  participants: Array<{ memberId: number; amount: number }>; createdAt: string; hasReceipt: boolean;
 };
 export type ExpenseList = {
   currentMemberId: number; leader: boolean; editable: boolean; expenses: Expense[];
