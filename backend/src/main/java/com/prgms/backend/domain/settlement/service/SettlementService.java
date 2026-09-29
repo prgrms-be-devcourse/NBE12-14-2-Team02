@@ -8,6 +8,12 @@ import com.prgms.backend.domain.settlement.entity.Settlement;
 import com.prgms.backend.domain.settlement.entity.SettlementBalance;
 import com.prgms.backend.domain.settlement.entity.SettlementStatus;
 import com.prgms.backend.domain.settlement.entity.SettlementTransfer;
+import com.prgms.backend.domain.settlement.entity.SettlementAccount;
+import com.prgms.backend.domain.settlement.entity.SettlementAccountSnapshot;
+import com.prgms.backend.domain.settlement.repository.SettlementAccountRepository;
+import com.prgms.backend.domain.meeting.entity.MeetingMember;
+import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
+import java.util.stream.Collectors;
 import com.prgms.backend.domain.settlement.integration.MeetingAccessPort;
 import com.prgms.backend.domain.settlement.repository.SettlementRepository;
 import com.prgms.backend.global.exception.custom.settlement.SettlementRequestException;
@@ -26,6 +32,8 @@ public class SettlementService {
     private final SettlementRepository settlementRepository;
     private final SettlementCalculator calculator;
     private final NotificationService notificationService;
+    private final SettlementAccountRepository accountRepository;
+    private final MeetingMemberRepository memberRepository;
 
     @Transactional
     public SettlementResponse confirm(long meetingId, Principal principal) {
@@ -38,14 +46,6 @@ public class SettlementService {
             throw new SettlementRequestException(409, "종료된 모임은 정산을 확정할 수 없습니다.");
         }
 
-        // 종료된 모임은 정산 불가능
-        if (!context.meetingOpen()) {
-            throw new SettlementRequestException(
-                409,
-                "진행 중인 모임에서만 정산을 확정할 수 있습니다."
-            );
-        }
-
         // 지출 상시 등록,모임장의 정산 확정 요청을 통해 정산 데이터 생성
         Settlement settlement = settlementRepository.findByMeetingId(meetingId)
                 .orElseGet(() -> new Settlement(meetingId));
@@ -53,6 +53,18 @@ public class SettlementService {
 
         List<Expense> expenses = expenseRepository.findByMeetingIdOrderByIdAsc(meetingId);
         SettlementCalculator.Result result = calculator.calculate(meetingId, expenses, context.memberIds());
+        var accounts = accountRepository.findByMeetingId(meetingId).stream()
+                .collect(Collectors.toMap(SettlementAccount::getMemberId, account -> account));
+        var recipients = result.transfers().stream().map(SettlementCalculator.Transfer::recipientId).distinct().sorted().toList();
+        var missing = recipients.stream().filter(id -> !accounts.containsKey(id)).toList();
+        if (!missing.isEmpty()) {
+            var names = memberRepository.findAllById(missing).stream().collect(Collectors.toMap(
+                    MeetingMember::getId, member -> member.getUser().getNickname()));
+            String message = missing.stream().map(id -> names.getOrDefault(id, "모임원 #" + id))
+                    .collect(Collectors.joining(", "));
+            throw new SettlementRequestException(409, message + "님의 정산 계좌 등록이 필요합니다. 등록 후 다시 확정해주세요.");
+        }
+        var snapshots = recipients.stream().map(id -> new SettlementAccountSnapshot(accounts.get(id))).toList();
         List<SettlementBalance> balances = result.balances().stream()
                 .map(balance -> new SettlementBalance(balance.memberId(), balance.paidAmount(), balance.shareAmount()))
                 .toList();
@@ -62,6 +74,7 @@ public class SettlementService {
 
         // 결과 저장과 상태 변경은 함께 성공 또는 취소
         settlement.saveResult(balances, transfers);
+        settlement.saveAccounts(snapshots);
         settlement.close(context.memberId());
         notificationService.notifySettlementClosed(meetingId);
         return SettlementResponse.from(settlementRepository.save(settlement));

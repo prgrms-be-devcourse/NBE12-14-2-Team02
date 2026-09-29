@@ -9,7 +9,7 @@ import java.util.List;
 
 public record SettlementResponse(Long settlementId, Long meetingId, SettlementStatus status,
                                  Long closedByMemberId, LocalDateTime closedAt,
-                                 List<Balance> balances, List<Transfer> transfers) {
+                                 List<Balance> balances, List<Transfer> transfers, List<AccountResponse> accounts) {
     public static SettlementResponse from(Settlement settlement) {
         List<Balance> balances = settlement.getBalances().stream()
                 .map(balance -> new Balance(balance.getMemberId(), balance.getPaidAmount(), balance.getShareAmount()))
@@ -18,6 +18,8 @@ public record SettlementResponse(Long settlementId, Long meetingId, SettlementSt
                 .map(transfer -> new Transfer(transfer.getSenderId(), transfer.getRecipientId(), transfer.getAmount()))
                 .toList();
         return new SettlementResponse(settlement.getId(), settlement.getMeetingId(), settlement.getStatus(),
-                settlement.getClosedByMemberId(), settlement.getClosedAt(), balances, transfers);
+                settlement.getClosedByMemberId(), settlement.getClosedAt(), balances, transfers,
+                settlement.getAccounts().stream().map(account -> new AccountResponse(account.getMemberId(),
+                        account.getBankName(), account.getAccountNumber(), account.getAccountHolder())).toList());
     }
 }

@@ -29,6 +29,7 @@ public class ExpenseService {
     private final SettlementRepository settlementRepository;
     private final MeetingMemberRepository memberRepository;
     private final Validator validator;
+    private final ReceiptStorage receiptStorage;
 
     @Transactional(readOnly = true)
     public ExpenseListResponse list(long meetingId, Principal principal) {
@@ -69,6 +70,7 @@ public class ExpenseService {
         Expense expense = findExpense(meetingId, expenseId);
         checkOwner(expense, context.memberId());
         expenseRepository.delete(expense);
+        receiptStorage.deleteAfterCommit(expense.getReceiptKey());
     }
 
     private Expense findExpense(long meetingId, long expenseId) {
