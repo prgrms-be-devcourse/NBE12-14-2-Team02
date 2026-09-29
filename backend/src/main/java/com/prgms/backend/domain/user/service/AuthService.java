@@ -61,12 +61,12 @@ public class AuthService {
                 new UserNotFoundException("가입되지 않은 이메일입니다."));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-
-            if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
-                throw new WithdrawUserException();
-            }
-
             throw new LoginFailException();
+        }
+
+        // 비밀번호 확인 후 검사해야 탈퇴 여부가 외부에 노출되지 않음
+        if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
+            throw new WithdrawUserException();
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
