@@ -59,11 +59,12 @@ public class AuthService {
                 new UserNotFoundException("가입되지 않은 이메일입니다."));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new LoginFailException();
-        }
 
-        if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
-            throw new WithdrawUserException();
+            if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
+                throw new WithdrawUserException();
+            }
+
+            throw new LoginFailException();
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
@@ -74,8 +75,9 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    // access token 재발급
-    public String reissue(String refreshToken) {
+    // access token, refresh token 재발급
+    @Transactional
+    public TokenPair reissue(String refreshToken) {
         if (jwtTokenProvider.validateToken(refreshToken)) {
             Long userId = jwtTokenProvider.getUserId(refreshToken);
 
@@ -87,14 +89,18 @@ public class AuthService {
                 throw new WithdrawUserException();
             }
 
-            if(user.getRefreshToken().equals(refreshToken)) {
-                return jwtTokenProvider.createAccessToken(userId);
-            }
+            if(refreshToken.equals(user.getRefreshToken())) {
 
-            return null;
+                String newAccessToken = jwtTokenProvider.createAccessToken(userId);
+                String newRefreshToken = jwtTokenProvider.createRefreshToken(userId);
+                user.updateRefreshToken(newRefreshToken);
+
+                return new TokenPair(newAccessToken, newRefreshToken);
+
+            }
         }
 
-        return null;
+        throw new ReissueFailException();
     }
 
     // 로그아웃
@@ -107,7 +113,7 @@ public class AuthService {
                 () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
         );
 
-        if (user.getRefreshToken().equals(refreshToken)) {
+        if (refreshToken.equals(user.getRefreshToken())) {
             user.updateRefreshToken(null);
         }
 

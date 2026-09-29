@@ -4,6 +4,6 @@ import com.prgms.backend.global.exception.BusinessException;
 
 public class WithdrawUserException extends BusinessException {
     public WithdrawUserException() {
-        super(404, "탈퇴한 회원입니다.");
+        super(401, "탈퇴한 회원입니다.");
     }
 }
