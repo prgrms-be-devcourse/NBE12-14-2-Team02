@@ -3,10 +3,8 @@ package com.prgms.backend.domain.user.service;
 import com.prgms.backend.domain.user.dto.request.LogInRequest;
 import com.prgms.backend.domain.user.dto.TokenPair;
 import com.prgms.backend.domain.user.entity.User;
-import com.prgms.backend.global.exception.custom.user.DuplicateEmailNickname;
-import com.prgms.backend.global.exception.custom.user.LoginFailException;
-import com.prgms.backend.global.exception.custom.user.PasswordMismatchException;
-import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
+import com.prgms.backend.domain.user.enums.UserStatus;
+import com.prgms.backend.global.exception.custom.user.*;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +62,10 @@ public class AuthService {
             throw new LoginFailException();
         }
 
+        if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
+            throw new WithdrawUserException();
+        }
+
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
@@ -80,6 +82,10 @@ public class AuthService {
             User user = userRepository.findById(userId).orElseThrow(
                     () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
             );
+
+            if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
+                throw new WithdrawUserException();
+            }
 
             if(user.getRefreshToken().equals(refreshToken)) {
                 return jwtTokenProvider.createAccessToken(userId);
