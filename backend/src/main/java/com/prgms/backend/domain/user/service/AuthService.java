@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -113,7 +115,7 @@ public class AuthService {
                 () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
         );
 
-        if (refreshToken.equals(user.getRefreshToken())) {
+        if (Objects.equals(refreshToken, user.getRefreshToken())) {
             user.updateRefreshToken(null);
         }
 

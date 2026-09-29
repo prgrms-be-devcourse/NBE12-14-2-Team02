@@ -19,7 +19,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -148,8 +150,17 @@ public class UserController {
         Long userId = securityUser.getId();
         userWithdrawService.withdraw(userId);
 
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/api/auth")       // 로그인 때 설정한 path와 반드시 동일해야 지워짐
+                .maxAge(0)        // 즉시 만료
+                .build();
+
         return ResponseEntity
                 .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(ApiResponse.noContentSuccess("회원 탈퇴가 완료되었습니다."));
     }
 }
