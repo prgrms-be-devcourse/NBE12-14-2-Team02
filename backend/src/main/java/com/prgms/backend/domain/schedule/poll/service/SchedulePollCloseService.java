@@ -8,6 +8,7 @@ import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
 import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -20,7 +21,8 @@ public class SchedulePollCloseService {
     private final NotificationService notificationService;
     private final MeetingRepository meetingRepository;
 
-    @Transactional
+    // meetingId 조회가 먼저 Read View를 만들더라도 알림 대상은 마감 시점의 커밋된 참여자로 조회한다.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void closeOneIfExpired(Long pollId) {
 
         // Poll이 어느 Meeting 소속인지 확인
