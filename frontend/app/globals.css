@@ -106,7 +106,7 @@ th { color:var(--muted); background:#fafaff; }
 .pill-options { display:flex; flex-wrap:wrap; gap:8px; }
 .pill-options button { flex:1; min-width:90px; }
 .checkbox-row { display:flex; align-items:center; gap:10px; padding:10px 0; }
-.checkbox-row input { width:18px; height:18px; accent-color:var(--primary); }
+.checkbox-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--primary); flex-shrink:0; }
 .section-header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:14px; }
 .section-header h2 { margin:0; font-size:20px; }
 .top-gap { margin-top:18px; }
