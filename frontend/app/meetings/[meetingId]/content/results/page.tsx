@@ -17,10 +17,6 @@ export default function ContentResultsPage() {
   const [start, setStart] = useState(0);
   const load = useCallback(() => apiFetch<ContentResults>(`/api/meetings/${meetingId}/content-poll/results?sort=SCORE`).then(setResult).catch((e) => setError(e.message)), [meetingId]);
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => {
-    if (!result) return;
-    setStart((current) => Math.min(current, Math.max(0, result.candidates.length - WINDOW)));
-  }, [result]);
 
   async function confirm(candidateId: number) {
     try {
@@ -32,15 +28,16 @@ export default function ContentResultsPage() {
   }
 
   const candidates = result?.candidates ?? [];
-  const visible = candidates.slice(start, start + WINDOW);
+  const safeStart = Math.min(start, Math.max(0, candidates.length - WINDOW));
+  const visible = candidates.slice(safeStart, safeStart + WINDOW);
   const paged = candidates.length > WINDOW;
-  const canPrev = start > 0;
-  const canNext = start + WINDOW < candidates.length;
+  const canPrev = safeStart > 0;
+  const canNext = safeStart + WINDOW < candidates.length;
 
   function shift(delta: number) {
     setStart((current) => {
       const max = Math.max(0, candidates.length - WINDOW);
-      return Math.min(max, Math.max(0, current + delta));
+      return Math.min(max, Math.max(0, Math.min(current, max) + delta));
     });
   }
 
@@ -95,7 +92,7 @@ export default function ContentResultsPage() {
                     <tr key={member.meetingMemberId}>
                       <td className="name-col">{member.nickname}{member.host ? " (호스트)" : ""}</td>
                       {paged && <td className="arrow-col" />}
-                      {member.preferences.slice(start, start + WINDOW).map((preference, index) => <td key={visible[index]?.candidateId ?? index}>{preference ? label[preference] : "미응답"}</td>)}
+                      {member.preferences.slice(safeStart, safeStart + WINDOW).map((preference, index) => <td key={visible[index]?.candidateId ?? index}>{preference ? label[preference] : "미응답"}</td>)}
                       {paged && <td className="arrow-col" />}
                       <td className="count-col">{member.responseCount}</td>
                     </tr>
