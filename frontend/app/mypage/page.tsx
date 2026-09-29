@@ -121,15 +121,18 @@ export default function MyPage() {
     }
   }
 
-  // 로그아웃: 서버 요청 성공 여부와 관계없이 토큰을 지우고 로그인 페이지로 이동
-  async function logout() {
+  // 회원 탈퇴: 확인을 받은 뒤 요청하고, 성공하면 토큰을 지우고 로그인 페이지로 이동
+  async function withdraw() {
+    if (!confirm("정말 탈퇴하시겠습니까? 탈퇴 후에는 되돌릴 수 없습니다.")) return;
+
+    setSaving(true);
     try {
-      await apiFetch<void>("/api/auth/logout", { method: "POST" });
-    } catch {
-      /* 이미 인증이 없으면 로그아웃된 상태로 본다 */
-    } finally {
+      await apiFetch<void>("/api/user", { method: "DELETE" });
       clearAccessToken();
       router.push("/login");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "탈퇴하지 못했습니다.");
+      setSaving(false);
     }
   }
 
@@ -239,10 +242,10 @@ export default function MyPage() {
         <Card>
           <div className="row between">
             <div>
-              <h3>로그아웃</h3>
-              <p>현재 브라우저의 로그인 상태를 종료합니다.</p>
+              <h3>회원 탈퇴</h3>
+              <p>계정을 삭제하고 서비스 이용을 종료합니다.</p>
             </div>
-            <button className="button button-ghost" onClick={logout}>로그아웃</button>
+            <button className="button button-danger" onClick={withdraw} disabled={saving}>회원 탈퇴</button>
           </div>
         </Card>
       </div>
