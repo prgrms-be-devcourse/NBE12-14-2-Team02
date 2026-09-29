@@ -122,6 +122,7 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
             <Field label="결제 금액 (원)"><input className="input" type="number" required min={1} max={999999999999} step={1} value={amount} onChange={e => setAmount(e.target.value)} /></Field>
           </div>
           <Field label="메모"><textarea className="textarea" maxLength={2000} value={memo} onChange={e => setMemo(e.target.value)} /></Field>
+          <p className="muted">영수증 사진은 지출 저장 후 목록의 상세 내역에서 1장 첨부할 수 있습니다.</p>
           <p>결제자: {payer}</p>
           <Field label="분담 방식"><select className="select" value={mode} onChange={e => setMode(e.target.value as "EQUAL" | "EXACT")}><option value="EQUAL">균등 분담</option><option value="EXACT">금액 직접 입력</option></select></Field>
           <div><strong>부담 참여자</strong>{members.map(member => <div className="checkbox-row" key={member.id}>

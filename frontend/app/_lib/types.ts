@@ -49,4 +49,5 @@ export type ContentResults = {
   members: Array<{ meetingMemberId: number; userId: number; nickname: string; host: boolean; preferences: Array<"PREFER" | "AVAILABLE" | "DISLIKE" | null>; responseCount: number }>;
 };
 export type NotificationItem = { id: number; meetingId: number | null; type: string; title: string; content: string; redirectUrl: string | null; isRead: boolean; createdAt: string };
-export type Settlement = { settlementId: number; meetingId: number; status: "OPEN" | "CLOSED"; closedByMemberId: number | null; closedAt: string | null; balances: Array<{ memberId: number; paidAmount: number; shareAmount: number }>; transfers: Array<{ senderId: number; recipientId: number; amount: number }> };
+export type SettlementAccount = { memberId: number; bankName: string; accountNumber: string; accountHolder: string };
+export type Settlement = { settlementId: number; meetingId: number; status: "OPEN" | "CLOSED"; closedByMemberId: number | null; closedAt: string | null; balances: Array<{ memberId: number; paidAmount: number; shareAmount: number }>; transfers: Array<{ senderId: number; recipientId: number; amount: number }>; accounts: SettlementAccount[] };

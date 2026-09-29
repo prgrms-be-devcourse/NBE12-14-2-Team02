@@ -23,6 +23,13 @@ public class SettlementAccount {
     private String accountHolder;
 
     //계좌 정보 입력
+    public void update(String bankName, String accountNumber, String accountHolder) {
+        SettlementAccount checked = new SettlementAccount(meetingId, memberId, bankName, accountNumber, accountHolder);
+        this.bankName = checked.bankName;
+        this.accountNumber = checked.accountNumber;
+        this.accountHolder = checked.accountHolder;
+    }
+
     public SettlementAccount(long meetingId, long memberId, String bankName, String accountNumber, String accountHolder) {
         if (meetingId <= 0 || memberId <= 0) throw new IllegalArgumentException("모임/모임원 ID가 필요합니다.");
         if (bankName == null || bankName.isBlank() || bankName.length() > 100

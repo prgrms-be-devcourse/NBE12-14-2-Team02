@@ -34,7 +34,7 @@ class ExpenseServiceTest {
 
     @BeforeEach void setup() {
         validation = Validation.buildDefaultValidatorFactory();
-        service = new ExpenseService(expenses, new ExpenseSplitCalculator(), access, settlements, members, validation.getValidator());
+        service = new ExpenseService(expenses, new ExpenseSplitCalculator(), access, settlements, members, validation.getValidator(), mock(com.prgms.backend.domain.expense.service.ReceiptStorage.class));
         var context = new MeetingAccessPort.Context(1, true, true, Set.of(1L, 2L, 3L));
         when(access.requireMember(10, principal)).thenReturn(context);
         when(access.requireMemberForRead(10, principal)).thenReturn(context);

@@ -29,7 +29,9 @@ class SettlementServiceTest {
     private final ExpenseRepository expenses = mock(ExpenseRepository.class);
     private final SettlementRepository settlements = mock(SettlementRepository.class);
     private final NotificationService notificationService = mock(NotificationService.class);
-    private final SettlementService service = new SettlementService(access, expenses, settlements, new SettlementCalculator(), notificationService);
+    private final com.prgms.backend.domain.settlement.repository.SettlementAccountRepository accounts = mock(com.prgms.backend.domain.settlement.repository.SettlementAccountRepository.class);
+    private final com.prgms.backend.domain.meeting.repository.MeetingMemberRepository members = mock(com.prgms.backend.domain.meeting.repository.MeetingMemberRepository.class);
+    private final SettlementService service = new SettlementService(access, expenses, settlements, new SettlementCalculator(), notificationService, accounts, members);
     private final Principal principal = () -> "host";
 
     @BeforeEach void setup() {
@@ -41,6 +43,7 @@ class SettlementServiceTest {
 
     @Test @DisplayName("모임장이 확정하면 금액·송금 내역·확정자·시각을 함께 저장")
     void confirm() {
+        when(accounts.findByMeetingId(10)).thenReturn(List.of(account(1)));
         when(expenses.findByMeetingIdOrderByIdAsc(10)).thenReturn(List.of(
                 Expense.register(10, 1, "식사", 300, null, Map.of(1L, 100L, 2L, 200L), "EXACT", null, null)));
         var result = service.confirm(10, principal);
@@ -51,6 +54,11 @@ class SettlementServiceTest {
         verify(settlements).save(saved.capture());
         assertEquals(2, saved.getValue().getBalances().size());
         assertEquals(200, saved.getValue().getTransfers().getFirst().getAmount());
+
+    }
+
+    private com.prgms.backend.domain.settlement.entity.SettlementAccount account(long memberId) {
+        return new com.prgms.backend.domain.settlement.entity.SettlementAccount(10, memberId, "은행", "001-234", "예금주");
     }
 
     @Test @DisplayName("일반 모임원은 확정할 수 없다")

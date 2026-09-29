@@ -40,6 +40,17 @@ public class Settlement {
         }
     }
 
+    @ElementCollection
+    @CollectionTable(name = "settlement_account_snapshots", joinColumns = @JoinColumn(name = "settlement_id"))
+    @OrderColumn(name = "account_order")
+    private List<SettlementAccountSnapshot> accounts = new ArrayList<>();
+
+    public void saveAccounts(List<SettlementAccountSnapshot> accounts) {
+        checkOpen();
+        this.accounts.clear();
+        this.accounts.addAll(accounts);
+    }
+
     public void saveResult(List<SettlementBalance> balances, List<SettlementTransfer> transfers) {
         checkOpen();
         this.balances.clear();
