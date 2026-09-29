@@ -20,7 +20,6 @@ import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateNotFo
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -35,7 +34,7 @@ public class ScheduleVoteService {
     private final MeetingRepository meetingRepository;
 
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     public ScheduleVoteResponse.Saved submit(
             Long meetingId,
             Long candidateId,

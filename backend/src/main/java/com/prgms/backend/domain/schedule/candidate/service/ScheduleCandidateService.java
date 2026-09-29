@@ -17,7 +17,6 @@ import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateHasVo
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -32,7 +31,7 @@ public class ScheduleCandidateService {
     private final MeetingRepository meetingRepository;
 
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     public ScheduleCandidateResponse.Summary create(Long meetingId, Long userId, ScheduleCandidateRequest.Create request) {
 
         validateHostAndActiveMeeting(meetingId, userId);
@@ -55,7 +54,7 @@ public class ScheduleCandidateService {
 
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     public ScheduleCandidateResponse.Summary update(
             Long meetingId,
             Long candidateId,
@@ -86,7 +85,7 @@ public class ScheduleCandidateService {
         return ScheduleCandidateResponse.Summary.from(candidate);
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional
     public void delete(
             Long meetingId,
             Long candidateId,
