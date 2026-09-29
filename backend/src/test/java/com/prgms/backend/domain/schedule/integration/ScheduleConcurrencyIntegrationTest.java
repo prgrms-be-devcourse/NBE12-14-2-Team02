@@ -1,4 +1,4 @@
-package com.prgms.backend.domain.schedule;
+package com.prgms.backend.domain.schedule.integration;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
 import com.prgms.backend.domain.meeting.entity.MeetingMember;
