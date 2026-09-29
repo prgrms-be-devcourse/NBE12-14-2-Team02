@@ -45,7 +45,6 @@ public class UserService {
         );
 
         user.updateNickname(nickname);
-        user.updateUpdatedAt(LocalDateTime.now());
         return new ProfileResponse(user.getEmail(), user.getNickname());
     }
 
@@ -63,8 +62,6 @@ public class UserService {
 
         // 암호화한 비밀번호로 업데이트
         user.updatePassword(passwordEncoder.encode(newPassword));
-
-        user.updateUpdatedAt(LocalDateTime.now());
     }
 
     /*
