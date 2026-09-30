@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter,} from "next/navigation";
 import { useEffect, useState } from "react";
 
 import AppShell from "@/app/_components/AppShell";
 import MeetingTabs from "@/app/_components/MeetingTabs";
+import ConfirmModal from "@/app/_components/ConfirmModal";
+import MeetingEditModal from "@/app/_components/MeetingEditModal";
 import {
   Badge,
   Card,
@@ -24,6 +26,18 @@ import type {
 } from "@/app/_lib/types";
 
 export default function MeetingDetailPage() {
+  const router = useRouter();
+
+  const [editOpen, setEditOpen] = useState(false);
+
+  const [confirmAction, setConfirmAction] =
+      useState<"leave" | "complete" | null>(null);
+
+  const [actionLoading, setActionLoading] =
+      useState(false);
+
+  const [success, setSuccess] = useState("");
+
   const { meetingId } =
       useParams<{ meetingId: string }>();
 
@@ -114,6 +128,100 @@ export default function MeetingDetailPage() {
     }
   }
 
+  async function handleUpdateMeeting(values: {
+    name: string;
+    description: string;
+  }) {
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const updatedMeeting =
+          await apiFetch<Meeting>(
+              `/api/meetings/${meetingId}`,
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(values),
+              }
+          );
+
+      setMeeting(updatedMeeting);
+      setEditOpen(false);
+      setSuccess("모임 정보가 수정되었습니다.");
+    } catch (error) {
+      setError(
+          error instanceof Error
+              ? error.message
+              : "모임 정보를 수정하지 못했습니다."
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleCompleteMeeting() {
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const completedMeeting =
+          await apiFetch<Meeting>(
+              `/api/meetings/${meetingId}/complete`,
+              {
+                method: "PATCH",
+              }
+          );
+
+      setMeeting(completedMeeting);
+      setConfirmAction(null);
+
+      setSuccess("모임이 종료되었습니다.");
+    } catch (error) {
+      setConfirmAction(null);
+
+      setError(
+          error instanceof Error
+              ? error.message
+              : "모임을 종료하지 못했습니다."
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleLeaveMeeting() {
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await apiFetch(
+          `/api/meetings/${meetingId}/members/me`,
+          {
+            method: "DELETE",
+          }
+      );
+
+      router.replace("/");
+      router.refresh();
+    } catch (error) {
+      setConfirmAction(null);
+
+      setError(
+          error instanceof Error
+              ? error.message
+              : "모임에서 탈퇴하지 못했습니다."
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   if (!meeting) {
     return (
         <AppShell>
@@ -144,6 +252,12 @@ export default function MeetingDetailPage() {
         {error && (
             <Message tone="error">
               {error}
+            </Message>
+        )}
+
+        {success && (
+            <Message tone="success">
+              {success}
             </Message>
         )}
 
@@ -195,7 +309,91 @@ export default function MeetingDetailPage() {
               isHost={isHost}
           />
           <MemberSection members={members} hostId={meeting.hostId} />
+
+          <Card className="top-gap">
+            <div className="section-header">
+              <div>
+                <h2>모임 관리</h2>
+                <p className="muted">
+                  모임 정보와 참여 상태를 관리할 수 있습니다.
+                </p>
+              </div>
+            </div>
+
+            {meeting.status === "ACTIVE" ? (
+                <div className="row">
+                  {isHost ? (
+                      <>
+                        <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={() => setEditOpen(true)}
+                        >
+                          모임 정보 수정
+                        </button>
+
+                        <button
+                            type="button"
+                            className="button button-danger"
+                            onClick={() =>
+                                setConfirmAction("complete")
+                            }
+                        >
+                          모임 종료
+                        </button>
+                      </>
+                  ) : (
+                      <button
+                          type="button"
+                          className="button button-danger"
+                          onClick={() =>
+                              setConfirmAction("leave")
+                          }
+                      >
+                        모임 탈퇴
+                      </button>
+                  )}
+                </div>
+            ) : (
+                <Message tone="info">
+                  종료된 모임입니다.
+                </Message>
+            )}
+          </Card>
+
         </div>
+
+        <MeetingEditModal
+            open={editOpen}
+            name={meeting.name}
+            description={meeting.description}
+            loading={actionLoading}
+            onClose={() => setEditOpen(false)}
+            onSubmit={handleUpdateMeeting}
+        />
+
+        <ConfirmModal
+            open={confirmAction === "complete"}
+            title="모임을 종료하시겠어요?"
+            description="종료된 모임은 다시 진행 중 상태로 되돌릴 수 없습니다. 진행 중인 투표가 있거나 정산이 완료되지 않았다면 종료할 수 없습니다."
+            confirmLabel="모임 종료"
+            danger
+            loading={actionLoading}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={handleCompleteMeeting}
+        />
+
+        <ConfirmModal
+            open={confirmAction === "leave"}
+            title="모임에서 탈퇴하시겠어요?"
+            description="탈퇴 후 다시 참여하려면 유효한 초대 링크가 필요합니다."
+            confirmLabel="탈퇴하기"
+            danger
+            loading={actionLoading}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={handleLeaveMeeting}
+        />
+
       </AppShell>
   );
 }
@@ -209,9 +407,9 @@ function FeatureCard({ icon, title, status, href, action }: { icon: string; titl
 }
 
 function MeetingHeader({
-                         meeting,
-                         hostNickname,
-                       }: {
+ meeting,
+ hostNickname,
+}: {
   meeting: Meeting;
   hostNickname?: string;
 }) {
@@ -237,11 +435,11 @@ function MeetingHeader({
 }
 
 function InvitationSection({
-                             inviteUrl,
-                             expiresAt,
-                             onCreateInvitation,
-                             isHost,
-                           }: {
+ inviteUrl,
+ expiresAt,
+ onCreateInvitation,
+ isHost,
+}: {
   inviteUrl: string;
   expiresAt?: string;
   onCreateInvitation: () => void;
@@ -306,9 +504,9 @@ function InvitationSection({
 }
 
 function MemberSection({
-                         members,
-                         hostId,
-                       }: {
+ members,
+ hostId,
+}: {
   members: MeetingMember[];
   hostId: number;
 }) {
@@ -332,9 +530,9 @@ function MemberSection({
 }
 
 function MemberItem({
-                      member,
-                      isHost,
-                    }: {
+  member,
+  isHost,
+}: {
   member: MeetingMember;
   isHost: boolean;
 }) {
