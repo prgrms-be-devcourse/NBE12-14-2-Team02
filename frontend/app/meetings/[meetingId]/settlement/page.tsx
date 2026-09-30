@@ -10,7 +10,7 @@ import MeetingTabs from "@/app/_components/MeetingTabs";
 import { Badge, Card, EmptyState, Message, PageTitle, formatDate, formatMoney } from "@/app/_components/ui";
 import { apiFetch } from "@/app/_lib/api";
 import { getSettlement, type Expense, type ExpenseList } from "@/app/_lib/expenses";
-import type { Meeting, MeetingMember, Settlement } from "@/app/_lib/types";
+import type { Meeting, MeetingMember, Settlement, SettlementPreview } from "@/app/_lib/types";
 
 type Data = { list: ExpenseList; members: MeetingMember[]; settlement: Settlement | null; meeting: Meeting };
 
@@ -26,6 +26,9 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
   const busyRef = useRef(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshRef = useRef(false);
+  const [preview, setPreview] = useState<SettlementPreview | null>(null);
   const load = useCallback(async () => {
     const [list, members, settlement, meeting] = await Promise.all([
       apiFetch<ExpenseList>(`/api/meetings/${meetingId}/expenses`),
@@ -45,10 +48,21 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
   }, [load]);
 
   async function refresh() {
-    setLoading(true); setError("");
+    if (refreshRef.current) return;
+    refreshRef.current = true; setRefreshing(true); setError(""); setPreview(null);
     try { setData(await load()); }
-    catch (e) { setData(null); setError(e instanceof Error ? e.message : "목록을 다시 불러오지 못했습니다."); }
-    finally { setLoading(false); }
+    catch (e) { setError(e instanceof Error ? e.message : "목록을 다시 불러오지 못했습니다."); }
+    finally { refreshRef.current = false; setRefreshing(false); }
+  }
+
+  async function previewSettlement() {
+    if (busyRef.current || refreshRef.current) return;
+    busyRef.current = true; setBusy(true); setError(""); setPreview(null);
+    try { setPreview(await apiFetch<SettlementPreview>(`/api/meetings/${meetingId}/settlement/preview`)); }
+    catch (e) {
+      const message = e instanceof Error ? e.message : "예상 정산을 불러오지 못했습니다.";
+      await refresh(); setError(message);
+    } finally { busyRef.current = false; setBusy(false); }
   }
 
   async function remove(expense: Expense) {
@@ -66,12 +80,13 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
   }
 
   async function confirmSettlement() {
-    if (busyRef.current || !window.confirm("정산을 확정하면 지출 등록·수정·삭제가 불가능합니다. 누락된 지출이 없는지 확인하셨나요?")) return;
+    if (busyRef.current || refreshRef.current || !preview || !window.confirm("정산을 확정하면 지출과 기존 계좌를 변경할 수 없습니다. 계좌 미등록자가 있어도 확정되며, 미등록 계좌는 나중에 등록할 수 있습니다. 계속할까요?")) return;
     busyRef.current = true; setBusy(true); setError(""); setNotice("");
     try {
       const settlement = await apiFetch<Settlement>(`/api/meetings/${meetingId}/settlement/confirm`, { method: "POST" });
       setData(current => current ? { ...current, settlement, list: { ...current.list, editable: false } } : current);
       setNotice("정산 결과를 확정했습니다. 실제 송금 완료를 의미하지는 않습니다.");
+      setPreview(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : "정산 확정에 실패했습니다.";
       await refresh(); setError(message);
@@ -103,13 +118,14 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
   }
   return <AppShell>
     <PageTitle eyebrow="Expenses & settlement" title="지출 내역 · 정산" description="지출을 확인한 뒤 모임장이 최종 정산을 확정합니다."
-      action={!loading && !busy && editable ? <Link className="button button-primary" href={`/meetings/${meetingId}/expenses/new`}>+ 지출 등록</Link> : undefined} />
+      action={!loading && !busy && !refreshing && editable ? <Link className="button button-primary" href={`/meetings/${meetingId}/expenses/new`}>+ 지출 등록</Link> : undefined} />
     <MeetingTabs meetingId={meetingId} active="settlement" />
     {error && <Message tone="error">{error}</Message>}
     {notice && <Message tone="success">{notice}</Message>}
-    <button className="button button-ghost" disabled={loading || busy} onClick={refresh}>새로고침</button>
+    <button className="button button-ghost" disabled={loading || busy || refreshing} onClick={refresh}>{refreshing ? "갱신 중…" : "새로고침"}</button>
     {loading ? <Message>지출과 정산 정보를 불러오는 중입니다.</Message> : data && <div className="stack">
-      <SettlementAccountForm key={meetingId} meetingId={meetingId} closed={settlement?.status === "CLOSED"} meetingOpen={data.meeting.status === "ACTIVE"} />
+      <SettlementAccountForm key={meetingId} meetingId={meetingId} closed={settlement?.status === "CLOSED"} meetingOpen={data.meeting.status === "ACTIVE"}
+        canRegisterAfterClosed={Boolean(currentMemberId && settlement?.missingAccountMemberIds?.includes(currentMemberId))} onSaved={() => { void refresh(); }} />
       <Card>
         <div className="row between"><h2>지출 {data.list.expenses.length}건</h2><strong>합계 {formatMoney(data.list.expenses.reduce((sum, expense) => sum + expense.amount, 0))}</strong></div>
         {!editable && <Message>정산이 확정되었거나 종료된 모임입니다. 지출은 조회만 가능합니다.</Message>}
@@ -124,19 +140,28 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
               {!expense.participants.length && <p>이전 지출의 개인별 부담액 정보가 없습니다.</p>}
               {expense.remainderMemberId && <p>차액 담당자: {name(expense.remainderMemberId)}</p>}
               <ExpenseReceipt meetingId={meetingId} expenseId={expense.id} hasReceipt={expense.hasReceipt}
-                editable={editable && !busy && expense.payerMemberId === currentMemberId} onChange={refresh} />
+                editable={editable && !busy && !refreshing && expense.payerMemberId === currentMemberId} onChange={refresh} />
             </details>
             {editable && expense.payerMemberId === data.list.currentMemberId && <div className="form-actions">
-              {!busy && <Link className="button button-secondary" href={`/meetings/${meetingId}/expenses/${expense.id}/edit`}>수정</Link>}
-              <button className="button button-ghost" disabled={busy} onClick={() => remove(expense)}>삭제</button>
+              {!busy && !refreshing && <Link className="button button-secondary" href={`/meetings/${meetingId}/expenses/${expense.id}/edit`}>수정</Link>}
+              <button className="button button-ghost" disabled={busy || refreshing} onClick={() => remove(expense)}>삭제</button>
             </div>}
           </div>)}
         </div>}
       </Card>
       {!settlement && data.meeting.status === "ACTIVE" && <Card><Badge tone="green">정산 확정 전</Badge><h2>모든 지출을 확인해주세요</h2>
-        {data.list.leader && editable ? <button className="button button-primary" disabled={busy} onClick={confirmSettlement}>{busy ? "처리 중…" : "최종 정산 확정"}</button> : <p>모임장이 정산을 확정하면 결과가 표시됩니다.</p>}
+        <p>예상 결과를 확인한 뒤 확정해주세요. 지출·계좌가 변경되면 결과가 달라질 수 있으며 확정 시 다시 계산합니다.</p>
+        <button className="button button-secondary" disabled={busy || refreshing || !editable} onClick={previewSettlement}>{busy ? "처리 중…" : "예상 정산 확인"}</button>
+        {preview && <div className="stack">
+          <h3>예상 송금 내역</h3>
+          {preview.transfers.map(transfer => <p key={`${transfer.senderId}-${transfer.recipientId}`}>{name(transfer.senderId)} → {name(transfer.recipientId)} · {formatMoney(transfer.amount)}</p>)}
+          {!preview.transfers.length && <p>추가 송금할 금액이 없습니다.</p>}
+          {preview.missingAccounts.length > 0 && <Message>계좌 미등록: {preview.missingAccounts.map(account => account.nickname).join(", ")}. 계좌 등록 여부와 관계없이 정산을 확정할 수 있습니다.</Message>}
+        </div>}
+        {data.list.leader && editable ? <button className="button button-primary" disabled={busy || refreshing || !preview} onClick={confirmSettlement}>최종 정산 확정</button> : <p>모임장이 정산을 확정하면 결과가 표시됩니다.</p>}
       </Card>}
       {settlement && <>
+        {!!settlement.missingAccountMemberIds?.length && <Message>계좌 미등록: {settlement.missingAccountMemberIds.map(name).join(", ")}. 정산은 확정되었으며, 해당 수취인의 계좌 등록 후 송금해주세요.</Message>}
         <Card><Badge tone="gray">정산 확정 완료</Badge><p>{settlement.closedByMemberId && name(settlement.closedByMemberId)} · {formatDate(settlement.closedAt)}</p><p>아래 송금 안내는 실제 송금 완료 기록이 아닙니다.</p></Card>
         <Card><h2>내 정산 결과</h2>
           {myBalance && <p>결제 총액 {formatMoney(myBalance.paidAmount)} · 부담 총액 {formatMoney(myBalance.shareAmount)}</p>}
@@ -146,9 +171,9 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
             return <div className="stack" key={transfer.recipientId}>
               <strong>{name(transfer.recipientId)}님에게 {formatMoney(transfer.amount)}</strong>
               {account ? <>
-                <p>확정 당시 계좌: {account.bankName} · {account.accountHolder} · {account.accountNumber}</p>
+                <p>송금 계좌: {account.bankName} · {account.accountHolder} · {account.accountNumber}</p>
                 <button type="button" className="button button-secondary" onClick={() => copyAccount(account.accountNumber)}>계좌번호 복사</button>
-              </> : <Message>이전 정산에는 확정 당시 계좌 정보가 없습니다. 수취인에게 확인해주세요.</Message>}
+              </> : <Message>{name(transfer.recipientId)}님은 계좌 미등록 상태입니다. 계좌 등록 후 송금해주세요.</Message>}
             </div>;
           })}
           <h3>내가 받을 돈 · {formatMoney(incoming.reduce((sum, transfer) => sum + transfer.amount, 0))}</h3>
@@ -165,7 +190,7 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
       {data.meeting.status === "COMPLETED" ? <Message>종료된 모임입니다. 지출과 정산 결과를 조회할 수 있습니다.</Message> :
         data.list.leader && (settlement?.status === "CLOSED" || data.list.expenses.length === 0) && <Card>
           <h2>모임 종료</h2><p>모든 활동이 끝났다면 모임을 종료할 수 있습니다. 실제 입금 여부는 별도로 확인해주세요.</p>
-          <button className="button button-secondary" disabled={busy} onClick={completeMeeting}>모임 종료</button>
+          <button className="button button-secondary" disabled={busy || refreshing} onClick={completeMeeting}>모임 종료</button>
         </Card>}
     </div>}
   </AppShell>;

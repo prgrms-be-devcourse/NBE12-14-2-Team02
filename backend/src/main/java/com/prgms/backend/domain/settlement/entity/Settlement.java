@@ -51,6 +51,21 @@ public class Settlement {
         this.accounts.addAll(accounts);
     }
 
+    public boolean canRegisterMissingAccount(long memberId) {
+        return status == SettlementStatus.CLOSED
+                && transfers.stream().anyMatch(transfer -> transfer.getRecipientId() == memberId)
+                && accounts.stream().noneMatch(account -> account.getMemberId() == memberId);
+    }
+
+    // 확정된 금액과 기존 계좌는 유지하고, 미등록 수취인의 계좌만 최초 1회 보충합니다.
+    public void registerMissingAccount(SettlementAccount account) {
+        if (!canRegisterMissingAccount(account.getMemberId())) {
+            throw new com.prgms.backend.global.exception.custom.settlement.SettlementRequestException(
+                    409, "확정 후에는 미등록 수취인의 계좌만 등록할 수 있습니다.");
+        }
+        accounts.add(new SettlementAccountSnapshot(account));
+    }
+
     public void saveResult(List<SettlementBalance> balances, List<SettlementTransfer> transfers) {
         checkOpen();
         this.balances.clear();
