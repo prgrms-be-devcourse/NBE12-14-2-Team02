@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.meeting.repository;
 
 import com.prgms.backend.domain.meeting.entity.Meeting;
+import com.prgms.backend.domain.meeting.enums.MeetingStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,7 +13,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
-    List<Meeting> findByHostId(Long hostId);
+    boolean existsByHostIdAndStatusAndDeletedAtIsNull(Long hostId, MeetingStatus status);
+    List<Meeting> findByHostIdAndDeletedAtIsNull(Long hostId);
 
     Optional<Meeting> findByIdAndDeletedAtIsNull(Long meetingId);
 
