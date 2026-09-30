@@ -65,11 +65,21 @@ public class AuthController {
             @CookieValue(value = "refreshToken", required = false)
             String refreshToken
     ) {
-        String newAccessToken = authService.reissue(refreshToken);
-        ReissueResponse response = new ReissueResponse(newAccessToken);
+        TokenPair tokenPair = authService.reissue(refreshToken);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(Duration.ofDays(14))
+                .build();
+
+        ReissueResponse response = new ReissueResponse(tokenPair.accessToken());
 
         return ResponseEntity
                 .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(ApiResponse.success(200, response));
     }
 

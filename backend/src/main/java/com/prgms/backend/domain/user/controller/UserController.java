@@ -8,8 +8,10 @@ import com.prgms.backend.domain.user.dto.request.SignUpRequest;
 import com.prgms.backend.domain.user.dto.request.UpdatePasswordRequest;
 import com.prgms.backend.domain.user.dto.response.SignUpResponse;
 import com.prgms.backend.domain.user.entity.SecurityUser;
+import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.domain.user.service.AuthService;
 import com.prgms.backend.domain.user.service.UserService;
+import com.prgms.backend.domain.user.service.UserWithdrawService;
 import com.prgms.backend.global.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -17,7 +19,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +33,7 @@ public class UserController {
 
     private final AuthService authService;
     private final UserService userService;
+    private final UserWithdrawService userWithdrawService;
 
     @Operation(
             summary = "이메일 중복 확인",
@@ -138,17 +143,24 @@ public class UserController {
                 .body(ApiResponse.noContentSuccess("비밀번호를 변경했습니다."));
     }
 
-    /*
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @AuthenticationPrincipal SecurityUser securityUser
     ){
-        Long userId = securityUser.getUserId();
-        String message = userService.withdraw(userId);
+        Long userId = securityUser.getId();
+        userWithdrawService.withdraw(userId);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/api/auth")       // 로그인 때 설정한 path와 반드시 동일해야 지워짐
+                .maxAge(0)        // 즉시 만료
+                .build();
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(ApiResponse.noContentSuccess(message));
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.noContentSuccess("회원 탈퇴가 완료되었습니다."));
     }
-     */
 }

@@ -1,7 +1,7 @@
 package com.prgms.backend.security;
 
 import io.jsonwebtoken.Jwts;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -9,10 +9,21 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 
 @Service
-@RequiredArgsConstructor
 public class JwtTokenProvider {
 
-    private final SecretKey secretKey;
+    private final SecretKey accessSecretKey;
+    private final SecretKey refreshSecretKey;
+
+    public JwtTokenProvider(
+            @Qualifier("accessSecretKey") SecretKey accessSecretKey,
+            @Qualifier("refreshSecretKey") SecretKey refreshSecretKey
+    ) {
+        if (java.util.Arrays.equals(accessSecretKey.getEncoded(), refreshSecretKey.getEncoded())) {
+            throw new IllegalArgumentException("Access와 refresh JWT key는 달라야 합니다.");
+        }
+        this.accessSecretKey = accessSecretKey;
+        this.refreshSecretKey = refreshSecretKey;
+    }
 
     @Value("${custom.jwt.access-token-validity-seconds}")
     private long accessExpiration;
@@ -30,7 +41,7 @@ public class JwtTokenProvider {
                 .subject(userId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(secretKey)
+                .signWith(accessSecretKey)
                 .compact();
     }
 
@@ -44,11 +55,19 @@ public class JwtTokenProvider {
                 .subject(userId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(secretKey)
+                .signWith(refreshSecretKey)
                 .compact();
     }
 
-    public Boolean validateToken(String token){
+    public boolean validateAccessToken(String token) {
+        return validateToken(token, accessSecretKey);
+    }
+
+    public boolean validateRefreshToken(String token) {
+        return validateToken(token, refreshSecretKey);
+    }
+
+    private boolean validateToken(String token, SecretKey secretKey) {
         try {
             Jwts.parser()
                     .verifyWith(secretKey)
@@ -62,7 +81,15 @@ public class JwtTokenProvider {
     }
 
 
-    public Long getUserId(String token) {
+    public Long getAccessUserId(String token) {
+        return getUserId(token, accessSecretKey);
+    }
+
+    public Long getRefreshUserId(String token) {
+        return getUserId(token, refreshSecretKey);
+    }
+
+    private Long getUserId(String token, SecretKey secretKey) {
         String subject = Jwts.parser()
                 .verifyWith(secretKey)
                 .build()

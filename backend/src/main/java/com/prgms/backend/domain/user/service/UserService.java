@@ -1,6 +1,5 @@
 package com.prgms.backend.domain.user.service;
 
-import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.user.dto.response.ProfileResponse;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.global.exception.custom.user.DuplicateEmailNickname;
@@ -12,8 +11,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -21,7 +18,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
-    private final MeetingRepository meetingRepository;
 
     // 프로필 조회
     public ProfileResponse getProfile(Long userId) {
@@ -45,7 +41,6 @@ public class UserService {
         );
 
         user.updateNickname(nickname);
-        user.updateUpdatedAt(LocalDateTime.now());
         return new ProfileResponse(user.getEmail(), user.getNickname());
     }
 
@@ -63,23 +58,7 @@ public class UserService {
 
         // 암호화한 비밀번호로 업데이트
         user.updatePassword(passwordEncoder.encode(newPassword));
-
-        user.updateUpdatedAt(LocalDateTime.now());
     }
-
-    /*
-    // 회원 탈퇴
-    public String withdraw(Long userId) {
-
-        User user = userRepository.findById(userId).orElseThrow(
-                () -> new UserNotFoundException("회원 정보가 존재하지 않습니다.")
-        );
-
-        // 가지고 있는 모임 확인
-        List<Meeting> meetings = meetingRepository.findByHostId(userId);
-
-    }
-     */
 
 
 }

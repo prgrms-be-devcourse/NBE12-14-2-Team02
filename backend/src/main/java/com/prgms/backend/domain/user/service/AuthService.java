@@ -3,16 +3,16 @@ package com.prgms.backend.domain.user.service;
 import com.prgms.backend.domain.user.dto.request.LogInRequest;
 import com.prgms.backend.domain.user.dto.TokenPair;
 import com.prgms.backend.domain.user.entity.User;
-import com.prgms.backend.global.exception.custom.user.DuplicateEmailNickname;
-import com.prgms.backend.global.exception.custom.user.LoginFailException;
-import com.prgms.backend.global.exception.custom.user.PasswordMismatchException;
-import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
+import com.prgms.backend.domain.user.enums.UserStatus;
+import com.prgms.backend.global.exception.custom.user.*;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +64,11 @@ public class AuthService {
             throw new LoginFailException();
         }
 
+        // 비밀번호 확인 후 검사해야 탈퇴 여부가 외부에 노출되지 않음
+        if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
+            throw new WithdrawUserException();
+        }
+
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
@@ -72,23 +77,32 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    // access token 재발급
-    public String reissue(String refreshToken) {
-        if (jwtTokenProvider.validateToken(refreshToken)) {
-            Long userId = jwtTokenProvider.getUserId(refreshToken);
+    // access token, refresh token 재발급
+    @Transactional
+    public TokenPair reissue(String refreshToken) {
+        if (jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            Long userId = jwtTokenProvider.getRefreshUserId(refreshToken);
 
             User user = userRepository.findById(userId).orElseThrow(
                     () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
             );
 
-            if(user.getRefreshToken().equals(refreshToken)) {
-                return jwtTokenProvider.createAccessToken(userId);
+            if (user.getStatus() == UserStatus.WITHDRAWN || user.getDeletedAt() != null) {
+                throw new WithdrawUserException();
             }
 
-            return null;
+            if(refreshToken.equals(user.getRefreshToken())) {
+
+                String newAccessToken = jwtTokenProvider.createAccessToken(userId);
+                String newRefreshToken = jwtTokenProvider.createRefreshToken(userId);
+                user.updateRefreshToken(newRefreshToken);
+
+                return new TokenPair(newAccessToken, newRefreshToken);
+
+            }
         }
 
-        return null;
+        throw new ReissueFailException();
     }
 
     // 로그아웃
@@ -101,7 +115,7 @@ public class AuthService {
                 () -> new UserNotFoundException("회원 정보를 찾을 수 없습니다.")
         );
 
-        if (user.getRefreshToken().equals(refreshToken)) {
+        if (Objects.equals(refreshToken, user.getRefreshToken())) {
             user.updateRefreshToken(null);
         }
 
