@@ -74,13 +74,14 @@ public class ContentPollService {
                 .stream()
                 .collect(Collectors.groupingBy(v -> v.getContentCandidate().getId()));
 
-        //후보마다 점수
+        boolean closed = poll.getStatus() == ContentPollStatus.CLOSED;
+        // 진행 중에는 점수와 순위를 숨기고, 마감 후에만 점수로 정렬한다.
         List<ContentPollResponse.CandidateRank> ranked = candidates.stream()
                 .map(candidate -> {
                     List<ContentVote> votes = votesByCandidate.getOrDefault(candidate.getId(), List.of());
-                    int totalScore = votes.stream()
-                            .mapToInt(v -> v.getPreference().score())
-                            .sum();
+                    int totalScore = closed
+                            ? votes.stream().mapToInt(v -> v.getPreference().score()).sum()
+                            : 0;
                     ContentPreference myPreference = votes.stream()
                             .filter(v -> v.getMeetingMemberId().equals(meetingMemberId))
                             .map(ContentVote::getPreference)
@@ -95,10 +96,12 @@ public class ContentPollService {
                             myPreference
                     );
                 })
-                .sorted(Comparator
-                        .comparingInt(ContentPollResponse.CandidateRank::totalScore)
-                        .reversed())
                 .toList();
+        if (closed) {
+            ranked = ranked.stream()
+                    .sorted(Comparator.comparingInt(ContentPollResponse.CandidateRank::totalScore).reversed())
+                    .toList();
+        }
 
         return new ContentPollResponse.Detail(
                 poll.getId(),
@@ -155,6 +158,9 @@ public class ContentPollService {
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
         ContentPoll poll = contentPollRepository.findByMeetingId(meetingId)
                 .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
+        if (poll.getStatus() != ContentPollStatus.CLOSED) {
+            throw new ContentPollNotClosedException("투표가 진행 중일 때는 결과를 볼 수 없습니다.");
+        }
 
         //JOIN인지 확인 후 집계
         //findAllByMeetingIdAndStatus()에서 meeting_members만 가져오고 user은 비어있음
