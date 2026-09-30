@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import AppShell from "./AppShell";
 import MeetingTabs from "./MeetingTabs";
+import ExpenseMoneyInput from "./ExpenseMoneyInput";
+import styles from "./ExpensePresentation.module.css";
 import { Badge, Card, Field, Message, PageTitle, formatMoney } from "./ui";
 import { apiFetch, ApiError, jsonBody } from "@/app/_lib/api";
 import type { MeetingMember } from "@/app/_lib/types";
@@ -28,12 +30,17 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [error, setError] = useState("");
+  const [inputError, setInputError] = useState("");
+  const inputErrorRef = useRef<HTMLParagraphElement>(null);
   const [receipt, setReceipt] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const receiptInput = useRef<HTMLInputElement>(null);
   const [submitted, setSubmitted] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
   const pending = useRef<{ key: string; body: string; savedId?: number } | null>(null);
   const storageKey = useRef("");
+
+  useEffect(() => () => { if (receiptPreview) URL.revokeObjectURL(receiptPreview); }, [receiptPreview]);
 
   useEffect(() => {
     let active = true;
@@ -92,6 +99,17 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
   const each = selected.length ? Math.floor(total / selected.length / unit) * unit : 0;
   const remainder = total - each * selected.length;
   const exactTotal = selected.reduce((sum, id) => sum + Number(amounts[id] || 0), 0);
+  const validTotal = Number.isSafeInteger(total) && total > 0 && total <= 999999999999;
+  const selectedMembers = members.filter(member => selected.includes(member.id));
+  const exactComplete = selected.length > 0 && selected.every(id => amounts[id] !== undefined && amounts[id] !== "");
+
+  function showInputError(message: string) {
+    setInputError(message);
+    requestAnimationFrame(() => {
+      inputErrorRef.current?.focus();
+      inputErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
 
   function toggle(id: number) {
     setSelected(items => items.includes(id) ? items.filter(item => item !== id) : [...items, id]);
@@ -102,10 +120,12 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
     setError("");
     if (file && (file.size === 0 || file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png"].includes(file.type))) {
       setReceipt(null);
+      setReceiptPreview(null);
       if (receiptInput.current) receiptInput.current.value = "";
       setError("5MB 이하의 JPG 또는 PNG 1장을 선택해주세요."); return;
     }
     setReceipt(file ?? null);
+    setReceiptPreview(file ? URL.createObjectURL(file) : null);
   }
 
   async function saveRegistration() {
@@ -130,15 +150,16 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
     event.preventDefault();
     if (savingRef.current || !allowed) return;
     setError("");
+    setInputError("");
     if (!pending.current && (!title.trim() || !Number.isSafeInteger(total) || total <= 0 || total > 999999999999)) {
-      setError("제목과 1원 이상의 정수 금액을 입력해주세요."); return;
+      showInputError("제목과 1원 이상의 정수 금액을 입력해주세요."); return;
     }
-    if (selected.length === 0 || selected.length > 100) { setError("부담 참여자를 1~100명 선택해주세요."); return; }
+    if (selected.length === 0 || selected.length > 100) { showInputError("부담 참여자를 1~100명 선택해주세요."); return; }
     if (!pending.current && mode === "EXACT" && (exactTotal !== total || selected.some(id => amounts[id] === undefined || amounts[id] === "" || !Number.isSafeInteger(Number(amounts[id])) || Number(amounts[id]) < 0))) {
-      setError("모든 참여자의 부담액을 입력하고 합계를 결제 금액에 맞춰주세요."); return;
+      showInputError("지정한 정산 금액이 맞지 않습니다. 다시 한번 확인해주세요. 모든 참여자의 금액을 입력하고 합계를 결제 금액에 맞춰주세요."); return;
     }
     if (mode === "EQUAL" && remainder > 0 && !random && !selected.includes(Number(remainderId))) {
-      setError("남은 차액을 부담할 참여자를 선택해주세요."); return;
+      showInputError(`남은 차액 ${formatMoney(remainder)}을 부담할 모임원을 선택해주세요.`); return;
     }
     savingRef.current = true; setSaving(true);
     try {
@@ -176,38 +197,54 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
     <MeetingTabs meetingId={meetingId} active="settlement" />
     {error && <Message tone="error">{error}</Message>}
     {loading ? <Message>지출 정보를 불러오는 중입니다.</Message> : <Card className="expense-form-card">
-      <form className="stack" onSubmit={submit}>
+      <form className="stack" noValidate onSubmit={submit} onChange={() => setInputError("")}>
         {submitted && <Message>{savedId ? "지출은 저장되었습니다. 영수증만 다시 저장할 수 있습니다." : "이전에 보낸 등록 요청을 확인 중입니다. 다시 저장해도 같은 요청 번호로 처리됩니다."} 새로고침 후에는 영수증 사진을 다시 선택해주세요.</Message>}
         <fieldset disabled={!allowed || saving || submitted} className="stack" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="form-section-heading"><span>1</span><div><h2>기본 정보</h2><p>결제한 지출의 이름과 금액을 입력해 주세요.</p></div></div>
           <div className="grid grid-2">
             <Field label="지출 제목"><input className="input" required maxLength={255} value={title} onChange={e => setTitle(e.target.value)} /></Field>
-            <Field label="결제 금액 (원)"><input className="input" type="number" required min={1} max={999999999999} step={1} value={amount} onChange={e => setAmount(e.target.value)} /></Field>
+            <Field label="결제 금액 (원)"><ExpenseMoneyInput required value={amount} onValueChange={setAmount} /></Field>
           </div>
-          <Field label="메모"><textarea className="textarea" maxLength={2000} value={memo} onChange={e => setMemo(e.target.value)} /></Field>
+          <Field label="메모 (선택)"><textarea className="textarea" maxLength={2000} placeholder="함께 기억할 내용을 남겨주세요." value={memo} onChange={e => setMemo(e.target.value)} /></Field>
           <div className="payer-panel"><span className="member-avatar">{payer.charAt(0)}</span><div><small>결제자 · 현재 로그인 사용자</small><strong>{payer}</strong></div><Badge tone="purple">본인 지출</Badge></div>
           <div className="form-section-heading"><span>2</span><div><h2>부담 참여자</h2><p>이 지출을 함께 부담할 모임원을 선택해 주세요.</p></div></div>
-          <Field label="분담 방식"><select className="select" value={mode} onChange={e => setMode(e.target.value as "EQUAL" | "EXACT")}><option value="EQUAL">균등 분담</option><option value="EXACT">금액 직접 입력</option></select></Field>
-          <div className="participant-list"><div className="row between"><strong>참여자 선택</strong><span className="muted">{selected.length}명 선택</span></div>{members.map(member => <div className="checkbox-row" key={member.id}>
+          <Field label="어떻게 나눠 낼까요?"><select className="select" value={mode} onChange={e => setMode(e.target.value as "EQUAL" | "EXACT")}><option value="EQUAL">모임원과 똑같이 나눠 내기</option><option value="EXACT">각자 낼 금액 직접 정하기</option></select></Field>
+          <div className="participant-list"><div className={styles.toolbar}><strong>참여자 {selected.length}명 선택</strong><button type="button" className="button button-ghost" onClick={() => {
+            setSelected(selected.length === members.length ? [] : members.map(member => member.id));
+            setRemainderId(""); setInputError("");
+          }}>{selected.length === members.length ? "전체 해제" : "전체 선택"}</button></div>{members.map(member => <div className="checkbox-row" key={member.id}>
             <label><input type="checkbox" checked={selected.includes(member.id)} onChange={() => toggle(member.id)} /> {member.nickname}</label>
-            {mode === "EXACT" && selected.includes(member.id) && <input aria-label={`${member.nickname} 부담액`} className="input" type="number" min={0} max={999999999999} step={1} required value={amounts[member.id] ?? ""} onChange={e => setAmounts(all => ({ ...all, [member.id]: e.target.value }))} />}
+            {mode === "EXACT" && selected.includes(member.id) && <ExpenseMoneyInput aria-label={`${member.nickname} 부담액 (원)`} className={styles.memberAmount} required value={amounts[member.id] ?? ""} onValueChange={value => setAmounts(all => ({ ...all, [member.id]: value }))} />}
           </div>)}</div>
-          <div className="form-section-heading"><span>3</span><div><h2>분담 결과</h2><p>저장 전 개인별 부담 금액을 확인해 주세요.</p></div></div>
+          <div className="form-section-heading"><span>3</span><div><h2>각자 낼 금액 확인</h2><p>저장 전 개인별 부담 금액을 확인해 주세요.</p></div></div>
           {mode === "EQUAL" ? <>
-            <Field label="분담 단위"><select className="select" value={unit} onChange={e => setUnit(Number(e.target.value))}>{[1, 10, 100, 1000].map(value => <option value={value} key={value}>{value}원</option>)}</select></Field>
-            <Message>기본 부담액 {formatMoney(each)} · 남은 차액 {formatMoney(remainder)}</Message>
-            {remainder > 0 && <>
+            <fieldset className={styles.unitOptions}><legend>얼마 단위로 나눌까요?</legend><div className={styles.actions}>{[1, 10, 100, 1000].map(value => <button type="button" className={styles.unitButton} aria-pressed={unit === value} key={value} onClick={() => { setUnit(value); setInputError(""); }}>{formatMoney(value)}</button>)}</div><p>선택한 단위로 나누고, 남은 금액은 차액 담당자가 부담해요.</p></fieldset>
+            {validTotal && selected.length > 0 && <div className={styles.splitSummary}><div className={styles.toolbar}><span>1인 기본 부담액</span><strong className={styles.amount}>{formatMoney(each)}</strong></div></div>}
+            {validTotal && selected.length > 0 && remainder > 0 && <div className={styles.remainder}>
+              <h3>차액이 남아요! 어떻게 처리할까요?</h3><p>남은 <strong>{formatMoney(remainder)}</strong>을 부담할 모임원 1명을 선택해주세요.</p>
               <label className="checkbox-row"><input type="checkbox" checked={random} onChange={e => setRandom(e.target.checked)} />차액 담당자 무작위 선택 (저장할 때 결정)</label>
               {!random && <Field label="차액 담당자"><select className="select" value={remainderId} onChange={e => setRemainderId(e.target.value)} required><option value="">선택해주세요</option>{members.filter(member => selected.includes(member.id)).map(member => <option value={member.id} key={member.id}>{member.nickname}</option>)}</select></Field>}
-            </>}
-          </> : <Message>입력 합계 {formatMoney(exactTotal)} · 남은 금액 {formatMoney(total - exactTotal)}</Message>}
+              {!random && selected.includes(Number(remainderId)) && <p>{members.find(member => member.id === Number(remainderId))?.nickname}님의 최종 부담액은 <strong>{formatMoney(each + remainder)}</strong>이에요.</p>}
+            </div>}
+          </> : <div className={styles.splitSummary} aria-live="polite"><div className={styles.toolbar}><span>입력한 금액 합계</span><strong className={styles.amount}>{formatMoney(exactTotal)}</strong></div>
+            {!exactComplete ? <p>선택한 모임원 모두의 금액을 입력해주세요. 부담하지 않으면 0원을 입력하세요.</p> : validTotal && exactTotal === total ? <p className={styles.matched}>결제 금액과 정확히 맞아요.</p> : validTotal && <p className={styles.send}>지정한 정산 금액이 맞지 않습니다. 다시 한번 확인해주세요.<br />결제 금액보다 {formatMoney(Math.abs(total - exactTotal))} {exactTotal < total ? "적어요." : "많아요."}</p>}
+          </div>}
+          {mode === "EQUAL" && validTotal && selected.length > 0 && <div className={styles.splitSummary}>
+            <strong>개인별 부담액 미리보기</strong>
+            {selectedMembers.map(member => <div className={styles.shareRow} key={member.id}><span>{member.nickname}{remainder > 0 && !random && Number(remainderId) === member.id ? " · 차액 포함" : ""}</span><strong>{formatMoney(each + (remainder > 0 && !random && Number(remainderId) === member.id ? remainder : 0))}</strong></div>)}
+            {remainder > 0 && (random || !selected.includes(Number(remainderId))) && <p className="muted">{random ? "저장할 때 무작위로 선정한 1명에게" : "차액 담당자를 선택하면 해당 모임원에게"} {formatMoney(remainder)}이 추가됩니다.</p>}
+          </div>}
         </fieldset>
+        {inputError && <p ref={inputErrorRef} tabIndex={-1} role="alert" className={styles.issue}>{inputError}</p>}
         {!expenseId ? <>
-          <Field label="영수증 사진 (선택)"><input ref={receiptInput} type="file" accept="image/jpeg,image/png" disabled={!allowed || saving} onChange={e => chooseReceipt(e.target.files?.[0])} /></Field>
+          <div className={styles.receiptPicker}><strong>영수증 사진 (선택)</strong><input ref={receiptInput} type="file" hidden accept="image/jpeg,image/png" disabled={!allowed || saving} onChange={e => chooseReceipt(e.target.files?.[0])} />
+          <div><button type="button" className="button button-secondary" disabled={!allowed || saving} onClick={() => receiptInput.current?.click()}>{receipt ? "다른 영수증 선택" : "영수증 삽입하기"}</button></div>
           <p className="muted">JPG·PNG 최대 5MB, 1장. 저장 후 상세 내역에서 교체·삭제할 수 있습니다.</p>
-          {receipt && <div className="row"><span>{receipt.name}</span><button type="button" className="button button-ghost" disabled={saving} onClick={() => { setReceipt(null); if (receiptInput.current) receiptInput.current.value = ""; }}>선택 해제</button></div>}
+          {receiptPreview && <img className={styles.receiptPreview} src={receiptPreview} alt="선택한 영수증 미리보기" /> /* eslint-disable-line @next/next/no-img-element -- 업로드 전 로컬 Blob 미리보기 */}
+          {receipt && <div className={styles.toolbar}><span>{receipt.name}</span><button type="button" className="button button-ghost" disabled={saving} onClick={() => { chooseReceipt(); if (receiptInput.current) receiptInput.current.value = ""; }}>선택 해제</button></div>}
+          </div>
         </> : <p className="muted">영수증 교체·삭제는 지출 목록의 상세 내역에서 할 수 있습니다.</p>}
-        <div className="form-actions"><Link href={`/meetings/${meetingId}/settlement`} className="button button-ghost">지출 목록</Link><button className="button button-primary" disabled={!allowed || saving || !selected.length}>{saving ? "저장 중…" : expenseId ? "수정 저장" : savedId ? receipt ? "영수증만 저장" : "현재 상태로 완료" : submitted ? "같은 요청 다시 확인" : "지출 등록 완료"}</button></div>
+        <div className="form-actions"><Link href={`/meetings/${meetingId}/settlement`} className="button button-ghost">지출 목록</Link><button className="button button-primary" disabled={!allowed || saving}>{saving ? "저장 중…" : expenseId ? "수정 저장" : savedId ? receipt ? "영수증만 저장" : "현재 상태로 완료" : submitted ? "같은 요청 다시 확인" : "지출 등록 완료"}</button></div>
       </form>
     </Card>}
   </AppShell>;

@@ -1,0 +1,61 @@
+.moneyInput { position: relative; display: inline-flex; width: 100%; min-width: 0; }
+.moneyInput input { width: 100%; padding-right: 40px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.currency { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none; font-weight: 400; }
+.memberAmount { max-width: 210px; margin-left: auto; flex-shrink: 0; }
+.amount { color: #172554; font-size: 1.2rem; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.receive { color: #1d4ed8; font-weight: 700; font-variant-numeric: tabular-nums; }
+.send { color: #b91c1c; font-weight: 700; font-variant-numeric: tabular-nums; }
+.toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.unitOptions { border: 0; padding: 0; margin: 0; min-width: 0; }
+.unitOptions legend { font-weight: 700; margin-bottom: 12px; }
+.unitOptions p { color: #64748b; margin: 10px 0 0; font-size: .9rem; }
+.unitButton { border: 1px solid #cbd5e1; background: white; border-radius: 10px; padding: 11px 18px; color: #334155; font: inherit; cursor: pointer; }
+.unitButton[aria-pressed="true"] { border-color: #6d5ce7; color: #5140c5; background: #f0edff; font-weight: 700; box-shadow: inset 0 0 0 1px #6d5ce7; }
+.unitButton:focus-visible, .detailToggle:focus-visible { outline: 3px solid #8b80ff; outline-offset: 3px; }
+.unitButton:disabled { cursor: default; opacity: .65; }
+.remainder { padding: 20px; border: 1px solid #f5cd80; background: #fffbeb; border-radius: 14px; display: grid; gap: 14px; }
+.remainder h3, .remainder p { margin: 0; }
+.remainder h3 { color: #92400e; }
+.splitSummary { padding: 18px; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0; display: grid; gap: 12px; }
+.splitSummary p { margin: 0; }
+.shareRow { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+.shareRow:last-child { border-bottom: 0; }
+.shareRow span { overflow-wrap: anywhere; }
+.issue { color: #b91c1c; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px; padding: 14px; margin: 0; scroll-margin-top: 100px; }
+.matched { color: #166534; font-weight: 600; }
+.receiptPicker { border: 1px dashed #b8b1ee; border-radius: 14px; padding: 20px; display: grid; gap: 12px; }
+.receiptPicker p { margin: 0; color: #64748b; font-size: .9rem; }
+.receiptPicker span { overflow-wrap: anywhere; }
+.receiptPreview { max-height: 220px; max-width: 100%; object-fit: contain; border-radius: 8px; justify-self: start; }
+.hostCard { display: grid; gap: 20px; }
+.hostCard h2, .hostCard h3, .hostCard p { margin: 0; }
+.hostCard > span { justify-self: start; }
+.expenseTitle { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.expenseHeader { flex-wrap: wrap; }
+.expenseHeader > div { min-width: 0; flex: 1 1 180px; }
+.expenseHeader > strong { margin-left: auto; }
+.expenseTitle > strong { overflow-wrap: anywhere; }
+.detailToggle { color: #64748b; font-size: .8rem; font-weight: 400; border: 0; background: transparent; cursor: pointer; padding: 6px 0; }
+.expenseDetails { padding: 16px 20px; border-radius: 12px; background: #f8fafc; }
+.expenseDetails[hidden] { display: none; }
+.summaryGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.summaryCard { border: 1px solid #dbeafe; border-radius: 14px; background: #eff6ff; padding: 22px; display: grid; gap: 8px; }
+.summaryCard:last-child { background: #fff1f2; border-color: #fecdd3; }
+.summaryCard strong { font-size: clamp(1.3rem, 3vw, 2rem); overflow-wrap: anywhere; }
+.balanceTable th:not(:first-child), .balanceTable td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.balanceTable td:last-child { font-size: 1.05rem; }
+.slash { color: #94a3b8; margin: 0 8px; }
+.section { display: grid; gap: 18px; }
+.section h2, .section h3 { margin: 0; }
+.section p { margin: 0; }
+.transfer { border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; display: grid; gap: 12px; overflow-wrap: anywhere; }
+.transfer p { margin: 0; }
+.transfer button { justify-self: start; }
+@media (max-width: 600px) {
+  .memberAmount { max-width: 48%; }
+  .summaryGrid { gap: 10px; }
+  .summaryCard { padding: 16px 12px; }
+  .remainder, .receiptPicker { padding: 16px; }
+  .actions > button { flex: 1 1 auto; }
+}
