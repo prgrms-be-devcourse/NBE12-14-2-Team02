@@ -105,7 +105,7 @@ export default function ContentPollPage() {
 
   return (
     <AppShell>
-      <PageTitle eyebrow="Content poll" title="콘텐츠 투표" description="함께할 활동과 장소를 제안하고 후보별 선호도를 남겨주세요." action={<div className="row">{host && <Link className="button button-ghost" href={`/meetings/${meetingId}/content/settings`}>⚙ 투표 설정</Link>}<Link className="button button-ghost" href={`/meetings/${meetingId}/content/new`}>＋ 후보 제안</Link><Link className="button button-secondary" href={`/meetings/${meetingId}/content/results`}>결과 보기</Link></div>} />
+      <PageTitle eyebrow="Content poll" title="콘텐츠 투표" description="함께할 활동과 장소를 제안하고 후보별 선호도를 남겨주세요." action={poll ? <div className="row">{host && <Link className="button button-ghost" href={`/meetings/${meetingId}/content/settings`}>⚙ 투표 설정</Link>}{!closed && <Link className="button button-ghost" href={`/meetings/${meetingId}/content/new`}>＋ 후보 제안</Link>}<Link className="button button-secondary" href={`/meetings/${meetingId}/content/results`}>결과 보기</Link></div> : undefined} />
       <MeetingTabs meetingId={meetingId} active="content" />
       {message && <Message tone="success">{message}</Message>}
       {error && <Message tone="error">{error}</Message>}
