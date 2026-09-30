@@ -284,6 +284,14 @@ tbody tr:hover { background: #fafbff; }
 .participant-list .checkbox-row + .checkbox-row { border-top: 1px solid #f1f5f9; }
 .account-card { background: linear-gradient(145deg,#fff 72%,#ecfdf5); }
 .account-card h2 { margin-top: 9px; }
+.modal-overlay { position: fixed; z-index: 120; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(15,23,42,.42); backdrop-filter: blur(3px); }
+.modal { width: min(420px, 100%); padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 24px 70px rgba(15,23,42,.24); }
+.modal-danger { border-color: #fecaca; }
+.modal-heading { display: grid; gap: 7px; }
+.modal-heading strong { font-family: var(--font-jakarta), sans-serif; font-size: 18px; }
+.modal-heading p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+
 .date-time-field { position: relative; }
 .date-time-trigger { width: 100%; min-height: 48px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--line-strong); border-radius: 9px; color: var(--muted); background: #fff; cursor: pointer; text-align: left; }
 .date-time-trigger:hover { border-color: #94a3b8; }
@@ -425,6 +433,8 @@ input[type="file"] { display: block; width: 100%; margin-top: 8px; padding: 10px
   .invite-quick-form { flex-direction: column; }
   .poll-status-bar { align-items: flex-start; flex-direction: column; }
   .candidate-cta { align-items: flex-start; }
+  .modal { padding: 20px 16px; border-radius: 18px; }
+  .modal-actions > .button { flex: 1; }
   .date-time-popover { padding: 20px 16px; border-radius: 18px; }
   .picker-column select { font-size: 16px; }
   .deadline-create-row { align-items: stretch; flex-direction: column; }
