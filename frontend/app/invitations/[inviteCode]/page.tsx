@@ -9,7 +9,6 @@ import {
   Card,
   Message,
   PageTitle,
-  formatDate,
 } from "@/app/_components/ui";
 import { apiFetch } from "@/app/_lib/api";
 import type {
@@ -28,25 +27,14 @@ export default function InvitationPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadInvitation();
+    let active = true;
+    apiFetch<MeetingInvitationDetail>(`/api/invitations/${inviteCode}`)
+        .then((data) => { if (active) setInvitation(data); })
+        .catch((error) => {
+          if (active) setError(error instanceof Error ? error.message : "초대 정보를 불러오지 못했습니다.");
+        });
+    return () => { active = false; };
   }, [inviteCode]);
-
-  async function loadInvitation() {
-    try {
-      const data =
-          await apiFetch<MeetingInvitationDetail>(
-              `/api/invitations/${inviteCode}`
-          );
-
-      setInvitation(data);
-    } catch (error) {
-      setError(
-          error instanceof Error
-              ? error.message
-              : "초대 정보를 불러오지 못했습니다."
-      );
-    }
-  }
 
   async function handleJoin() {
     if (!invitation) {
@@ -156,17 +144,10 @@ function InvitationInfo({
 }) {
   return (
       <div className="meta">
-      <span>
-        모임 ID #{invitation.meetingId}
-      </span>
-
         <span>
         참여자 {invitation.participantCount}명
       </span>
 
-        <span>
-        만료 {formatDate(invitation.expiresAt)}
-      </span>
       </div>
   );
 }

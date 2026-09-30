@@ -1,7 +1,5 @@
 "use client";
 
-import { loginPathFromCurrentLocation } from "@/app/_lib/redirect";
-
 export type ApiEnvelope<T> = {
   success: boolean;
   code: number;
@@ -100,7 +98,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = 
   if (response.status === 401 && !path.startsWith("/api/auth/")) {
     clearAccessToken();
     // 컴포넌트 밖이라 useRouter를 쓸 수 없어 전체 페이지 이동으로 처리한다
-    window.location.href = loginPathFromCurrentLocation();
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/login";
   }
 
   const envelope = await parseEnvelope<T>(response);

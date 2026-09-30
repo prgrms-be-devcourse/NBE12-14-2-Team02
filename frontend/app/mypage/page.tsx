@@ -1,9 +1,11 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/app/_components/AppShell";
-import { Card, Field, Message, PageTitle } from "@/app/_components/ui";
+import { Card, EmptyState, Field, Message, PageTitle } from "@/app/_components/ui";
 import { apiFetch, clearAccessToken, jsonBody } from "@/app/_lib/api";
+import type { Meeting } from "@/app/_lib/types";
 
 type Profile = { email: string; nickname: string };
 type Notice = { tone: "success" | "error"; text: string } | null;
@@ -13,6 +15,9 @@ export default function MyPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const [completedMeetings, setCompletedMeetings] = useState<Meeting[]>([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(true);
+  const [meetingsError, setMeetingsError] = useState("");
 
   // 닉네임 변경 상태: 입력 가능 여부, 입력값, 중복확인을 통과한 값, 결과 메시지
   const [nicknameEditing, setNicknameEditing] = useState(false);
@@ -29,6 +34,19 @@ export default function MyPage() {
     apiFetch<Profile>("/api/user/me")
       .then(setProfile)
       .catch((e) => setError(e.message));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiFetch<Meeting[]>("/api/meetings")
+      .then((meetings) => {
+        if (active) setCompletedMeetings(meetings.filter((meeting) => meeting.status === "COMPLETED"));
+      })
+      .catch((cause) => {
+        if (active) setMeetingsError(cause instanceof Error ? cause.message : "완료된 모임을 불러오지 못했습니다.");
+      })
+      .finally(() => { if (active) setMeetingsLoading(false); });
+    return () => { active = false; };
   }, []);
 
   // 보기/수정 모드 전환: 입력값과 이전 메시지를 초기화한다
@@ -237,6 +255,31 @@ export default function MyPage() {
           </dl>
         </Card>
       )}
+
+      <div className="top-gap">
+        <Card>
+          <h2>완료된 모임</h2>
+          <p>종료된 모임의 내용을 다시 확인할 수 있습니다.</p>
+          {meetingsError && <Message tone="error">{meetingsError}</Message>}
+          {meetingsLoading ? (
+            <Message>완료된 모임을 불러오는 중입니다.</Message>
+          ) : completedMeetings.length === 0 && !meetingsError ? (
+            <EmptyState title="완료된 모임이 없어요" description="모임이 종료되면 이곳에서 확인할 수 있습니다." />
+          ) : (
+            <div className="list">
+              {completedMeetings.map((meeting) => (
+                <div className="list-item" key={meeting.id}>
+                  <div>
+                    <h3>{meeting.name}</h3>
+                    <p>{meeting.description || "등록된 설명이 없습니다."} · 참여자 {meeting.participantCount}명</p>
+                  </div>
+                  <Link className="button button-secondary button-small" href={`/meetings/${meeting.id}`}>상세보기</Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
       <div className="top-gap">
         <Card>
