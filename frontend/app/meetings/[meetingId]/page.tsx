@@ -31,7 +31,7 @@ export default function MeetingDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
 
   const [confirmAction, setConfirmAction] =
-      useState<"leave" | "complete" | null>(null);
+      useState<"leave" | "complete" | "deleteInvitation" | null>(null);
 
   const [actionLoading, setActionLoading] =
       useState(false);
@@ -125,6 +125,45 @@ export default function MeetingDetailPage() {
               ? error.message
               : "초대 링크를 만들지 못했습니다."
       );
+    }
+  }
+
+  async function handleDeleteInvitation() {
+    if (!latestInvitation) {
+      return;
+    }
+
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await apiFetch<void>(
+          `/api/meetings/${meetingId}/invitations/${latestInvitation.id}`,
+          {
+            method: "DELETE",
+          }
+      );
+
+      setInvitations((current) =>
+          current.filter(
+              (invitation) =>
+                  invitation.id !== latestInvitation.id
+          )
+      );
+
+      setConfirmAction(null);
+      setSuccess("초대 링크가 삭제되었습니다.");
+    } catch (error) {
+      setConfirmAction(null);
+
+      setError(
+          error instanceof Error
+              ? error.message
+              : "초대 링크를 삭제하지 못했습니다."
+      );
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -306,6 +345,10 @@ export default function MeetingDetailPage() {
               inviteUrl={inviteUrl}
               expiresAt={latestInvitation?.expiresAt}
               onCreateInvitation={handleCreateInvitation}
+              onDeleteInvitation={() =>
+                  setConfirmAction("deleteInvitation")
+              }
+              hasInvitation={Boolean(latestInvitation)}
               isHost={isHost}
           />
           <MemberSection members={members} hostId={meeting.hostId} />
@@ -394,6 +437,17 @@ export default function MeetingDetailPage() {
             onConfirm={handleLeaveMeeting}
         />
 
+        <ConfirmModal
+            open={confirmAction === "deleteInvitation"}
+            title="초대 링크를 삭제하시겠어요?"
+            description="삭제된 초대 링크로는 더 이상 모임에 참여할 수 없습니다. 필요한 경우 새 초대 링크를 다시 생성할 수 있습니다."
+            confirmLabel="삭제하기"
+            danger
+            loading={actionLoading}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={handleDeleteInvitation}
+        />
+
       </AppShell>
   );
 }
@@ -439,11 +493,15 @@ function InvitationSection({
  expiresAt,
  onCreateInvitation,
  isHost,
+ onDeleteInvitation,
+ hasInvitation
 }: {
   inviteUrl: string;
   expiresAt?: string;
   onCreateInvitation: () => void;
   isHost: boolean;
+  onDeleteInvitation: () => void;
+  hasInvitation: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -462,7 +520,10 @@ function InvitationSection({
         <div className="overview-card-heading">
           <h2>초대 링크 관리</h2>
         </div>
-        <p>초대 링크를 생성하고 공유하여 새로운 모임원을 초대할 수 있습니다.</p>
+
+        <p>
+          초대 링크를 생성하고 공유하여 새로운 모임원을 초대할 수 있습니다.
+        </p>
 
         {inviteUrl ? (
             <div className="invite-link-box">
@@ -470,18 +531,22 @@ function InvitationSection({
                 <span>현재 유효한 초대 링크</span>
                 <strong>유효함</strong>
               </div>
+
               <div className="invite-link-row">
-                <input className="input" aria-label="초대 링크" readOnly value={inviteUrl} />
-                <button
-                    className="button button-secondary button-small"
-                    onClick={onCreateInvitation}
-                    disabled={!isHost}
-                    title={!isHost ? "모임장만 초대 링크를 생성할 수 있습니다." : undefined}
-                >
-                  {inviteUrl ? "초대 링크 재생성" : "초대 링크 생성"}
-                </button>
+                <input
+                    className="input"
+                    aria-label="초대 링크"
+                    readOnly
+                    value={inviteUrl}
+                />
               </div>
-              {expiresAt && <small>만료: {new Date(expiresAt).toLocaleString("ko-KR")}</small>}
+
+              {expiresAt && (
+                  <small>
+                    만료:{" "}
+                    {new Date(expiresAt).toLocaleString("ko-KR")}
+                  </small>
+              )}
             </div>
         ) : (
             <EmptyState
@@ -489,15 +554,41 @@ function InvitationSection({
                 description="호스트가 새 링크를 만들 수 있습니다."
             />
         )}
+
         <div className="invite-actions">
-          <span>
-            {isHost
-                ? "새로운 초대 코드가 필요하신가요?"
-                : "초대 링크는 모임장만 생성할 수 있습니다."}
-          </span>
-          <button className="button button-secondary button-small" onClick={onCreateInvitation}>
-            {inviteUrl ? "초대 링크 재생성" : "초대 링크 생성"}
-          </button>
+      <span>
+        {isHost
+            ? "새로운 초대 코드가 필요하신가요?"
+            : "초대 링크는 모임장만 관리할 수 있습니다."}
+      </span>
+
+          <div className="row">
+            <button
+                type="button"
+                className="button button-secondary button-small"
+                onClick={onCreateInvitation}
+                disabled={!isHost}
+                title={
+                  !isHost
+                      ? "모임장만 초대 링크를 생성할 수 있습니다."
+                      : undefined
+                }
+            >
+              {inviteUrl
+                  ? "초대 링크 재생성"
+                  : "초대 링크 생성"}
+            </button>
+
+            {isHost && hasInvitation && (
+                <button
+                    type="button"
+                    className="button button-danger button-small"
+                    onClick={onDeleteInvitation}
+                >
+                  초대 링크 삭제
+                </button>
+            )}
+          </div>
         </div>
       </Card>
   );
