@@ -12,7 +12,7 @@ import {
   EmptyState,
   Message,
 } from "@/app/_components/ui";
-import { apiFetch } from "@/app/_lib/api";
+import { apiFetch, getCurrentUserId } from "@/app/_lib/api";
 import type { ExpenseList } from "@/app/_lib/expenses";
 
 import type {
@@ -126,6 +126,9 @@ export default function MeetingDetailPage() {
     );
   }
 
+  const currentUserId = getCurrentUserId();
+  const isHost = currentUserId === meeting.hostId;
+
   const latestInvitation = invitations.at(-1);
 
   const inviteUrl = latestInvitation
@@ -188,9 +191,8 @@ export default function MeetingDetailPage() {
           <InvitationSection
               inviteUrl={inviteUrl}
               expiresAt={latestInvitation?.expiresAt}
-              onCreateInvitation={
-                handleCreateInvitation
-              }
+              onCreateInvitation={handleCreateInvitation}
+              isHost={isHost}
           />
           <MemberSection members={members} hostId={meeting.hostId} />
         </div>
@@ -238,10 +240,12 @@ function InvitationSection({
                              inviteUrl,
                              expiresAt,
                              onCreateInvitation,
+                             isHost,
                            }: {
   inviteUrl: string;
   expiresAt?: string;
   onCreateInvitation: () => void;
+  isHost: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -270,8 +274,13 @@ function InvitationSection({
               </div>
               <div className="invite-link-row">
                 <input className="input" aria-label="초대 링크" readOnly value={inviteUrl} />
-                <button className="button button-primary button-small" onClick={copyInvitation}>
-                  {copied ? "복사 완료" : "복사"}
+                <button
+                    className="button button-secondary button-small"
+                    onClick={onCreateInvitation}
+                    disabled={!isHost}
+                    title={!isHost ? "모임장만 초대 링크를 생성할 수 있습니다." : undefined}
+                >
+                  {inviteUrl ? "초대 링크 재생성" : "초대 링크 생성"}
                 </button>
               </div>
               {expiresAt && <small>만료: {new Date(expiresAt).toLocaleString("ko-KR")}</small>}
@@ -283,7 +292,11 @@ function InvitationSection({
             />
         )}
         <div className="invite-actions">
-          <span>새로운 초대 코드가 필요하신가요?</span>
+          <span>
+            {isHost
+                ? "새로운 초대 코드가 필요하신가요?"
+                : "초대 링크는 모임장만 생성할 수 있습니다."}
+          </span>
           <button className="button button-secondary button-small" onClick={onCreateInvitation}>
             {inviteUrl ? "초대 링크 재생성" : "초대 링크 생성"}
           </button>

@@ -1,5 +1,7 @@
 package com.prgms.backend.domain.meeting.service;
 
+import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
+import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.expense.repository.ExpenseRepository;
 import com.prgms.backend.domain.meeting.dto.request.MeetingCreateRequest;
 import com.prgms.backend.domain.meeting.dto.request.MeetingUpdateRequest;
@@ -9,6 +11,8 @@ import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.enums.MeetingMemberStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
+import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
+import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.domain.settlement.entity.SettlementStatus;
 import com.prgms.backend.domain.settlement.repository.SettlementRepository;
 import com.prgms.backend.domain.user.entity.User;
@@ -16,6 +20,7 @@ import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingPollNotCompletedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingSettlementNotCompletedException;
 import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
 import java.util.List;
@@ -34,6 +39,8 @@ public class MeetingService {
     private final UserRepository userRepository;
     private final SettlementRepository settlementRepository;
     private final ExpenseRepository expenseRepository;
+    private final SchedulePollRepository schedulePollRepository;
+    private final ContentPollRepository contentPollRepository;
 
     // 모임 객체 생성
     @Transactional
@@ -192,6 +199,22 @@ public class MeetingService {
         // ACTIVE 상태의 모임만 종료 가능
         if (!meeting.isActive()) {
             throw new MeetingNotActiveException(meetingId);
+        }
+
+        boolean hasOpenSchedulePoll =
+            schedulePollRepository.existsByMeetingIdAndStatus(
+                meetingId,
+                SchedulePollStatus.OPEN
+            );
+
+        boolean hasOpenContentPoll =
+            contentPollRepository.existsByMeetingIdAndStatus(
+                meetingId,
+                ContentPollStatus.OPEN
+            );
+
+        if (hasOpenSchedulePoll || hasOpenContentPoll) {
+            throw new MeetingPollNotCompletedException(meetingId);
         }
 
         // 지출 내역 존재 여부 확인

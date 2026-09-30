@@ -29,7 +29,18 @@ export default function LoginPage() {
 
       // access token은 sessionStorage에 저장, refresh token은 서버가 httpOnly 쿠키로 내려준다
       setAccessToken(response.accessToken);
-      router.push("/");
+
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+
+      const safeRedirect =
+          redirect &&
+          redirect.startsWith("/") &&
+          !redirect.startsWith("//")
+              ? redirect
+              : "/";
+
+      router.replace(safeRedirect);
     } catch (e) {
       setError(e instanceof Error ? e.message : "로그인하지 못했습니다.");
     } finally {
