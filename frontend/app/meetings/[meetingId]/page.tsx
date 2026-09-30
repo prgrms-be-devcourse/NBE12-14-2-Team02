@@ -56,6 +56,8 @@ export default function MeetingDetailPage() {
 
   const [error, setError] = useState("");
 
+  const [completeError, setCompleteError] = useState("");
+
   useEffect(() => {
     async function loadMeeting() {
       try {
@@ -206,28 +208,43 @@ export default function MeetingDetailPage() {
     setActionLoading(true);
     setError("");
     setSuccess("");
+    setCompleteError("");
 
     try {
-      const completedMeeting =
-          await apiFetch<Meeting>(
-              `/api/meetings/${meetingId}/complete`,
-              {
-                method: "PATCH",
-              }
-          );
+      const updatedMeeting = await apiFetch<Meeting>(
+          `/api/meetings/${meetingId}/complete`,
+          {
+            method: "PATCH",
+          }
+      );
 
-      setMeeting(completedMeeting);
+      setMeeting(updatedMeeting);
       setConfirmAction(null);
-
       setSuccess("모임이 종료되었습니다.");
     } catch (error) {
       setConfirmAction(null);
 
-      setError(
-          error instanceof Error
-              ? error.message
-              : "모임을 종료하지 못했습니다."
-      );
+      const serverMessage =
+          error instanceof Error ? error.message : "";
+
+      const hasOpenPoll =
+          schedulePoll?.status === "OPEN" ||
+          contentPoll?.status === "OPEN";
+
+      if (
+          serverMessage &&
+          serverMessage !== "요청을 처리하지 못했습니다."
+      ) {
+        setCompleteError(serverMessage);
+      } else if (hasOpenPoll) {
+        setCompleteError(
+            "진행 중인 투표가 있어 모임을 종료할 수 없습니다. 투표를 마감한 뒤 다시 시도해주세요."
+        );
+      } else {
+        setCompleteError(
+            "모임을 종료할 수 없습니다. 정산되지 않은 지출 내역이 있는지 확인해주세요."
+        );
+      }
     } finally {
       setActionLoading(false);
     }
@@ -351,22 +368,28 @@ export default function MeetingDetailPage() {
               hasInvitation={Boolean(latestInvitation)}
               isHost={isHost}
           />
-          <MemberSection members={members} hostId={meeting.hostId} />
 
-          <Card className="top-gap">
-            <div className="section-header">
-              <div>
-                <h2>모임 관리</h2>
-                <p className="muted">
-                  모임 정보와 참여 상태를 관리할 수 있습니다.
-                </p>
-              </div>
-            </div>
+          <MemberSection
+              members={members}
+              hostId={meeting.hostId}
+              showLeave={!isHost && meeting.status === "ACTIVE"}
+              onLeave={() => setConfirmAction("leave")}
+          />
 
-            {meeting.status === "ACTIVE" ? (
-                <div className="row">
-                  {isHost ? (
-                      <>
+          {isHost && (
+              <Card className="top-gap">
+                <div className="section-header">
+                  <div>
+                    <h2>모임 관리</h2>
+                    <p className="muted">
+                      모임 정보와 참여 상태를 관리할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+
+                {meeting.status === "ACTIVE" ? (
+                    <>
+                      <div className="row">
                         <button
                             type="button"
                             className="button button-secondary"
@@ -378,31 +401,40 @@ export default function MeetingDetailPage() {
                         <button
                             type="button"
                             className="button button-danger"
-                            onClick={() =>
-                                setConfirmAction("complete")
-                            }
+                            onClick={() => {
+                              setCompleteError("");
+                              setConfirmAction("complete");
+                            }}
                         >
                           모임 종료
                         </button>
-                      </>
-                  ) : (
-                      <button
-                          type="button"
-                          className="button button-danger"
-                          onClick={() =>
-                              setConfirmAction("leave")
-                          }
-                      >
-                        모임 탈퇴
-                      </button>
-                  )}
-                </div>
-            ) : (
-                <Message tone="info">
-                  종료된 모임입니다.
-                </Message>
-            )}
-          </Card>
+                      </div>
+
+                      {completeError && (
+                          <Message tone="error">
+                            {completeError}
+                          </Message>
+                      )}
+                    </>
+                ) : (
+                    <>
+                      <Message tone="info">
+                        종료된 모임입니다.
+                      </Message>
+
+                      <div className="row top-gap">
+                        <button
+                            type="button"
+                            className="button button-danger"
+                            onClick={() => setConfirmAction("leave")}
+                        >
+                          모임 탈퇴
+                        </button>
+                      </div>
+                    </>
+                )}
+              </Card>
+          )}
 
         </div>
 
@@ -597,14 +629,20 @@ function InvitationSection({
 function MemberSection({
  members,
  hostId,
+ showLeave,
+ onLeave,
 }: {
   members: MeetingMember[];
   hostId: number;
+  showLeave: boolean;
+  onLeave: () => void;
 }) {
   return (
-      <Card className="overview-card">
+      <Card className="overview-card member-section-card">
         <div className="overview-card-heading">
-          <h2>모임원 목록 <span>{members.length}명</span></h2>
+          <h2>
+            모임원 목록 <span>{members.length}명</span>
+          </h2>
         </div>
 
         <div className="member-list">
@@ -616,6 +654,18 @@ function MemberSection({
               />
           ))}
         </div>
+
+        {showLeave && (
+            <div className="member-section-actions">
+              <button
+                  type="button"
+                  className="button button-danger button-small"
+                  onClick={onLeave}
+              >
+                모임 탈퇴
+              </button>
+            </div>
+        )}
       </Card>
   );
 }
