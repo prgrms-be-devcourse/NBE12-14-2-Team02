@@ -1,5 +1,7 @@
 package com.prgms.backend.domain.meeting;
 
+import com.prgms.backend.domain.content.ENUM.ContentPollStatus;
+import com.prgms.backend.domain.content.repository.ContentPollRepository;
 import com.prgms.backend.domain.expense.repository.ExpenseRepository;
 import com.prgms.backend.domain.meeting.dto.request.MeetingCreateRequest;
 import com.prgms.backend.domain.meeting.dto.request.MeetingUpdateRequest;
@@ -10,6 +12,8 @@ import com.prgms.backend.domain.meeting.enums.MeetingStatus;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.meeting.service.MeetingService;
+import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
+import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.domain.settlement.entity.SettlementStatus;
 import com.prgms.backend.domain.settlement.repository.SettlementRepository;
 import com.prgms.backend.domain.user.entity.User;
@@ -18,6 +22,7 @@ import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingPollNotCompletedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingSettlementNotCompletedException;
 import com.prgms.backend.global.exception.custom.user.UserNotFoundException;
 import java.util.List;
@@ -42,6 +47,8 @@ class MeetingServiceTest {
     private UserRepository userRepository;
     private SettlementRepository settlementRepository;
     private ExpenseRepository expenseRepository;
+    private SchedulePollRepository schedulePollRepository;
+    private ContentPollRepository contentPollRepository;
 
     private MeetingService meetingService;
 
@@ -53,12 +60,17 @@ class MeetingServiceTest {
         settlementRepository = mock(SettlementRepository.class);
         expenseRepository = mock(ExpenseRepository.class);
 
+        schedulePollRepository = mock(SchedulePollRepository.class);
+        contentPollRepository = mock(ContentPollRepository.class);
+
         meetingService = new MeetingService(
             meetingRepository,
             meetingMemberRepository,
             userRepository,
             settlementRepository,
-            expenseRepository
+            expenseRepository,
+            schedulePollRepository,
+            contentPollRepository
         );
     }
 
@@ -846,6 +858,92 @@ class MeetingServiceTest {
                 10L,
                 1L
             )
+        );
+    }
+
+    @Test
+    @DisplayName("진행 중인 일정 투표가 있으면 모임을 종료할 수 없다")
+    void completeMeeting_openSchedulePoll() {
+
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(
+            schedulePollRepository
+                .existsByMeetingIdAndStatus(
+                    10L,
+                    SchedulePollStatus.OPEN
+                )
+        ).thenReturn(true);
+
+        assertThrows(
+            MeetingPollNotCompletedException.class,
+            () -> meetingService.completeMeeting(
+                10L,
+                1L
+            )
+        );
+
+        assertEquals(
+            MeetingStatus.ACTIVE,
+            meeting.getStatus()
+        );
+    }
+
+    @Test
+    @DisplayName("진행 중인 콘텐츠 투표가 있으면 모임을 종료할 수 없다")
+    void completeMeeting_openContentPoll() {
+
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        when(
+            meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(10L)
+        ).thenReturn(Optional.of(meeting));
+
+        when(
+            contentPollRepository
+                .existsByMeetingIdAndStatus(
+                    10L,
+                    ContentPollStatus.OPEN
+                )
+        ).thenReturn(true);
+
+        assertThrows(
+            MeetingPollNotCompletedException.class,
+            () -> meetingService.completeMeeting(
+                10L,
+                1L
+            )
+        );
+
+        assertEquals(
+            MeetingStatus.ACTIVE,
+            meeting.getStatus()
         );
     }
 

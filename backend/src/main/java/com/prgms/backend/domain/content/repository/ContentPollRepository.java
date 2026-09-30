@@ -18,4 +18,9 @@ public interface ContentPollRepository extends JpaRepository<ContentPoll,Long> {
             ContentPollStatus status,
             LocalDateTime now
     );
+
+    boolean existsByMeetingIdAndStatus(
+        Long meetingId,
+        ContentPollStatus status
+    );
 }

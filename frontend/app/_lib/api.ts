@@ -97,9 +97,14 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = 
   // /api/auth/* 는 제외: 로그인 실패(비밀번호 오류 등)도 401이라 에러 메시지를 보여줘야 한다
   if (response.status === 401 && !path.startsWith("/api/auth/")) {
     clearAccessToken();
-    // 컴포넌트 밖이라 useRouter를 쓸 수 없어 전체 페이지 이동으로 처리한다
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = "/login";
+
+    const redirect =
+        window.location.pathname +
+        window.location.search +
+        window.location.hash;
+
+    window.location.href =
+        `/login?redirect=${encodeURIComponent(redirect)}`;
   }
 
   const envelope = await parseEnvelope<T>(response);

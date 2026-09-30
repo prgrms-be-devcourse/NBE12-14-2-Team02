@@ -16,6 +16,10 @@ import java.util.Optional;
 public interface SchedulePollRepository extends JpaRepository<SchedulePoll, Long> {
     boolean existsByMeetingId(Long meetingId);
     Optional<SchedulePoll> findByMeetingId(Long meetingId);
+    boolean existsByMeetingIdAndStatus(
+        Long meetingId,
+        SchedulePollStatus status
+    );
 
     @Query("""
         SELECT DISTINCT sp
