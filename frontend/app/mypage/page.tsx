@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/app/_components/AppShell";
+import Modal from "@/app/_components/Modal";
 import SettlementHistory from "@/app/_components/SettlementHistory";
 import { Card, EmptyState, Field, Message, PageTitle } from "@/app/_components/ui";
 import { apiFetch, clearAccessToken, jsonBody } from "@/app/_lib/api";
@@ -19,6 +20,11 @@ export default function MyPage() {
   const [completedMeetings, setCompletedMeetings] = useState<Meeting[]>([]);
   const [meetingsLoading, setMeetingsLoading] = useState(true);
   const [meetingsError, setMeetingsError] = useState("");
+
+  // 탈퇴 확인 모달 표시 여부
+  const [withdrawConfirming, setWithdrawConfirming] = useState(false);
+  // 탈퇴 실패 사유: 값이 있으면 모달로 보여준다 (프로필 조회 실패와 구분)
+  const [withdrawError, setWithdrawError] = useState("");
 
   // 닉네임 변경 상태: 입력 가능 여부, 입력값, 중복확인을 통과한 값, 결과 메시지
   const [nicknameEditing, setNicknameEditing] = useState(false);
@@ -140,17 +146,16 @@ export default function MyPage() {
     }
   }
 
-  // 회원 탈퇴: 확인을 받은 뒤 요청하고, 성공하면 토큰을 지우고 로그인 페이지로 이동
+  // 회원 탈퇴: 확인 모달에서 확인을 누르면 요청하고, 성공하면 토큰을 지우고 로그인 페이지로 이동
   async function withdraw() {
-    if (!confirm("정말 탈퇴하시겠습니까? 탈퇴 후에는 되돌릴 수 없습니다.")) return;
-
+    setWithdrawConfirming(false);
     setSaving(true);
     try {
       await apiFetch<void>("/api/user", { method: "DELETE" });
       clearAccessToken();
       router.push("/login");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "탈퇴하지 못했습니다.");
+      setWithdrawError(e instanceof Error ? e.message : "탈퇴하지 못했습니다.");
       setSaving(false);
     }
   }
@@ -290,10 +295,29 @@ export default function MyPage() {
               <h3>회원 탈퇴</h3>
               <p>계정을 삭제하고 서비스 이용을 종료합니다.</p>
             </div>
-            <button className="button button-danger" onClick={withdraw} disabled={saving}>회원 탈퇴</button>
+            <button className="button button-danger" onClick={() => setWithdrawConfirming(true)} disabled={saving}>회원 탈퇴</button>
           </div>
         </Card>
       </div>
+
+      {withdrawConfirming && (
+        <Modal
+          title="정말 탈퇴하시겠습니까?"
+          tone="danger"
+          confirmText="탈퇴"
+          cancelText="취소"
+          onConfirm={withdraw}
+          onClose={() => setWithdrawConfirming(false)}
+        >
+          <p>탈퇴 후에는 되돌릴 수 없습니다.</p>
+        </Modal>
+      )}
+
+      {withdrawError && (
+        <Modal title="탈퇴할 수 없습니다" tone="danger" onClose={() => setWithdrawError("")}>
+          <p>{withdrawError}</p>
+        </Modal>
+      )}
     </AppShell>
   );
 }
