@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { apiFetch, apiFetchBlob } from "@/app/_lib/api";
 import { Message } from "./ui";
+import styles from "./ExpensePresentation.module.css";
 
 export default function ExpenseReceipt({ meetingId, expenseId, hasReceipt, editable, onChange }: {
   meetingId: string; expenseId: number; hasReceipt: boolean; editable: boolean; onChange: () => Promise<void>;
@@ -11,6 +12,7 @@ export default function ExpenseReceipt({ meetingId, expenseId, hasReceipt, edita
   const busyRef = useRef(false);
   const [error, setError] = useState("");
   const [url, setUrl] = useState<string | null>(null);
+  const previewId = useId();
   const live = useRef(true);
   useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
@@ -36,17 +38,23 @@ export default function ExpenseReceipt({ meetingId, expenseId, hasReceipt, edita
   }
 
   return <div className="stack">
-    <strong>영수증 {hasReceipt ? "1장 첨부됨" : "미첨부"}</strong>
+    <div className={styles.expenseTitle}>
+      <strong>영수증 {hasReceipt ? "1장 첨부됨" : "미첨부"}</strong>
+      {hasReceipt && <button type="button" className={styles.detailToggle} disabled={busy}
+        aria-expanded={Boolean(url)} aria-controls={previewId} onClick={() => {
+          if (url) { setUrl(null); return; }
+          void run(async () => {
+            const blob = await apiFetchBlob(path);
+            if (live.current) setUrl(URL.createObjectURL(blob));
+          });
+        }}>{busy ? "처리 중…" : url ? "영수증 닫기 ▴" : "영수증 열기 ▾"}</button>}
+    </div>
     {error && <Message tone="error">{error}</Message>}
-    {hasReceipt && <button type="button" className="button button-secondary" disabled={busy} onClick={() => run(async () => {
-      const blob = await apiFetchBlob(path);
-      if (live.current) setUrl(URL.createObjectURL(blob));
-    })}>영수증 보기</button>}
-    {url && <>
+    <div id={previewId} hidden={!url}>
       {/* 인증 요청으로 받은 Blob만 표시합니다. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="지출 영수증" style={{ maxWidth: "100%", maxHeight: 600, objectFit: "contain" }} />
-    </>}
+      {url && <img src={url} alt="지출 영수증" style={{ maxWidth: "100%", maxHeight: 600, objectFit: "contain" }} />}
+    </div>
     {editable && <>
       <label>영수증 {hasReceipt ? "교체" : "첨부"} (JPG·PNG, 최대 5MB, 1장)
         <input type="file" accept="image/jpeg,image/png" disabled={busy} onChange={e => {

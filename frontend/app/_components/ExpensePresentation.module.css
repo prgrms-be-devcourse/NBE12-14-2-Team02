@@ -39,10 +39,24 @@
 .detailToggle { color: #64748b; font-size: .8rem; font-weight: 400; border: 0; background: transparent; cursor: pointer; padding: 6px 0; }
 .expenseDetails { padding: 16px 20px; border-radius: 12px; background: #f8fafc; }
 .expenseDetails[hidden] { display: none; }
-.summaryGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.summaryCard { border: 1px solid #dbeafe; border-radius: 14px; background: #eff6ff; padding: 22px; display: grid; gap: 8px; }
-.summaryCard:last-child { background: #fff1f2; border-color: #fecdd3; }
-.summaryCard strong { font-size: clamp(1.3rem, 3vw, 2rem); overflow-wrap: anywhere; }
+.summaryText { display: grid; gap: 12px; color: #1e293b; }
+.summaryLine { line-height: 1.9; font-size: 1.05rem; overflow-wrap: anywhere; }
+.summaryPeople { position: relative; display: inline-block; max-width: 100%; }
+.peopleButton, .accountNameButton { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; text-decoration: underline dotted #94a3b8; text-underline-offset: 5px; }
+.peopleButton:focus-visible, .accountNameButton:focus-visible { outline: 2px solid #64748b; outline-offset: 4px; border-radius: 2px; }
+.peoplePopover { position: absolute; z-index: 10; top: 100%; left: 0; width: min(320px, 65vw); padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 8px 24px #0f172a1a; font-size: .9rem; line-height: 1.6; max-height: 260px; overflow-y: auto; }
+.peoplePopover[hidden] { display: none; }
+.peoplePopover > strong { display: block; margin-bottom: 8px; }
+.personRow { display: flex; gap: 16px; justify-content: space-between; padding: 6px 0; }
+.personRow > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.personRow > span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.accountName { display: grid; gap: 8px; }
+.accountNameButton small { color: #64748b; font-size: .75rem; white-space: nowrap; margin-left: 6px; }
+.copyFeedback { display: block; max-width: 260px; font-size: .8rem; color: #475569; white-space: normal; }
+.compactTransfer { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 18px; padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
+.compactTransfer:last-child { border-bottom: 0; }
+.compactTransfer > span { overflow-wrap: anywhere; }
+.compactTransfer > strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .balanceTable th:not(:first-child), .balanceTable td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .balanceTable td:last-child { font-size: 1.05rem; }
 .slash { color: #94a3b8; margin: 0 8px; }
@@ -54,8 +68,6 @@
 .transfer button { justify-self: start; }
 @media (max-width: 600px) {
   .memberAmount { max-width: 48%; }
-  .summaryGrid { gap: 10px; }
-  .summaryCard { padding: 16px 12px; }
   .remainder, .receiptPicker { padding: 16px; }
   .actions > button { flex: 1 1 auto; }
 }
