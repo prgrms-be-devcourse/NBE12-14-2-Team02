@@ -11,6 +11,7 @@ import {
   NOTIFICATIONS_CHANGED,
   reissueAccessToken,
 } from "@/app/_lib/api";
+import { loginPathFromCurrentLocation } from "@/app/_lib/redirect";
 import type { NotificationItem } from "@/app/_lib/types";
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -28,7 +29,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         : await reissueAccessToken().catch(() => null);
       if (cancelled) return;
       if (token) setAuthed(true);
-      else router.replace("/login");
+      else router.replace(loginPathFromCurrentLocation());
     })();
     return () => { cancelled = true; };
   }, [router]);

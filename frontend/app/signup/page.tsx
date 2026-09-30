@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type SubmitEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type SubmitEvent } from "react";
 import { Card, Field, Message } from "@/app/_components/ui";
 import { apiFetch, jsonBody } from "@/app/_lib/api";
+import { REDIRECT_PARAM, safeRedirect, withRedirect } from "@/app/_lib/redirect";
 
 // 아이디@도메인.최상위도메인 형태만 허용 (백엔드 @Email보다 조금 엄격함)
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -11,7 +12,27 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LABELS = { email: "이메일", nickname: "닉네임" };
 
 export default function SignupPage() {
+  return (
+    <main className="auth-page">
+      <Card className="auth-card">
+        <Link href="/" className="brand">
+          <span>M</span>MOIM
+        </Link>
+        <h1>회원가입</h1>
+        <p>모임 준비를 한곳에서 시작해 보세요.</p>
+
+        {/* useSearchParams는 프리렌더를 막으므로 폼만 Suspense 안으로 내린다 */}
+        <Suspense fallback={<SignupFormFallback />}>
+          <SignupForm />
+        </Suspense>
+      </Card>
+    </main>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
   const [message, setMessage] = useState("");
@@ -20,6 +41,9 @@ export default function SignupPage() {
   // 중복확인을 통과한 값. 입력값이 이 값과 달라지면 다시 확인해야 한다.
   const [checkedEmail, setCheckedEmail] = useState<string | null>(null);
   const [checkedNickname, setCheckedNickname] = useState<string | null>(null);
+
+  // 초대 링크에서 넘어온 경우, 가입 후 로그인까지 끝나면 그 화면으로 돌아가야 한다
+  const redirect = safeRedirect(searchParams.get(REDIRECT_PARAM));
 
   // 이메일/닉네임 중복확인
   async function check(kind: "email" | "nickname") {
@@ -53,7 +77,7 @@ export default function SignupPage() {
       // 사용 가능한 경우에만 확인 통과 값으로 저장
       if (kind === "email") setCheckedEmail(value);
       else setCheckedNickname(value);
-      
+
       setMessage(`사용할 수 있는 ${LABELS[kind]}입니다.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "확인하지 못했습니다.");
@@ -88,71 +112,68 @@ export default function SignupPage() {
           confirmPassword: values.get("confirmPassword"),
         }),
       });
-      // 가입만으로는 로그인되지 않으므로 로그인 페이지로 이동
-      router.push("/login");
+      // 가입만으로는 로그인되지 않으므로 로그인 페이지로 이동 (redirect는 그대로 이어서 넘긴다)
+      router.push(withRedirect("/login", redirect));
     } catch (e) {
       setError(e instanceof Error ? e.message : "가입하지 못했습니다.");
     }
   }
 
   return (
-    <main className="auth-page">
-      <Card className="auth-card">
-        <Link href="/" className="brand">
-          <span>M</span>MOIM
-        </Link>
-        <h1>회원가입</h1>
-        <p>모임 준비를 한곳에서 시작해 보세요.</p>
+    <>
+      <form className="stack" onSubmit={submit}>
+        {/* 중복확인 버튼은 type="button"이라 폼을 제출하지 않는다 */}
+        <Field label="이메일">
+          <div className="row">
+            <input
+              className="input"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button type="button" className="button button-ghost" onClick={() => check("email")}>
+              중복확인
+            </button>
+          </div>
+        </Field>
 
-        <form className="stack" onSubmit={submit}>
-          {/* 중복확인 버튼은 type="button"이라 폼을 제출하지 않는다 */}
-          <Field label="이메일">
-            <div className="row">
-              <input
-                className="input"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button type="button" className="button button-ghost" onClick={() => check("email")}>
-                중복확인
-              </button>
-            </div>
-          </Field>
+        <Field label="닉네임">
+          <div className="row">
+            <input
+              className="input"
+              required
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+            />
+            <button type="button" className="button button-ghost" onClick={() => check("nickname")}>
+              중복확인
+            </button>
+          </div>
+        </Field>
 
-          <Field label="닉네임">
-            <div className="row">
-              <input
-                className="input"
-                required
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-              />
-              <button type="button" className="button button-ghost" onClick={() => check("nickname")}>
-                중복확인
-              </button>
-            </div>
-          </Field>
+        <Field label="비밀번호" hint="영문, 숫자, 특수문자를 포함해 8자 이상">
+          <input className="input" name="password" type="password" required />
+        </Field>
 
-          <Field label="비밀번호" hint="영문, 숫자, 특수문자를 포함해 8자 이상">
-            <input className="input" name="password" type="password" required />
-          </Field>
+        <Field label="비밀번호 확인">
+          <input className="input" name="confirmPassword" type="password" required />
+        </Field>
 
-          <Field label="비밀번호 확인">
-            <input className="input" name="confirmPassword" type="password" required />
-          </Field>
+        {message && <Message tone="success">{message}</Message>}
+        {error && <Message tone="error">{error}</Message>}
 
-          {message && <Message tone="success">{message}</Message>}
-          {error && <Message tone="error">{error}</Message>}
+        <button className="button button-primary">회원가입 완료</button>
+      </form>
 
-          <button className="button button-primary">회원가입 완료</button>
-        </form>
-
-        <p className="auth-footer">
-          이미 계정이 있나요? <Link href="/login">로그인</Link>
-        </p>
-      </Card>
-    </main>
+      <p className="auth-footer">
+        이미 계정이 있나요? <Link href={withRedirect("/login", redirect)}>로그인</Link>
+      </p>
+    </>
   );
+}
+
+// Suspense 동안에도 카드 높이가 유지되도록 폼 자리를 비워둔다
+function SignupFormFallback() {
+  return <div className="stack" aria-hidden />;
 }

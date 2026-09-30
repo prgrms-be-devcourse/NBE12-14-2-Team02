@@ -76,7 +76,8 @@ MYSQLDATABASE=team02
 MYSQLUSER=team02_user
 MYSQLPASSWORD=your_password
 MYSQL_ROOT_PASSWORD=your_root_password
-JWT_SECRET=your_jwt_secret
+JWT_ACCESS_SECRET=your_jwt_access_secret
+JWT_REFRESH_SECRET=your_jwt_refresh_secret
 ```
 
 #### 2. MySQL 실행
