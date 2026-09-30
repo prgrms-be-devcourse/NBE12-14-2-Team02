@@ -1,11 +1,12 @@
 "use client";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/app/_components/AppShell";
 import MeetingTabs from "@/app/_components/MeetingTabs";
-import { Badge, Card, Message, PageTitle } from "@/app/_components/ui";
+import { Badge, Card, EmptyState, Message, PageTitle } from "@/app/_components/ui";
 import { apiFetch, getCurrentUserId, jsonBody } from "@/app/_lib/api";
-import type { ContentResults } from "@/app/_lib/types";
+import type { ContentPoll, ContentResults } from "@/app/_lib/types";
 
 const label: Record<string, string> = { PREFER: "최우선 선호", AVAILABLE: "참여 가능", DISLIKE: "비선호" };
 const WINDOW = 4;
@@ -13,10 +14,22 @@ const WINDOW = 4;
 export default function ContentResultsPage() {
   const { meetingId } = useParams<{ meetingId: string }>();
   const [result, setResult] = useState<ContentResults | null>(null);
+  const [blocked, setBlocked] = useState(false);
   const [error, setError] = useState("");
   const [start, setStart] = useState(0);
   const load = useCallback(() => apiFetch<ContentResults>(`/api/meetings/${meetingId}/content-poll/results?sort=SCORE`).then(setResult).catch((e) => setError(e.message)), [meetingId]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    apiFetch<ContentPoll>(`/api/meetings/${meetingId}/content-poll`).then((poll) => {
+      if (!active) return;
+      if (poll.status !== "CLOSED") {
+        setBlocked(true);
+        return;
+      }
+      return load();
+    }).catch((e) => { if (active) setError(e.message); });
+    return () => { active = false; };
+  }, [meetingId, load]);
 
   async function confirm(candidateId: number) {
     try {
@@ -43,9 +56,15 @@ export default function ContentResultsPage() {
 
   return (
     <AppShell>
-      <PageTitle eyebrow="Poll results" title="콘텐츠 투표 결과" description={result?.status === "CLOSED" ? "마감된 후보의 점수와 참여자별 응답을 확인하세요." : "현재까지 집계된 후보별 선호도입니다."} />
+      <PageTitle eyebrow="Poll results" title="콘텐츠 투표 결과" description="마감된 후보의 점수와 참여자별 응답을 확인하세요." />
       <MeetingTabs meetingId={meetingId} active="content" />
       {error && <Message tone="error">{error}</Message>}
+      {blocked && (
+        <Card>
+          <EmptyState title="아직 결과를 볼 수 없어요" description="콘텐츠 투표가 마감된 뒤에 점수와 참여자별 응답을 확인할 수 있습니다." />
+          <div className="form-actions"><Link className="button button-primary" href={`/meetings/${meetingId}/content`}>투표로 돌아가기</Link></div>
+        </Card>
+      )}
       {result && (
         <div className="stack">
           <div className="row between">
