@@ -258,8 +258,12 @@ tbody tr:hover { background: #fafbff; }
 .invite-link-row .input { min-width: 0; flex: 1; padding: 9px 11px; font-size: 12px; }
 .invite-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 13px; }
 .invite-actions .button { flex-shrink: 0; }
-.member-list { display: grid; }
-.member-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.member-list { display: grid; align-content: start; grid-auto-rows: 52px; }
+.member-section-card { display: flex; flex-direction: column; max-height: 520px; overflow: hidden; }
+.member-section-card .overview-card-heading { flex-shrink: 0; }
+.member-section-card .member-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.member-section-actions { display: flex; justify-content: flex-end; flex-shrink: 0; padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--line); }
+.member-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 52px; padding: 0; border-bottom: 1px solid var(--line); box-sizing: border-box; }
 .member-item:last-child { border-bottom: 0; }
 .member-identity { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .member-avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #3730a3; background: #e0e7ff; font-size: 12px; font-weight: 800; }
