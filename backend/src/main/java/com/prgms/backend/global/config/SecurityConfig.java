@@ -1,7 +1,9 @@
 package com.prgms.backend.global.config;
 
+import com.prgms.backend.global.ApiResponse;
 import com.prgms.backend.security.JwtAuthenticationFilter;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -12,13 +14,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
+import tools.jackson.databind.json.JsonMapper;
 
 import javax.crypto.SecretKey;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 @RequiredArgsConstructor
 @Configuration
 public class SecurityConfig {
+
+    private final JsonMapper jsonMapper;
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
@@ -38,23 +44,21 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(401);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("""
-                {"success": false, "error": {"code": "UNAUTHORIZED", "message": "인증이 필요합니다."}}
-                """);
+                            writeError(response, 401, "인증이 필요합니다.");
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(403);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("""
-                {"success": false, "error": {"code": "FORBIDDEN", "message": "접근 권한이 없습니다."}}
-                """);
+                            writeError(response, 403, "접근 권한이 없습니다.");
                         })
                 );
 
 
         return http.build();
+    }
+
+    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json;charset=UTF-8");
+        jsonMapper.writeValue(response.getWriter(), ApiResponse.error(status, message));
     }
 
     @Bean
