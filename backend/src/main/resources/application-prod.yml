@@ -1,0 +1,15 @@
+# application-prod.yml
+server:
+  forward-headers-strategy: framework
+
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: warn
+    org.hibernate.orm.jdbc.bind: off

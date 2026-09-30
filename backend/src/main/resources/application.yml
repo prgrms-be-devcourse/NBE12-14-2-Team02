@@ -1,0 +1,26 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  application:
+    name: backend
+
+
+  config:
+    import: optional:file:.env[.properties]
+
+  # DB 연결 정보 (.env 값 주입)
+  datasource:
+    url: jdbc:mysql://${MYSQLHOST:localhost}:${MYSQLPORT:3306}/${MYSQLDATABASE}
+    username: ${MYSQLUSER}
+    password: ${MYSQLPASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+custom:
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET}
+    refresh-secret: ${JWT_REFRESH_SECRET}
+    access-token-validity-seconds: ${JWT_ACCESS_TOKEN_VALIDITY_SECONDS:1800} # 액세스 토큰 유효기간 (기본 30분)
+    refresh-token-validity-seconds: ${JWT_REFRESH_TOKEN_VALIDITY_SECONDS:1209600} # 리프레시 토큰 유효기간 (기본 14일)
