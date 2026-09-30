@@ -50,4 +50,6 @@ export type ContentResults = {
 };
 export type NotificationItem = { id: number; meetingId: number | null; type: string; title: string; content: string; redirectUrl: string | null; isRead: boolean; createdAt: string };
 export type SettlementAccount = { memberId: number; bankName: string; accountNumber: string; accountHolder: string };
-export type Settlement = { settlementId: number; meetingId: number; status: "OPEN" | "CLOSED"; closedByMemberId: number | null; closedAt: string | null; balances: Array<{ memberId: number; paidAmount: number; shareAmount: number }>; transfers: Array<{ senderId: number; recipientId: number; amount: number }>; accounts: SettlementAccount[] };
+export type Settlement = { settlementId: number; meetingId: number; status: "OPEN" | "CLOSED"; closedByMemberId: number | null; closedAt: string | null; balances: Array<{ memberId: number; paidAmount: number; shareAmount: number }>; transfers: Array<{ senderId: number; recipientId: number; amount: number }>; accounts: SettlementAccount[]; missingAccountMemberIds: number[] };
+export type SettlementPreview = Pick<Settlement, "balances" | "transfers"> & { missingAccounts: Array<{ memberId: number; nickname: string }> };
+export type SettlementHistoryEntry = { meetingName: string; currentMemberId: number; names: Record<string, string>; result: Settlement };

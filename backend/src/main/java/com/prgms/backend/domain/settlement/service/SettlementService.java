@@ -4,6 +4,7 @@ import com.prgms.backend.domain.expense.entity.Expense;
 import com.prgms.backend.domain.expense.repository.ExpenseRepository;
 import com.prgms.backend.domain.notification.service.NotificationService;
 import com.prgms.backend.domain.settlement.dto.SettlementResponse;
+import com.prgms.backend.domain.settlement.dto.SettlementPreviewResponse;
 import com.prgms.backend.domain.settlement.entity.Settlement;
 import com.prgms.backend.domain.settlement.entity.SettlementBalance;
 import com.prgms.backend.domain.settlement.entity.SettlementStatus;
@@ -36,6 +37,22 @@ public class SettlementService {
     private final MeetingMemberRepository memberRepository;
 
     @Transactional
+    public SettlementPreviewResponse preview(long meetingId, Principal principal) {
+        // 지출 변경과 동일한 잠금으로 일관된 예상 결과를 계산하되 저장하지 않습니다.
+        var context = meetingAccess.requireMember(meetingId, principal);
+        if (!context.meetingOpen()) throw new SettlementRequestException(409, "종료된 모임입니다.");
+        settlementRepository.findByMeetingId(meetingId).ifPresent(Settlement::checkOpen);
+        var result = calculator.calculate(meetingId, expenseRepository.findByMeetingIdOrderByIdAsc(meetingId), context.memberIds());
+        var registered = accountRepository.findByMeetingId(meetingId).stream().map(SettlementAccount::getMemberId).collect(Collectors.toSet());
+        var missing = result.transfers().stream().map(SettlementCalculator.Transfer::recipientId).distinct().sorted()
+                .filter(id -> !registered.contains(id)).toList();
+        var names = memberRepository.findAllById(missing).stream().collect(Collectors.toMap(
+                MeetingMember::getId, member -> member.getUser().getNickname()));
+        return new SettlementPreviewResponse(result.balances(), result.transfers(), missing.stream()
+                .map(id -> new SettlementPreviewResponse.MissingAccount(id, names.getOrDefault(id, "모임원 #" + id))).toList());
+    }
+
+    @Transactional
     public SettlementResponse confirm(long meetingId, Principal principal) {
         // 모임 잠금은 트랜잭션 종료까지 유지, 확정 중 새 지출 추가x
         MeetingAccessPort.Context context = meetingAccess.requireMember(meetingId, principal);
@@ -56,15 +73,9 @@ public class SettlementService {
         var accounts = accountRepository.findByMeetingId(meetingId).stream()
                 .collect(Collectors.toMap(SettlementAccount::getMemberId, account -> account));
         var recipients = result.transfers().stream().map(SettlementCalculator.Transfer::recipientId).distinct().sorted().toList();
-        var missing = recipients.stream().filter(id -> !accounts.containsKey(id)).toList();
-        if (!missing.isEmpty()) {
-            var names = memberRepository.findAllById(missing).stream().collect(Collectors.toMap(
-                    MeetingMember::getId, member -> member.getUser().getNickname()));
-            String message = missing.stream().map(id -> names.getOrDefault(id, "모임원 #" + id))
-                    .collect(Collectors.joining(", "));
-            throw new SettlementRequestException(409, message + "님의 정산 계좌 등록이 필요합니다. 등록 후 다시 확정해주세요.");
-        }
-        var snapshots = recipients.stream().map(id -> new SettlementAccountSnapshot(accounts.get(id))).toList();
+        // 계좌 미등록은 확정을 막지 않습니다. 등록된 수취인 계좌만 보관합니다.
+        var snapshots = recipients.stream().filter(accounts::containsKey)
+                .map(id -> new SettlementAccountSnapshot(accounts.get(id))).toList();
         List<SettlementBalance> balances = result.balances().stream()
                 .map(balance -> new SettlementBalance(balance.memberId(), balance.paidAmount(), balance.shareAmount()))
                 .toList();
@@ -77,17 +88,17 @@ public class SettlementService {
         settlement.saveAccounts(snapshots);
         settlement.close(context.memberId());
         notificationService.notifySettlementClosed(meetingId);
-        return SettlementResponse.from(settlementRepository.save(settlement));
+        return SettlementResponse.forMember(settlementRepository.save(settlement), context.memberId(), false);
     }
 
     @Transactional(readOnly = true)
     public SettlementResponse getResult(long meetingId, Principal principal) {
-        meetingAccess.requireMemberForRead(meetingId, principal);
+        var context = meetingAccess.requireMemberForRead(meetingId, principal);
         Settlement settlement = settlementRepository.findByMeetingId(meetingId)
                 .orElseThrow(() -> new SettlementRequestException(404, "아직 확정된 정산이 없습니다."));
         if (settlement.getStatus() != SettlementStatus.CLOSED) {
             throw new SettlementRequestException(404, "아직 확정된 정산이 없습니다.");
         }
-        return SettlementResponse.from(settlement);
+        return SettlementResponse.forMember(settlement, context.memberId(), false);
     }
 }

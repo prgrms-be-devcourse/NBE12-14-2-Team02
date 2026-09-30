@@ -38,7 +38,7 @@ public class ExpenseController {
         service.delete(meetingId, expenseId, principal);
     }
 
-    @PostMapping
+    @PostMapping(headers = "!Idempotency-Key")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ExpenseResponse> create(@PathVariable long meetingId, Principal principal,
                                                @Valid @RequestBody ExpenseCreateRequest request) {

@@ -1,6 +1,7 @@
 package com.prgms.backend.domain.settlement.controller;
 
 import com.prgms.backend.domain.settlement.dto.SettlementResponse;
+import com.prgms.backend.domain.settlement.dto.SettlementPreviewResponse;
 import com.prgms.backend.domain.settlement.dto.AccountRequest;
 import com.prgms.backend.domain.settlement.dto.AccountResponse;
 import com.prgms.backend.domain.settlement.service.SettlementAccountService;
@@ -17,6 +18,12 @@ import java.security.Principal;
 public class SettlementController {
     private final SettlementService settlementService;
     private final SettlementAccountService accountService;
+
+    @GetMapping("/preview")
+    public ApiResponse<SettlementPreviewResponse> preview(
+            @PathVariable long meetingId, Principal principal) {
+        return ApiResponse.success(200, settlementService.preview(meetingId, principal));
+    }
 
     @GetMapping("/account")
     public ApiResponse<AccountResponse> account(@PathVariable long meetingId, Principal principal) {

@@ -4,6 +4,7 @@ import { useEffect, useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/app/_components/AppShell";
 import Modal from "@/app/_components/Modal";
+import SettlementHistory from "@/app/_components/SettlementHistory";
 import { Card, EmptyState, Field, Message, PageTitle } from "@/app/_components/ui";
 import { apiFetch, clearAccessToken, jsonBody } from "@/app/_lib/api";
 import type { Meeting } from "@/app/_lib/types";
@@ -261,6 +262,7 @@ export default function MyPage() {
         </Card>
       )}
 
+      <div className="top-gap"><SettlementHistory /></div>
       <div className="top-gap">
         <Card>
           <h2>완료된 모임</h2>
@@ -319,3 +321,4 @@ export default function MyPage() {
     </AppShell>
   );
 }
+
