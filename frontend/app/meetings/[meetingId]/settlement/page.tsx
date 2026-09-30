@@ -7,6 +7,7 @@ import AppShell from "@/app/_components/AppShell";
 import SettlementAccountForm from "@/app/_components/SettlementAccountForm";
 import ExpenseReceipt from "@/app/_components/ExpenseReceipt";
 import MeetingTabs from "@/app/_components/MeetingTabs";
+import styles from "@/app/_components/ExpensePresentation.module.css";
 import { Badge, Card, EmptyState, Message, PageTitle, formatDate, formatMoney } from "@/app/_components/ui";
 import { apiFetch } from "@/app/_lib/api";
 import { getSettlement, type Expense, type ExpenseList } from "@/app/_lib/expenses";
@@ -29,6 +30,7 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
   const [refreshing, setRefreshing] = useState(false);
   const refreshRef = useRef(false);
   const [preview, setPreview] = useState<SettlementPreview | null>(null);
+  const [expanded, setExpanded] = useState<number[]>([]);
   const load = useCallback(async () => {
     const [list, members, settlement, meeting] = await Promise.all([
       apiFetch<ExpenseList>(`/api/meetings/${meetingId}/expenses`),
@@ -124,24 +126,33 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
     {notice && <Message tone="success">{notice}</Message>}
     <button className="button button-ghost" disabled={loading || busy || refreshing} onClick={refresh}>{refreshing ? "갱신 중…" : "새로고침"}</button>
     {loading ? <Message>지출과 정산 정보를 불러오는 중입니다.</Message> : data && <div className="stack">
+      {settlement && <Card className={styles.section}>
+        <div className={styles.toolbar}><h2>내 정산 요약</h2><Badge tone="green">정산 완료</Badge></div>
+        <p className="muted">{settlement.closedByMemberId ? `${name(settlement.closedByMemberId)}님이 확정 · ` : ""}{formatDate(settlement.closedAt)}</p>
+        <div className={styles.summaryGrid}>
+          <div className={styles.summaryCard}><span className={styles.receive}>받을 금액</span><strong className={styles.receive}>{formatMoney(incoming.reduce((sum, transfer) => sum + transfer.amount, 0))}</strong></div>
+          <div className={styles.summaryCard}><span className={styles.send}>보낼 금액</span><strong className={styles.send}>{formatMoney(outgoing.reduce((sum, transfer) => sum + transfer.amount, 0))}</strong></div>
+        </div>
+        <p className="muted">정산 계산이 완료되었어요. 실제 송금·입금 여부는 별도로 확인해주세요. <a href="#my-settlement">송금 상대와 계좌 확인 ↓</a></p>
+      </Card>}
       <SettlementAccountForm key={meetingId} meetingId={meetingId} closed={settlement?.status === "CLOSED"} meetingOpen={data.meeting.status === "ACTIVE"}
         canRegisterAfterClosed={Boolean(currentMemberId && settlement?.missingAccountMemberIds?.includes(currentMemberId))} onSaved={() => { void refresh(); }} />
       <Card>
-        <div className="row between"><h2>지출 {data.list.expenses.length}건</h2><strong>합계 {formatMoney(data.list.expenses.reduce((sum, expense) => sum + expense.amount, 0))}</strong></div>
-        {!editable && <Message>정산이 확정되었거나 종료된 모임입니다. 지출은 조회만 가능합니다.</Message>}
-        <p className="muted">확정 전에는 본인이 등록한 지출만 수정·삭제할 수 있습니다.</p>
+        <div className={styles.toolbar}><h2>지출 {data.list.expenses.length}건</h2><strong className={styles.amount}>합계 {formatMoney(data.list.expenses.reduce((sum, expense) => sum + expense.amount, 0))}</strong></div>
+        {!editable && <Message>{settlement ? "정산 완료 · 확정된 지출 내역을 확인할 수 있습니다." : "종료된 모임입니다. 지출 내역을 확인할 수 있습니다."}</Message>}
+        {editable && <p className="muted">확정 전에는 본인이 등록한 지출만 수정·삭제할 수 있습니다.</p>}
         {data.list.expenses.length === 0 ? <EmptyState title="등록된 지출이 없습니다" description="결제한 내역을 등록하면 이곳에서 확인할 수 있습니다." /> : <div className="list">
           {data.list.expenses.map(expense => <div className="stack" key={expense.id}>
-            <div className="list-item"><div><strong>{expense.title}</strong><p>{name(expense.payerMemberId)} 결제 · {formatDate(expense.createdAt)}</p></div><strong>{formatMoney(expense.amount)}</strong></div>
-            <details><summary>상세 내역</summary>
+            <div className={`list-item ${styles.expenseHeader}`}><div><div className={styles.expenseTitle}><strong>{expense.title}</strong><button type="button" className={styles.detailToggle} aria-expanded={expanded.includes(expense.id)} aria-controls={`expense-details-${expense.id}`} aria-label={`${expense.title} 상세 내역 ${expanded.includes(expense.id) ? "접기" : "보기"}`} onClick={() => setExpanded(current => current.includes(expense.id) ? current.filter(id => id !== expense.id) : [...current, expense.id])}>상세 내역 {expanded.includes(expense.id) ? "▴" : "▾"}</button></div><p>{name(expense.payerMemberId)} 결제 · {formatDate(expense.createdAt)}</p></div><strong className={styles.amount}>{formatMoney(expense.amount)}</strong></div>
+            <div className={styles.expenseDetails} id={`expense-details-${expense.id}`} hidden={!expanded.includes(expense.id)}>
               <p>{expense.memo || "등록된 메모가 없습니다."}</p>
-              <p>분담 방식: {expense.splitMode === "EXACT" ? "금액 직접 입력" : "균등 분담"}</p>
-              {expense.participants.map(share => <p key={share.memberId}>{name(share.memberId)}: {formatMoney(share.amount)}</p>)}
+              <p>나누는 방법: {expense.splitMode === "EXACT" ? "각자 낼 금액 직접 정하기" : expense.splitMode === "EQUAL" ? "모임원과 똑같이 나눠 내기" : "이전 지출 (방식 정보 없음)"}</p>
+              {expense.participants.map(share => <div className={styles.shareRow} key={share.memberId}><span>{name(share.memberId)}</span><strong>{formatMoney(share.amount)}</strong></div>)}
               {!expense.participants.length && <p>이전 지출의 개인별 부담액 정보가 없습니다.</p>}
               {expense.remainderMemberId && <p>차액 담당자: {name(expense.remainderMemberId)}</p>}
               <ExpenseReceipt meetingId={meetingId} expenseId={expense.id} hasReceipt={expense.hasReceipt}
                 editable={editable && !busy && !refreshing && expense.payerMemberId === currentMemberId} onChange={refresh} />
-            </details>
+            </div>
             {editable && expense.payerMemberId === data.list.currentMemberId && <div className="form-actions">
               {!busy && !refreshing && <Link className="button button-secondary" href={`/meetings/${meetingId}/expenses/${expense.id}/edit`}>수정</Link>}
               <button className="button button-ghost" disabled={busy || refreshing} onClick={() => remove(expense)}>삭제</button>
@@ -149,41 +160,43 @@ function SettlementContent({ meetingId }: { meetingId: string }) {
           </div>)}
         </div>}
       </Card>
-      {!settlement && data.meeting.status === "ACTIVE" && <Card><Badge tone="green">정산 확정 전</Badge><h2>모든 지출을 확인해주세요</h2>
+      {!settlement && data.meeting.status === "ACTIVE" && <Card className={styles.hostCard}><Badge tone="green">정산 확정 전</Badge><h2>모든 지출을 확인해주세요</h2>
         <p>예상 결과를 확인한 뒤 확정해주세요. 지출·계좌가 변경되면 결과가 달라질 수 있으며 확정 시 다시 계산합니다.</p>
-        <button className="button button-secondary" disabled={busy || refreshing || !editable} onClick={previewSettlement}>{busy ? "처리 중…" : "예상 정산 확인"}</button>
+        <div className={styles.actions}><button className="button button-secondary" disabled={busy || refreshing || !editable} onClick={previewSettlement}>{busy ? "처리 중…" : "예상 정산 확인"}</button>
+          {data.list.leader && editable && <button className="button button-primary" disabled={busy || refreshing || !preview} onClick={confirmSettlement}>최종 정산 확정</button>}
+        </div>
+        {data.list.leader && editable && !preview && <p className="muted">먼저 예상 정산을 확인하면 최종 정산을 확정할 수 있어요.</p>}
         {preview && <div className="stack">
           <h3>예상 송금 내역</h3>
-          {preview.transfers.map(transfer => <p key={`${transfer.senderId}-${transfer.recipientId}`}>{name(transfer.senderId)} → {name(transfer.recipientId)} · {formatMoney(transfer.amount)}</p>)}
+          {preview.transfers.map(transfer => <div className={styles.shareRow} key={`${transfer.senderId}-${transfer.recipientId}`}><span>{name(transfer.senderId)} → {name(transfer.recipientId)}</span><strong className={styles.amount}>{formatMoney(transfer.amount)}</strong></div>)}
           {!preview.transfers.length && <p>추가 송금할 금액이 없습니다.</p>}
           {preview.missingAccounts.length > 0 && <Message>계좌 미등록: {preview.missingAccounts.map(account => account.nickname).join(", ")}. 계좌 등록 여부와 관계없이 정산을 확정할 수 있습니다.</Message>}
         </div>}
-        {data.list.leader && editable ? <button className="button button-primary" disabled={busy || refreshing || !preview} onClick={confirmSettlement}>최종 정산 확정</button> : <p>모임장이 정산을 확정하면 결과가 표시됩니다.</p>}
+        {!data.list.leader && <p>모임장이 정산을 확정하면 결과가 표시됩니다.</p>}
       </Card>}
       {settlement && <>
         {!!settlement.missingAccountMemberIds?.length && <Message>계좌 미등록: {settlement.missingAccountMemberIds.map(name).join(", ")}. 정산은 확정되었으며, 해당 수취인의 계좌 등록 후 송금해주세요.</Message>}
-        <Card><Badge tone="gray">정산 확정 완료</Badge><p>{settlement.closedByMemberId && name(settlement.closedByMemberId)} · {formatDate(settlement.closedAt)}</p><p>아래 송금 안내는 실제 송금 완료 기록이 아닙니다.</p></Card>
-        <Card><h2>내 정산 결과</h2>
+        <div id="my-settlement"><Card className={styles.section}><h2>내 송금·입금 안내</h2>
           {myBalance && <p>결제 총액 {formatMoney(myBalance.paidAmount)} · 부담 총액 {formatMoney(myBalance.shareAmount)}</p>}
-          <h3>내가 보낼 돈 · {formatMoney(outgoing.reduce((sum, transfer) => sum + transfer.amount, 0))}</h3>
+          <h3 className={styles.send}>보낼 금액 · {formatMoney(outgoing.reduce((sum, transfer) => sum + transfer.amount, 0))}</h3>
           {outgoing.map(transfer => {
             const account = settlement.accounts?.find(item => item.memberId === transfer.recipientId);
-            return <div className="stack" key={transfer.recipientId}>
-              <strong>{name(transfer.recipientId)}님에게 {formatMoney(transfer.amount)}</strong>
+            return <div className={styles.transfer} key={transfer.recipientId}>
+              <div className={styles.toolbar}><span>{name(transfer.recipientId)}님에게 보내기</span><strong className={styles.send}>{formatMoney(transfer.amount)}</strong></div>
               {account ? <>
                 <p>송금 계좌: {account.bankName} · {account.accountHolder} · {account.accountNumber}</p>
                 <button type="button" className="button button-secondary" onClick={() => copyAccount(account.accountNumber)}>계좌번호 복사</button>
               </> : <Message>{name(transfer.recipientId)}님은 계좌 미등록 상태입니다. 계좌 등록 후 송금해주세요.</Message>}
             </div>;
           })}
-          <h3>내가 받을 돈 · {formatMoney(incoming.reduce((sum, transfer) => sum + transfer.amount, 0))}</h3>
-          {incoming.map(transfer => <p key={transfer.senderId}>{name(transfer.senderId)}님에게 {formatMoney(transfer.amount)} 받기</p>)}
+          <h3 className={styles.receive}>받을 금액 · {formatMoney(incoming.reduce((sum, transfer) => sum + transfer.amount, 0))}</h3>
+          {incoming.map(transfer => <div className={styles.shareRow} key={transfer.senderId}><span>{name(transfer.senderId)}님에게 받기</span><strong className={styles.receive}>{formatMoney(transfer.amount)}</strong></div>)}
           {!outgoing.length && !incoming.length && <Message>추가로 보내거나 받을 금액이 없습니다.</Message>}
-        </Card>
-        <Card><h2>개인별 결제·부담 금액</h2><div className="table-wrap"><table><thead><tr><th>모임원</th><th>결제 총액</th><th>부담 총액</th><th>차액 (+받기 / −보내기)</th></tr></thead><tbody>
-          {settlement.balances.map(balance => <tr key={balance.memberId}><td>{name(balance.memberId)}</td><td>{formatMoney(balance.paidAmount)}</td><td>{formatMoney(balance.shareAmount)}</td><td>{formatMoney(balance.paidAmount - balance.shareAmount)}</td></tr>)}
+        </Card></div>
+        <Card><h2>개인별 결제·부담 금액</h2><div className="table-wrap"><table className={styles.balanceTable}><thead><tr><th scope="col">모임원</th><th scope="col">결제 총액</th><th scope="col">부담 총액</th><th scope="col"><span className={styles.receive}>받을 금액</span> / <span className={styles.send}>보낼 금액</span></th></tr></thead><tbody>
+          {settlement.balances.map(balance => <tr key={balance.memberId}><td>{name(balance.memberId)}</td><td>{formatMoney(balance.paidAmount)}</td><td>{formatMoney(balance.shareAmount)}</td><td><span className={styles.receive} aria-label={`받을 금액 ${formatMoney(Math.max(0, balance.paidAmount - balance.shareAmount))}`}>{formatMoney(Math.max(0, balance.paidAmount - balance.shareAmount))}</span><span className={styles.slash}>/</span><span className={styles.send} aria-label={`보낼 금액 ${formatMoney(Math.max(0, balance.shareAmount - balance.paidAmount))}`}>{formatMoney(Math.max(0, balance.shareAmount - balance.paidAmount))}</span></td></tr>)}
         </tbody></table></div></Card>
-        <Card><h2>송금 안내</h2>{settlement.transfers.map((transfer, index) => <div className="list-item" key={index}><span>{name(transfer.senderId)} → {name(transfer.recipientId)}</span><strong>{formatMoney(transfer.amount)}</strong></div>)}
+        <Card><h2>전체 송금 안내</h2>{settlement.transfers.map((transfer, index) => <div className="list-item" key={index}><span>{name(transfer.senderId)} → {name(transfer.recipientId)}</span><strong className={styles.amount}>{formatMoney(transfer.amount)}</strong></div>)}
           {!settlement.transfers.length && <Message tone="success">추가로 송금할 금액이 없습니다.</Message>}
         </Card>
       </>}
