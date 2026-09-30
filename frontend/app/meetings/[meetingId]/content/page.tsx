@@ -3,16 +3,18 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import AppShell from "@/app/_components/AppShell";
+import DeadlineInput from "@/app/_components/DeadlineInput";
 import MeetingTabs from "@/app/_components/MeetingTabs";
 import { Badge, Card, Field, Message, PageTitle, formatDate } from "@/app/_components/ui";
 import { ApiError, apiFetch, getCurrentUserId, jsonBody } from "@/app/_lib/api";
+import { parseDeadline } from "@/app/_lib/deadline";
 import type { ContentPoll, Meeting, MeetingMember } from "@/app/_lib/types";
 
 type Preference = "PREFER" | "AVAILABLE" | "DISLIKE";
 const choices: Array<{ value: Preference; label: string }> = [
-  { value: "PREFER", label: "선호 3점" },
-  { value: "AVAILABLE", label: "가능 2점" },
-  { value: "DISLIKE", label: "별로 1점" },
+  { value: "PREFER", label: "★ 최우선 선호" },
+  { value: "AVAILABLE", label: "✓ 참여 가능" },
+  { value: "DISLIKE", label: "− 비선호" },
 ];
 
 export default function ContentPollPage() {
@@ -47,35 +49,10 @@ export default function ContentPollPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     try {
-      await apiFetch(`/api/meetings/${meetingId}/content-poll`, { method: "POST", body: jsonBody({ deadline: form.get("deadline") }) });
+      await apiFetch(`/api/meetings/${meetingId}/content-poll`, { method: "POST", body: jsonBody({ deadline: parseDeadline(form.get("deadline")) }) });
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "투표를 만들지 못했습니다.");
-    }
-  }
-
-  async function updateDeadline(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    try {
-      const data = await apiFetch<{ deadline: string }>(`/api/meetings/${meetingId}/content-poll`, { method: "PATCH", body: jsonBody({ deadline: form.get("deadline") }) });
-      setPoll((current) => current ? { ...current, deadline: data.deadline } : current);
-      setMessage("마감 시간을 변경했습니다.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "마감 시간을 바꾸지 못했습니다.");
-    }
-  }
-
-  async function addCandidate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    try {
-      await apiFetch(`/api/meetings/${meetingId}/content-poll/candidates`, { method: "POST", body: jsonBody({ title: data.get("title"), description: data.get("description") }) });
-      form.reset();
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "후보를 등록하지 못했습니다.");
     }
   }
 
@@ -128,15 +105,15 @@ export default function ContentPollPage() {
 
   return (
     <AppShell>
-      <PageTitle eyebrow="Content poll" title="콘텐츠 후보 및 투표" description="모임에서 함께할 활동을 제안하고 후보별 선호도를 저장하세요." action={<Link className="button button-secondary" href={`/meetings/${meetingId}/content/results`}>결과 보기</Link>} />
+      <PageTitle eyebrow="Content poll" title="콘텐츠 투표" description="함께할 활동과 장소를 제안하고 후보별 선호도를 남겨주세요." action={<div className="row">{host && <Link className="button button-ghost" href={`/meetings/${meetingId}/content/settings`}>⚙ 투표 설정</Link>}<Link className="button button-ghost" href={`/meetings/${meetingId}/content/new`}>＋ 후보 제안</Link><Link className="button button-secondary" href={`/meetings/${meetingId}/content/results`}>결과 보기</Link></div>} />
       <MeetingTabs meetingId={meetingId} active="content" />
       {message && <Message tone="success">{message}</Message>}
       {error && <Message tone="error">{error}</Message>}
       {missing && host && (
         <Card>
           <h2>콘텐츠 투표 만들기</h2>
-          <form className="row" onSubmit={createPoll}>
-            <input className="input" type="datetime-local" name="deadline" required />
+          <form className="row deadline-create-row" onSubmit={createPoll}>
+            <DeadlineInput />
             <button className="button button-primary">투표 만들기</button>
           </form>
         </Card>
@@ -144,33 +121,14 @@ export default function ContentPollPage() {
       {missing && host === false && <Card><h2>아직 콘텐츠 투표가 없어요</h2><p>호스트가 투표를 만들면 후보를 등록할 수 있습니다.</p></Card>}
       {poll && (
         <div className="stack">
-          <div className="row between">
-            <Badge tone={poll.status === "OPEN" ? "green" : "gray"}>{poll.status}</Badge>
-            <span className="muted">마감 {formatDate(poll.deadline)}</span>
+          <div className="poll-status-bar">
+            <div><Badge tone={poll.status === "OPEN" ? "green" : "gray"}>{poll.status === "OPEN" ? "투표 진행 중" : "투표 마감"}</Badge><strong>복수 선택 가능</strong></div>
+            <span>◷ 마감 {formatDate(poll.deadline)}</span>
           </div>
-          {host && !closed && (
-            <Card>
-              <h2>마감 시간 변경</h2>
-              <form className="row" onSubmit={updateDeadline}>
-                <Field label="새 마감"><input className="input" name="deadline" type="datetime-local" required /></Field>
-                <button className="button button-secondary">변경</button>
-              </form>
-            </Card>
-          )}
-          {!closed && (
-            <Card>
-              <h2>새 콘텐츠 후보</h2>
-              <form className="grid grid-2" onSubmit={addCandidate}>
-                <Field label="제목"><input className="input" name="title" maxLength={100} required /></Field>
-                <Field label="설명 (선택)"><input className="input" name="description" maxLength={500} /></Field>
-                <button className="button button-primary">후보 등록</button>
-              </form>
-            </Card>
-          )}
           {poll.candidates.map((candidate) => {
             const editing = editingId === candidate.candidateId;
             return (
-            <Card key={candidate.candidateId}>
+            <Card key={candidate.candidateId} className="poll-option-card">
               <div className="section-header">
                 {editing ? (
                   <div className="grid grid-2" style={{ flex: 1 }}>
@@ -204,9 +162,11 @@ export default function ContentPollPage() {
                   <button className={`choice ${candidate.myPreference === choice.value ? "selected" : ""}`} key={choice.value} disabled={closed} onClick={() => vote(candidate.candidateId, choice.value)}>{choice.label}</button>
                 ))}
               </div>
+              {!closed && candidate.createdByMemberId !== myMemberId && <small className="muted">모임원이 제안한 후보입니다.</small>}
             </Card>
             );
           })}
+          {!closed && <Link className="candidate-cta" href={`/meetings/${meetingId}/content/new`}><span>＋</span><div><strong>새로운 콘텐츠 후보 제안</strong><small>모임원 누구나 활동이나 장소를 등록할 수 있어요.</small></div><b>→</b></Link>}
         </div>
       )}
     </AppShell>

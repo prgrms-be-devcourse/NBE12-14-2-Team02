@@ -53,7 +53,7 @@ export default function SignupPage() {
       // 사용 가능한 경우에만 확인 통과 값으로 저장
       if (kind === "email") setCheckedEmail(value);
       else setCheckedNickname(value);
-      
+
       setMessage(`사용할 수 있는 ${LABELS[kind]}입니다.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "확인하지 못했습니다.");
@@ -99,7 +99,7 @@ export default function SignupPage() {
     <main className="auth-page">
       <Card className="auth-card">
         <Link href="/" className="brand">
-          <span>M</span>MOIM
+          <span className="brand-mark">M</span><span className="brand-name">MOIM<small>함께 정하고, 가볍게 모이고</small></span>
         </Link>
         <h1>회원가입</h1>
         <p>모임 준비를 한곳에서 시작해 보세요.</p>
@@ -111,6 +111,7 @@ export default function SignupPage() {
               <input
                 className="input"
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -126,6 +127,8 @@ export default function SignupPage() {
               <input
                 className="input"
                 required
+                maxLength={10}
+                autoComplete="nickname"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
               />
@@ -136,17 +139,17 @@ export default function SignupPage() {
           </Field>
 
           <Field label="비밀번호" hint="영문, 숫자, 특수문자를 포함해 8자 이상">
-            <input className="input" name="password" type="password" required />
+            <input className="input" name="password" type="password" autoComplete="new-password" required />
           </Field>
 
           <Field label="비밀번호 확인">
-            <input className="input" name="confirmPassword" type="password" required />
+            <input className="input" name="confirmPassword" type="password" autoComplete="new-password" required />
           </Field>
 
           {message && <Message tone="success">{message}</Message>}
           {error && <Message tone="error">{error}</Message>}
 
-          <button className="button button-primary">회원가입 완료</button>
+          <button className="button button-primary">회원가입 완료 →</button>
         </form>
 
         <p className="auth-footer">

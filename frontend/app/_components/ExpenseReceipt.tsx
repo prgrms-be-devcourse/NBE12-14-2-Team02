@@ -25,7 +25,7 @@ export default function ExpenseReceipt({ meetingId, expenseId, hasReceipt, edita
   }
 
   async function upload(file: File) {
-    if (file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png"].includes(file.type)) {
+    if (file.size === 0 || file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png"].includes(file.type)) {
       setError("5MB 이하의 JPG 또는 PNG 1장을 선택해주세요."); return;
     }
     await run(async () => {
@@ -53,6 +53,7 @@ export default function ExpenseReceipt({ meetingId, expenseId, hasReceipt, edita
           const file = e.target.files?.[0]; e.target.value = ""; if (file) void upload(file);
         }} />
       </label>
+      <p className="muted">사진을 선택하면 바로 저장됩니다. 영수증을 삭제해도 지출 내역은 유지됩니다.</p>
       {hasReceipt && <button type="button" className="button button-ghost" disabled={busy} onClick={() => {
         if (window.confirm("영수증을 삭제할까요?")) void run(async () => {
           await apiFetch(path, { method: "DELETE" }); setUrl(null); await onChange();

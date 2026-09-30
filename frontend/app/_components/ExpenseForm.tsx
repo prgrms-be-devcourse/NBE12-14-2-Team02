@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import AppShell from "./AppShell";
 import MeetingTabs from "./MeetingTabs";
-import { Card, Field, Message, PageTitle, formatMoney } from "./ui";
+import { Badge, Card, Field, Message, PageTitle, formatMoney } from "./ui";
 import { apiFetch, ApiError, jsonBody } from "@/app/_lib/api";
 import type { MeetingMember } from "@/app/_lib/types";
 import type { Expense, ExpenseList } from "@/app/_lib/expenses";
@@ -29,10 +29,11 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
   const savingRef = useRef(false);
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<File | null>(null);
-  const receiptInputRef = useRef<HTMLInputElement>(null);
-  const [hasReceipt, setHasReceipt] = useState(false);
-  const [savedExpenseId, setSavedExpenseId] = useState<number | null>(null);
-  const savedExpenseRef = useRef<number | null>(null);
+  const receiptInput = useRef<HTMLInputElement>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [savedId, setSavedId] = useState<number | null>(null);
+  const pending = useRef<{ key: string; body: string; savedId?: number } | null>(null);
+  const storageKey = useRef("");
 
   useEffect(() => {
     let active = true;
@@ -56,7 +57,6 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
       if (expense && expense.payerMemberId !== list.currentMemberId) throw new Error("본인이 등록한 지출만 수정할 수 있습니다.");
       setAllowed(true);
       if (expense) {
-        setHasReceipt(expense.hasReceipt);
         if (expense.participants.length === 0) {
           setAllowed(false);
           throw new Error("이전 지출에 개인별 부담액 정보가 없어 안전하게 편집할 수 없습니다.");
@@ -68,6 +68,20 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
         setAmounts(Object.fromEntries(expense.participants.map(share => [share.memberId, String(share.amount)])));
       } else {
         setSelected(joined.map(member => member.id));
+        storageKey.current = `expense-create:${meetingId}:${list.currentMemberId}`;
+        const stored = sessionStorage.getItem(storageKey.current);
+        if (stored) {
+          const previous = JSON.parse(stored);
+          if (typeof previous.key === "string" && typeof previous.body === "string") {
+            const draft = JSON.parse(previous.body);
+            pending.current = previous; setSubmitted(true); setSavedId(previous.savedId ?? null);
+            setTitle(draft.title); setAmount(String(draft.amount)); setMemo(draft.memo ?? "");
+            setMode(draft.splitMode); setUnit(draft.roundingUnit ?? 1); setRandom(draft.randomRemainder);
+            setRemainderId(draft.remainderMemberId ? String(draft.remainderMemberId) : "");
+            setSelected(draft.participants.map((p: { memberId: number }) => p.memberId));
+            setAmounts(Object.fromEntries(draft.participants.map((p: { memberId: number; amount: number | null }) => [p.memberId, p.amount === null ? "" : String(p.amount)])));
+          }
+        }
       }
     }).catch(e => { if (active) setError(e instanceof Error ? e.message : "화면을 불러오지 못했습니다."); })
       .finally(() => { if (active) setLoading(false); });
@@ -84,46 +98,43 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
     if (remainderId === String(id)) setRemainderId("");
   }
 
-  function chooseReceipt(file: File | undefined) {
+  function chooseReceipt(file?: File) {
     setError("");
-    if (!file) { setReceipt(null); return; }
-    if (file.size === 0 || file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png"].includes(file.type)) {
+    if (file && (file.size === 0 || file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png"].includes(file.type))) {
       setReceipt(null);
-      if (receiptInputRef.current) receiptInputRef.current.value = "";
-      setError("영수증은 5MB 이하의 JPG 또는 PNG 1장을 선택해주세요.");
-      return;
+      if (receiptInput.current) receiptInput.current.value = "";
+      setError("5MB 이하의 JPG 또는 PNG 1장을 선택해주세요."); return;
     }
-    setReceipt(file);
+    setReceipt(file ?? null);
   }
 
-  async function uploadReceipt(id: number) {
-    if (!receipt) return;
-    const body = new FormData();
-    body.append("file", receipt);
-    await apiFetch(`/api/meetings/${meetingId}/expenses/${id}/receipt`, { method: "PUT", body });
+  async function saveRegistration() {
+    const attempt = pending.current;
+    if (!attempt) return;
+    if (!attempt.savedId) {
+      const saved = await apiFetch<Expense>(`/api/meetings/${meetingId}/expenses`, {
+        method: "POST", headers: { "Idempotency-Key": attempt.key }, body: attempt.body,
+      });
+      attempt.savedId = saved.id; setSavedId(saved.id);
+      sessionStorage.setItem(storageKey.current, JSON.stringify(attempt));
+    }
+    if (receipt) {
+      const body = new FormData(); body.append("file", receipt);
+      await apiFetch(`/api/meetings/${meetingId}/expenses/${attempt.savedId}/receipt`, { method: "PUT", body });
+    }
+    sessionStorage.removeItem(storageKey.current);
+    router.push(`/meetings/${meetingId}/settlement`);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (savingRef.current || !allowed) return;
     setError("");
-    // 지출 저장이 확인된 뒤에는 사진만 재시도하여 중복 등록·랜덤 재추첨을 방지합니다.
-    if (savedExpenseRef.current !== null) {
-      savingRef.current = true; setSaving(true);
-      try {
-        await uploadReceipt(savedExpenseRef.current);
-        router.push(`/meetings/${meetingId}/settlement`);
-      } catch (e) {
-        if (e instanceof ApiError && e.status === 409) setAllowed(false);
-        setError(`지출은 저장되어 있습니다. 영수증 저장을 확인하지 못했습니다. ${e instanceof Error ? e.message : "사진만 다시 시도해주세요."}`);
-      } finally { savingRef.current = false; setSaving(false); }
-      return;
-    }
-    if (!title.trim() || !Number.isSafeInteger(total) || total <= 0 || total > 999999999999) {
+    if (!pending.current && (!title.trim() || !Number.isSafeInteger(total) || total <= 0 || total > 999999999999)) {
       setError("제목과 1원 이상의 정수 금액을 입력해주세요."); return;
     }
     if (selected.length === 0 || selected.length > 100) { setError("부담 참여자를 1~100명 선택해주세요."); return; }
-    if (mode === "EXACT" && (exactTotal !== total || selected.some(id => amounts[id] === undefined || amounts[id] === "" || !Number.isSafeInteger(Number(amounts[id])) || Number(amounts[id]) < 0))) {
+    if (!pending.current && mode === "EXACT" && (exactTotal !== total || selected.some(id => amounts[id] === undefined || amounts[id] === "" || !Number.isSafeInteger(Number(amounts[id])) || Number(amounts[id]) < 0))) {
       setError("모든 참여자의 부담액을 입력하고 합계를 결제 금액에 맞춰주세요."); return;
     }
     if (mode === "EQUAL" && remainder > 0 && !random && !selected.includes(Number(remainderId))) {
@@ -131,47 +142,57 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
     }
     savingRef.current = true; setSaving(true);
     try {
-      const saved = await apiFetch<Expense>(`/api/meetings/${meetingId}/expenses${expenseId ? `/${expenseId}` : ""}`, {
-        method: expenseId ? "PUT" : "POST",
-        body: jsonBody({ title: title.trim(), amount: total, memo, splitMode: mode,
+      const body = jsonBody({ title: title.trim(), amount: total, memo, splitMode: mode,
           participants: selected.map(memberId => ({ memberId, amount: mode === "EXACT" ? Number(amounts[memberId]) : null })),
           roundingUnit: mode === "EQUAL" ? unit : null,
           remainderMemberId: mode === "EQUAL" && remainder > 0 && !random ? Number(remainderId) : null,
-          randomRemainder: mode === "EQUAL" && remainder > 0 && random }),
-      });
-      savedExpenseRef.current = saved.id;
-      setSavedExpenseId(saved.id);
-      await uploadReceipt(saved.id);
-      router.push(`/meetings/${meetingId}/settlement`);
+          randomRemainder: mode === "EQUAL" && remainder > 0 && random });
+      if (expenseId) {
+        await apiFetch(`/api/meetings/${meetingId}/expenses/${expenseId}`, { method: "PUT", body });
+        router.push(`/meetings/${meetingId}/settlement`);
+      } else {
+        if (!pending.current) {
+          const attempt = { key: crypto.randomUUID(), body };
+          sessionStorage.setItem(storageKey.current, JSON.stringify(attempt));
+          pending.current = attempt; setSubmitted(true);
+        }
+        await saveRegistration();
+      }
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) setAllowed(false);
-      const message = e instanceof Error ? e.message : "목록에서 반영 여부를 확인해주세요.";
-      setError(savedExpenseRef.current !== null
-        ? `지출은 저장되었습니다. 영수증 저장을 확인하지 못했습니다. 사진만 다시 시도하거나 지출 목록에서 확인해주세요. ${message}`
-        : message);
+      if (e instanceof ApiError && ((e.status === 400 && !pending.current?.savedId) || e.status === 410)) {
+        pending.current = null; setSubmitted(false);
+        setSavedId(null);
+        sessionStorage.removeItem(storageKey.current);
+      }
+      const message = e instanceof Error ? e.message : "저장 응답을 확인하지 못했습니다.";
+      setError(pending.current?.savedId ? `지출은 저장되었습니다. 영수증만 다시 시도하거나 목록에서 확인해주세요. ${message}` : message);
     } finally { savingRef.current = false; setSaving(false); }
   }
 
   return <AppShell>
-    <PageTitle title={expenseId ? "지출 수정" : "지출 등록"} description="결제자와 개인별 부담액을 확인해주세요." />
+    <div className="breadcrumb"><Link href={`/meetings/${meetingId}/settlement`}>← 지출 목록</Link><span>/</span><span>{expenseId ? "지출 수정" : "새 지출"}</span></div>
+    <PageTitle eyebrow="Expense details" title={expenseId ? "지출 내역 수정" : "새 지출 내역 등록"} description="결제 정보와 부담 대상자를 확인한 뒤 저장해 주세요." />
     <MeetingTabs meetingId={meetingId} active="settlement" />
     {error && <Message tone="error">{error}</Message>}
-    <Link href={`/meetings/${meetingId}/settlement`} className="button button-ghost">지출 목록으로</Link>
-    {loading ? <Message>지출 정보를 불러오는 중입니다.</Message> : <Card>
+    {loading ? <Message>지출 정보를 불러오는 중입니다.</Message> : <Card className="expense-form-card">
       <form className="stack" onSubmit={submit}>
-        {savedExpenseId !== null && <Message>지출은 이미 저장되었습니다. 아래에서는 영수증만 다시 첨부할 수 있습니다. 사진 선택을 해제하고 완료해도 지출은 유지됩니다.</Message>}
-        <fieldset disabled={!allowed || saving || savedExpenseId !== null} className="stack" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        {submitted && <Message>{savedId ? "지출은 저장되었습니다. 영수증만 다시 저장할 수 있습니다." : "이전에 보낸 등록 요청을 확인 중입니다. 다시 저장해도 같은 요청 번호로 처리됩니다."} 새로고침 후에는 영수증 사진을 다시 선택해주세요.</Message>}
+        <fieldset disabled={!allowed || saving || submitted} className="stack" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <div className="form-section-heading"><span>1</span><div><h2>기본 정보</h2><p>결제한 지출의 이름과 금액을 입력해 주세요.</p></div></div>
           <div className="grid grid-2">
             <Field label="지출 제목"><input className="input" required maxLength={255} value={title} onChange={e => setTitle(e.target.value)} /></Field>
             <Field label="결제 금액 (원)"><input className="input" type="number" required min={1} max={999999999999} step={1} value={amount} onChange={e => setAmount(e.target.value)} /></Field>
           </div>
           <Field label="메모"><textarea className="textarea" maxLength={2000} value={memo} onChange={e => setMemo(e.target.value)} /></Field>
-          <p>결제자: {payer}</p>
+          <div className="payer-panel"><span className="member-avatar">{payer.charAt(0)}</span><div><small>결제자 · 현재 로그인 사용자</small><strong>{payer}</strong></div><Badge tone="purple">본인 지출</Badge></div>
+          <div className="form-section-heading"><span>2</span><div><h2>부담 참여자</h2><p>이 지출을 함께 부담할 모임원을 선택해 주세요.</p></div></div>
           <Field label="분담 방식"><select className="select" value={mode} onChange={e => setMode(e.target.value as "EQUAL" | "EXACT")}><option value="EQUAL">균등 분담</option><option value="EXACT">금액 직접 입력</option></select></Field>
-          <div><strong>부담 참여자</strong>{members.map(member => <div className="checkbox-row" key={member.id}>
+          <div className="participant-list"><div className="row between"><strong>참여자 선택</strong><span className="muted">{selected.length}명 선택</span></div>{members.map(member => <div className="checkbox-row" key={member.id}>
             <label><input type="checkbox" checked={selected.includes(member.id)} onChange={() => toggle(member.id)} /> {member.nickname}</label>
             {mode === "EXACT" && selected.includes(member.id) && <input aria-label={`${member.nickname} 부담액`} className="input" type="number" min={0} max={999999999999} step={1} required value={amounts[member.id] ?? ""} onChange={e => setAmounts(all => ({ ...all, [member.id]: e.target.value }))} />}
           </div>)}</div>
+          <div className="form-section-heading"><span>3</span><div><h2>분담 결과</h2><p>저장 전 개인별 부담 금액을 확인해 주세요.</p></div></div>
           {mode === "EQUAL" ? <>
             <Field label="분담 단위"><select className="select" value={unit} onChange={e => setUnit(Number(e.target.value))}>{[1, 10, 100, 1000].map(value => <option value={value} key={value}>{value}원</option>)}</select></Field>
             <Message>기본 부담액 {formatMoney(each)} · 남은 차액 {formatMoney(remainder)}</Message>
@@ -181,19 +202,12 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
             </>}
           </> : <Message>입력 합계 {formatMoney(exactTotal)} · 남은 금액 {formatMoney(total - exactTotal)}</Message>}
         </fieldset>
-        <Field label="영수증 사진 (선택)">
-          <input ref={receiptInputRef} type="file" accept="image/jpeg,image/png" disabled={!allowed || saving}
-            onChange={e => chooseReceipt(e.target.files?.[0])} />
-        </Field>
-        <p className="muted">JPG·PNG 최대 5MB, 1장. {hasReceipt ? "새 사진을 선택하면 기존 영수증을 교체합니다. 선택하지 않으면 기존 영수증을 유지합니다." : "선택한 사진은 지출 저장 시 함께 첨부됩니다."}</p>
-        {receipt && <div className="row"><span>선택한 사진: {receipt.name}</span>
-          <button type="button" className="button button-ghost" disabled={saving} onClick={() => {
-            setReceipt(null); if (receiptInputRef.current) receiptInputRef.current.value = "";
-          }}>선택 해제</button>
-        </div>}
-        <button className="button button-primary" disabled={!allowed || saving || !selected.length}>
-          {saving ? "저장 중…" : savedExpenseId !== null ? receipt ? "영수증만 다시 저장" : "사진 없이 완료" : expenseId ? "수정 저장" : "지출 등록"}
-        </button>
+        {!expenseId ? <>
+          <Field label="영수증 사진 (선택)"><input ref={receiptInput} type="file" accept="image/jpeg,image/png" disabled={!allowed || saving} onChange={e => chooseReceipt(e.target.files?.[0])} /></Field>
+          <p className="muted">JPG·PNG 최대 5MB, 1장. 저장 후 상세 내역에서 교체·삭제할 수 있습니다.</p>
+          {receipt && <div className="row"><span>{receipt.name}</span><button type="button" className="button button-ghost" disabled={saving} onClick={() => { setReceipt(null); if (receiptInput.current) receiptInput.current.value = ""; }}>선택 해제</button></div>}
+        </> : <p className="muted">영수증 교체·삭제는 지출 목록의 상세 내역에서 할 수 있습니다.</p>}
+        <div className="form-actions"><Link href={`/meetings/${meetingId}/settlement`} className="button button-ghost">지출 목록</Link><button className="button button-primary" disabled={!allowed || saving || !selected.length}>{saving ? "저장 중…" : expenseId ? "수정 저장" : savedId ? receipt ? "영수증만 저장" : "현재 상태로 완료" : submitted ? "같은 요청 다시 확인" : "지출 등록 완료"}</button></div>
       </form>
     </Card>}
   </AppShell>;
