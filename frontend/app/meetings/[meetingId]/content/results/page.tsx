@@ -7,7 +7,7 @@ import { Badge, Card, Message, PageTitle } from "@/app/_components/ui";
 import { apiFetch, getCurrentUserId, jsonBody } from "@/app/_lib/api";
 import type { ContentResults } from "@/app/_lib/types";
 
-const label: Record<string, string> = { PREFER: "선호", AVAILABLE: "가능", DISLIKE: "별로" };
+const label: Record<string, string> = { PREFER: "최우선 선호", AVAILABLE: "참여 가능", DISLIKE: "비선호" };
 const WINDOW = 4;
 
 export default function ContentResultsPage() {
@@ -43,18 +43,18 @@ export default function ContentResultsPage() {
 
   return (
     <AppShell>
-      <PageTitle eyebrow="Closed poll" title="콘텐츠 투표 결과" description="마감된 후보의 점수와 참여자별 응답을 확인하세요." />
+      <PageTitle eyebrow="Poll results" title="콘텐츠 투표 결과" description={result?.status === "CLOSED" ? "마감된 후보의 점수와 참여자별 응답을 확인하세요." : "현재까지 집계된 후보별 선호도입니다."} />
       <MeetingTabs meetingId={meetingId} active="content" />
       {error && <Message tone="error">{error}</Message>}
       {result && (
         <div className="stack">
           <div className="row between">
-            <Badge tone="gray">{result.status}</Badge>
+            <Badge tone={result.status === "CLOSED" ? "gray" : "green"}>{result.status === "CLOSED" ? "투표 마감 완료" : "투표 진행 중"}</Badge>
             <span className="muted">참여 인원 {result.joinedCount}명</span>
           </div>
           <div className="grid grid-2">
             {result.candidates.map((candidate, index) => (
-              <Card key={candidate.candidateId}>
+              <Card key={candidate.candidateId} className={`result-card ${index === 0 ? "winner" : ""}`}>
                 <div className="row between">
                   <Badge>{index + 1}위</Badge>
                   {result.confirmedCandidateId === candidate.candidateId && <Badge tone="green">확정</Badge>}
@@ -63,9 +63,9 @@ export default function ContentResultsPage() {
                 <p>{candidate.description}</p>
                 <strong>{candidate.totalScore}점</strong>
                 <div className="meta">
-                  <span>선호 {candidate.preferCount}</span>
-                  <span>가능 {candidate.availableCount}</span>
-                  <span>별로 {candidate.dislikeCount}</span>
+                  <span>최우선 {candidate.preferCount}</span>
+                  <span>참여 가능 {candidate.availableCount}</span>
+                  <span>비선호 {candidate.dislikeCount}</span>
                   <span>미응답 {candidate.noResponseCount}</span>
                 </div>
                 {result.status === "CLOSED" && result.confirmedCandidateId === null && result.members.some((member) => member.host && member.userId === getCurrentUserId()) && (

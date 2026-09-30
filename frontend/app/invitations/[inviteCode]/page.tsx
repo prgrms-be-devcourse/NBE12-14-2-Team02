@@ -9,7 +9,6 @@ import {
   Card,
   Message,
   PageTitle,
-  formatDate,
 } from "@/app/_components/ui";
 import { apiFetch } from "@/app/_lib/api";
 import type {
@@ -145,17 +144,10 @@ function InvitationInfo({
 }) {
   return (
       <div className="meta">
-      <span>
-        모임 ID #{invitation.meetingId}
-      </span>
-
         <span>
         참여자 {invitation.participantCount}명
       </span>
 
-        <span>
-        만료 {formatDate(invitation.expiresAt)}
-      </span>
       </div>
   );
 }

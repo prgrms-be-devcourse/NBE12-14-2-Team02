@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { apiFetch, jsonBody } from "@/app/_lib/api";
 import type { SettlementAccount } from "@/app/_lib/types";
-import { Card, Field, Message } from "./ui";
+import { Badge, Card, Field, Message } from "./ui";
 
 export default function SettlementAccountForm({ meetingId, closed, meetingOpen }: { meetingId: string; closed: boolean; meetingOpen: boolean }) {
   const [bankName, setBankName] = useState("");
@@ -39,7 +39,7 @@ export default function SettlementAccountForm({ meetingId, closed, meetingOpen }
     finally { busyRef.current = false; setBusy(false); }
   }
 
-  return <Card><h2>내 정산 계좌</h2>
+  return <Card className="account-card"><div className="row between"><div><Badge tone="green">수취 계좌</Badge><h2>내 정산 계좌</h2></div><span className="feature-icon" aria-hidden="true">₩</span></div>
     <p>이 모임에서 돈을 받을 계좌를 등록해주세요. 실제 수취인의 계좌가 모두 등록되어야 정산을 확정할 수 있습니다.</p>
     {closed && <Message>정산이 확정되었습니다. 여기서 계좌를 수정해도 확정 당시 송금 안내의 계좌는 바뀌지 않습니다. 종료된 모임에서는 수정할 수 없습니다.</Message>}
     {error && <Message tone="error">{error}</Message>}{notice && <Message tone="success">{notice}</Message>}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import AppShell from "./AppShell";
 import MeetingTabs from "./MeetingTabs";
-import { Card, Field, Message, PageTitle, formatMoney } from "./ui";
+import { Badge, Card, Field, Message, PageTitle, formatMoney } from "./ui";
 import { apiFetch, ApiError, jsonBody } from "@/app/_lib/api";
 import type { MeetingMember } from "@/app/_lib/types";
 import type { Expense, ExpenseList } from "@/app/_lib/expenses";
@@ -110,25 +110,28 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
   }
 
   return <AppShell>
-    <PageTitle title={expenseId ? "지출 수정" : "지출 등록"} description="결제자와 개인별 부담액을 확인해주세요." />
+    <div className="breadcrumb"><Link href={`/meetings/${meetingId}/settlement`}>← 지출 목록</Link><span>/</span><span>{expenseId ? "지출 수정" : "새 지출"}</span></div>
+    <PageTitle eyebrow="Expense details" title={expenseId ? "지출 내역 수정" : "새 지출 내역 등록"} description="결제 정보와 부담 대상자를 확인한 뒤 저장해 주세요." />
     <MeetingTabs meetingId={meetingId} active="settlement" />
     {error && <Message tone="error">{error}</Message>}
-    <Link href={`/meetings/${meetingId}/settlement`} className="button button-ghost">지출 목록으로</Link>
-    {loading ? <Message>지출 정보를 불러오는 중입니다.</Message> : <Card>
+    {loading ? <Message>지출 정보를 불러오는 중입니다.</Message> : <Card className="expense-form-card">
       <form className="stack" onSubmit={submit}>
         <fieldset disabled={!allowed || saving} className="stack" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <div className="form-section-heading"><span>1</span><div><h2>기본 정보</h2><p>결제한 지출의 이름과 금액을 입력해 주세요.</p></div></div>
           <div className="grid grid-2">
             <Field label="지출 제목"><input className="input" required maxLength={255} value={title} onChange={e => setTitle(e.target.value)} /></Field>
             <Field label="결제 금액 (원)"><input className="input" type="number" required min={1} max={999999999999} step={1} value={amount} onChange={e => setAmount(e.target.value)} /></Field>
           </div>
           <Field label="메모"><textarea className="textarea" maxLength={2000} value={memo} onChange={e => setMemo(e.target.value)} /></Field>
-          <p className="muted">영수증 사진은 지출 저장 후 목록의 상세 내역에서 1장 첨부할 수 있습니다.</p>
-          <p>결제자: {payer}</p>
+          <div className="payer-panel"><span className="member-avatar">{payer.charAt(0)}</span><div><small>결제자 · 현재 로그인 사용자</small><strong>{payer}</strong></div><Badge tone="purple">본인 지출</Badge></div>
+          <Message>영수증은 지출 저장 후 목록의 상세 내역에서 JPG 또는 PNG 1장을 첨부할 수 있습니다.</Message>
+          <div className="form-section-heading"><span>2</span><div><h2>부담 참여자</h2><p>이 지출을 함께 부담할 모임원을 선택해 주세요.</p></div></div>
           <Field label="분담 방식"><select className="select" value={mode} onChange={e => setMode(e.target.value as "EQUAL" | "EXACT")}><option value="EQUAL">균등 분담</option><option value="EXACT">금액 직접 입력</option></select></Field>
-          <div><strong>부담 참여자</strong>{members.map(member => <div className="checkbox-row" key={member.id}>
+          <div className="participant-list"><div className="row between"><strong>참여자 선택</strong><span className="muted">{selected.length}명 선택</span></div>{members.map(member => <div className="checkbox-row" key={member.id}>
             <label><input type="checkbox" checked={selected.includes(member.id)} onChange={() => toggle(member.id)} /> {member.nickname}</label>
             {mode === "EXACT" && selected.includes(member.id) && <input aria-label={`${member.nickname} 부담액`} className="input" type="number" min={0} max={999999999999} step={1} required value={amounts[member.id] ?? ""} onChange={e => setAmounts(all => ({ ...all, [member.id]: e.target.value }))} />}
           </div>)}</div>
+          <div className="form-section-heading"><span>3</span><div><h2>분담 결과</h2><p>저장 전 개인별 부담 금액을 확인해 주세요.</p></div></div>
           {mode === "EQUAL" ? <>
             <Field label="분담 단위"><select className="select" value={unit} onChange={e => setUnit(Number(e.target.value))}>{[1, 10, 100, 1000].map(value => <option value={value} key={value}>{value}원</option>)}</select></Field>
             <Message>기본 부담액 {formatMoney(each)} · 남은 차액 {formatMoney(remainder)}</Message>
@@ -137,7 +140,7 @@ export default function ExpenseForm({ meetingId, expenseId }: { meetingId: strin
               {!random && <Field label="차액 담당자"><select className="select" value={remainderId} onChange={e => setRemainderId(e.target.value)} required><option value="">선택해주세요</option>{members.filter(member => selected.includes(member.id)).map(member => <option value={member.id} key={member.id}>{member.nickname}</option>)}</select></Field>}
             </>}
           </> : <Message>입력 합계 {formatMoney(exactTotal)} · 남은 금액 {formatMoney(total - exactTotal)}</Message>}
-          <button className="button button-primary" disabled={!selected.length}>{saving ? "저장 중…" : expenseId ? "수정 저장" : "지출 등록"}</button>
+          <div className="form-actions"><Link href={`/meetings/${meetingId}/settlement`} className="button button-ghost">취소</Link><button className="button button-primary" disabled={!selected.length}>{saving ? "저장 중…" : expenseId ? "수정 저장" : "지출 등록 완료"}</button></div>
         </fieldset>
       </form>
     </Card>}

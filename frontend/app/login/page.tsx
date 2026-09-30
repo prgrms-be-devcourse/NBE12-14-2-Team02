@@ -41,22 +41,25 @@ export default function LoginPage() {
     <main className="auth-page">
       <Card className="auth-card">
         <Link href="/" className="brand">
-          <span>M</span>MOIM
+          <span className="brand-mark">M</span><span className="brand-name">MOIM<small>함께 정하고, 가볍게 모이고</small></span>
         </Link>
+
+        <h1>로그인</h1>
+        <p>MOIM에 오신 것을 환영합니다.</p>
 
         <form className="stack" onSubmit={submit}>
           <Field label="이메일">
-            <input className="input" name="email" type="email" required placeholder="name@example.com" />
+            <input className="input" name="email" type="email" autoComplete="email" required placeholder="name@example.com" />
           </Field>
 
           <Field label="비밀번호">
-            <input className="input" name="password" type="password" required placeholder="비밀번호" />
+            <input className="input" name="password" type="password" autoComplete="current-password" required placeholder="비밀번호" />
           </Field>
 
           {error && <Message tone="error">{error}</Message>}
 
           <button className="button button-primary" disabled={loading}>
-            {loading ? "로그인 중..." : "로그인"}
+            {loading ? "로그인 중…" : "로그인 →"}
           </button>
         </form>
 

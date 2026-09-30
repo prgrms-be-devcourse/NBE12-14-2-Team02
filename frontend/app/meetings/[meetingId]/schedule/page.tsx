@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import AppShell from "@/app/_components/AppShell";
+import DeadlineInput from "@/app/_components/DeadlineInput";
 import MeetingTabs from "@/app/_components/MeetingTabs";
-import { Card, EmptyState, Field, Message, PageTitle } from "@/app/_components/ui";
+import { Card, EmptyState, Message, PageTitle } from "@/app/_components/ui";
 import { ApiError, apiFetch, getCurrentUserId, jsonBody } from "@/app/_lib/api";
+import { parseDeadline } from "@/app/_lib/deadline";
 import type { Meeting, SchedulePoll } from "@/app/_lib/types";
 
 export default function SchedulePage() {
@@ -57,9 +59,8 @@ export default function SchedulePage() {
     event.preventDefault();
     setCreating(true);
     setError("");
-    const deadline = new FormData(event.currentTarget).get("deadline");
-
     try {
+      const deadline = parseDeadline(new FormData(event.currentTarget).get("deadline"));
       await apiFetch(`/api/meetings/${meetingId}/schedule-poll`, {
         method: "POST",
         body: jsonBody({ deadline }),
@@ -87,17 +88,13 @@ export default function SchedulePage() {
           {canCreate ? (
             <>
               <h2>일정 투표 만들기</h2>
-              <p className="muted">마감 시간을 정한 뒤 날짜 후보를 추가할 수 있습니다.</p>
-              <form className="stack" onSubmit={createPoll}>
-                <Field label="투표 마감 시간">
-                  <input className="input" type="datetime-local" name="deadline" required />
-                </Field>
-                <div className="form-actions">
-                  <button className="button button-primary" type="submit" disabled={creating}>
-                    {creating ? "만드는 중..." : "투표 만들기"}
-                  </button>
-                </div>
+              <form className="row" onSubmit={createPoll}>
+                <DeadlineInput />
+                <button className="button button-primary" type="submit" disabled={creating}>
+                  {creating ? "만드는 중..." : "투표 만들기"}
+                </button>
               </form>
+              <p className="muted">투표를 만든 다음 날짜 후보를 추가할 수 있습니다.</p>
             </>
           ) : (
             <EmptyState
