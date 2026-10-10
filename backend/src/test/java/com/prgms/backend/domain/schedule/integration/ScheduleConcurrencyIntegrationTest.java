@@ -106,7 +106,7 @@ class ScheduleConcurrencyIntegrationTest {
         meetingId = meeting.getId();
         hostId = host.getId();
         meetingMemberId = member.getId();
-        schedulePollService.create(meetingId, hostId,
+        schedulePollService.createPoll(meetingId, hostId,
                 new SchedulePollRequest.Create(LocalDateTime.now().plusDays(7)));
     }
 

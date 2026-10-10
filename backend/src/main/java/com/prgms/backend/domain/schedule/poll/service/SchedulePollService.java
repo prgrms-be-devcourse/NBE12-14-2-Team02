@@ -29,7 +29,7 @@ public class SchedulePollService {
     private final MeetingMemberRepository meetingMemberRepository;
 
     @Transactional
-    public SchedulePollResponse.Created create(
+    public SchedulePollResponse.Created createPoll(
             Long meetingId,
             Long userId,
             SchedulePollRequest.Create request
@@ -56,7 +56,7 @@ public class SchedulePollService {
     }
 
     @Transactional(readOnly = true)
-    public SchedulePollResponse.Detail get(Long meetingId, Long userId) {
+    public SchedulePollResponse.Detail getPoll(Long meetingId, Long userId) {
 
         // soft delete 되지 않은 모임인지 검사
         meetingRepository
@@ -95,7 +95,7 @@ public class SchedulePollService {
             SchedulePollRequest.UpdateDeadline request
             ) {
 
-        getActiveMeetingForHostForShare(meetingId, userId);
+        getActiveMeetingForHostWithSharedLock(meetingId, userId);
 
         SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdForUpdate(meetingId)
                         .orElseThrow(
@@ -109,8 +109,8 @@ public class SchedulePollService {
         );
 
     }
-
-    private Meeting getActiveMeetingForHostForShare(Long meetingId, Long userId) {
+    //TODO 반환값이 사용되고있지 않은데 추후 확인 필요
+    private Meeting getActiveMeetingForHostWithSharedLock(Long meetingId, Long userId) {
         Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
