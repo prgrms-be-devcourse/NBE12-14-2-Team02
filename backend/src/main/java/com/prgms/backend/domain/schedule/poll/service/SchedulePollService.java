@@ -34,23 +34,14 @@ public class SchedulePollService {
             Long userId,
             SchedulePollRequest.Create request
     ) {
-
-        Meeting meeting = meetingRepository
-            .findByIdAndDeletedAtIsNullForUpdate(meetingId)
-            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        Meeting meeting = getMeetingWithExclusiveLock(meetingId);
 
         validateHost(meeting, userId);
+        validateActiveMeeting(meeting);
+        validateNoExistingPoll(meetingId);
 
-        if (!meeting.isActive()) {
-            throw new MeetingNotActiveException(meetingId);
-        }
-
-       if(schedulePollRepository.existsByMeetingId(meetingId)){
-           throw new SchedulePollAlreadyExistsException(meetingId);
-       }
-
-       SchedulePoll savedPoll =
-               schedulePollRepository.save(SchedulePoll.create(meeting,request.deadline()));
+        SchedulePoll schedulePoll = SchedulePoll.create(meeting,request.deadline());
+        SchedulePoll savedPoll = schedulePollRepository.save(schedulePoll);
 
        return SchedulePollResponse.Created.from(savedPoll);
     }
@@ -58,34 +49,12 @@ public class SchedulePollService {
     @Transactional(readOnly = true)
     public SchedulePollResponse.Detail getPoll(Long meetingId, Long userId) {
 
-        // soft delete 되지 않은 모임인지 검사
-        meetingRepository
-            .findByIdAndDeletedAtIsNull(meetingId)
-            .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        validateMeetingExists(meetingId);
+        validateJoinedMember(meetingId, userId);
 
-        MeetingMember meetingMember =
-                meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
-                        .orElseThrow(
-                                () -> new MeetingMemberNotFoundException(
-                                        meetingId,
-                                        userId
-                                )
-                        );
+        SchedulePoll schedulePoll = getPollWithCandidates(meetingId);
 
-        if(!meetingMember.isJoined()){
-            throw new MeetingMemberAlreadyLeftException(meetingId, userId);
-        }
-
-        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdWithCandidates(meetingId)
-                .orElseThrow(
-                        () -> new SchedulePollNotFoundException(
-                                meetingId
-                        )
-                );
         return SchedulePollResponse.Detail.from(schedulePoll);
-
-
-
     }
 
     @Transactional
@@ -95,32 +64,24 @@ public class SchedulePollService {
             SchedulePollRequest.UpdateDeadline request
             ) {
 
-        getActiveMeetingForHostWithSharedLock(meetingId, userId);
+        Meeting meeting = getMeetingWithSharedLock(meetingId);
 
-        SchedulePoll schedulePoll = schedulePollRepository.findByMeetingIdForUpdate(meetingId)
-                        .orElseThrow(
-                                () -> new SchedulePollNotFoundException(meetingId)
-                        );
+        validateHost(meeting,userId);
+        validateActiveMeeting(meeting);
+
+        SchedulePoll schedulePoll = getPollWithExclusiveLock(meetingId);
 
         schedulePoll.updateDeadline(request.deadline(),LocalDateTime.now());
 
         return SchedulePollResponse.DeadlineUpdate.from(
                 schedulePoll
         );
-
     }
-    //TODO 반환값이 사용되고있지 않은데 추후 확인 필요
-    private Meeting getActiveMeetingForHostWithSharedLock(Long meetingId, Long userId) {
-        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
-                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
 
-        validateHost(meeting, userId);
-
+    private void validateActiveMeeting(Meeting meeting){
         if (!meeting.isActive()) {
-            throw new MeetingNotActiveException(meetingId);
+            throw new MeetingNotActiveException(meeting.getId());
         }
-
-        return meeting;
     }
 
     private void validateHost(
@@ -132,4 +93,56 @@ public class SchedulePollService {
         }
     }
 
+    private Meeting getMeetingWithExclusiveLock(Long meetingId){
+        return meetingRepository
+                .findByIdAndDeletedAtIsNullForUpdate(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+    }
+
+    private Meeting getMeetingWithSharedLock(Long meetingId){
+        return meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+    }
+
+    private void validateNoExistingPoll(Long meetingId){
+        if(schedulePollRepository.existsByMeetingId(meetingId)){
+            throw new SchedulePollAlreadyExistsException(meetingId);
+        }
+    }
+
+    private void validateJoinedMember(Long meetingId, Long userId){
+        MeetingMember meetingMember =
+                meetingMemberRepository.findByMeetingIdAndUserId(meetingId, userId)
+                        .orElseThrow(
+                                () -> new MeetingMemberNotFoundException(
+                                        meetingId,
+                                        userId
+                                )
+                        );
+        if(!meetingMember.isJoined()){
+            throw new MeetingMemberAlreadyLeftException(meetingId, userId);
+        }
+    }
+
+    private void validateMeetingExists(Long meetingId){
+        meetingRepository
+                .findByIdAndDeletedAtIsNull(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+    }
+
+    private SchedulePoll getPollWithCandidates(Long meetingId){
+        return schedulePollRepository.findByMeetingIdWithCandidates(meetingId)
+                .orElseThrow(
+                        () -> new SchedulePollNotFoundException(
+                                meetingId
+                        )
+                );
+    }
+
+    private SchedulePoll getPollWithExclusiveLock(Long meetingId){
+        return schedulePollRepository.findByMeetingIdForUpdate(meetingId)
+                .orElseThrow(
+                        () -> new SchedulePollNotFoundException(meetingId)
+                );
+    }
 }

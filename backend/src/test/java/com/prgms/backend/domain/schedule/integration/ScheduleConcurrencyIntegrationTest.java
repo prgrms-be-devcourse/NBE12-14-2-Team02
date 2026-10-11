@@ -115,7 +115,7 @@ class ScheduleConcurrencyIntegrationTest {
     void candidateLimitUnderConcurrentRequests() throws Exception {
         LocalDate firstDate = LocalDate.now().plusDays(1);
         for (int i = 0; i < 9; i++) {
-            candidateService.create(meetingId, hostId,
+            candidateService.createCandidate(meetingId, hostId,
                     new ScheduleCandidateRequest.Create(firstDate.plusDays(i)));
         }
 
@@ -124,14 +124,14 @@ class ScheduleConcurrencyIntegrationTest {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<?> first = holdTransaction(executor,
-                    () -> candidateService.create(meetingId, hostId,
+                    () -> candidateService.createCandidate(meetingId, hostId,
                             new ScheduleCandidateRequest.Create(firstDate.plusDays(9))),
                     firstInserted, releaseFirst);
             await(firstInserted);
             CountDownLatch secondStarted = new CountDownLatch(1);
             Future<?> second = executor.submit(() -> {
                 secondStarted.countDown();
-                return candidateService.create(meetingId, hostId,
+                return candidateService.createCandidate(meetingId, hostId,
                         new ScheduleCandidateRequest.Create(firstDate.plusDays(10)));
             });
 
@@ -153,7 +153,7 @@ class ScheduleConcurrencyIntegrationTest {
     @DisplayName("투표가 커밋될 때까지 기다린 후보 수정은 투표 존재를 확인하고 거부된다")
     void updateWaitsForVote() throws Exception {
         LocalDate original = LocalDate.now().plusDays(1);
-        Long candidateId = candidateService.create(meetingId, hostId,
+        Long candidateId = candidateService.createCandidate(meetingId, hostId,
                 new ScheduleCandidateRequest.Create(original)).id();
 
         CountDownLatch voteInserted = new CountDownLatch(1);
@@ -189,7 +189,7 @@ class ScheduleConcurrencyIntegrationTest {
     @Test
     @DisplayName("투표가 커밋될 때까지 기다린 후보 삭제도 투표 존재를 확인하고 거부된다")
     void deleteWaitsForVote() throws Exception {
-        Long candidateId = candidateService.create(meetingId, hostId,
+        Long candidateId = candidateService.createCandidate(meetingId, hostId,
                 new ScheduleCandidateRequest.Create(LocalDate.now().plusDays(1))).id();
 
         CountDownLatch voteInserted = new CountDownLatch(1);
@@ -223,7 +223,7 @@ class ScheduleConcurrencyIntegrationTest {
     @Test
     @DisplayName("같은 회원의 첫 투표 두 건은 하나의 행으로 저장된다")
     void sameMemberFirstVoteIsSerialized() throws Exception {
-        Long candidateId = candidateService.create(meetingId, hostId,
+        Long candidateId = candidateService.createCandidate(meetingId, hostId,
                 new ScheduleCandidateRequest.Create(LocalDate.now().plusDays(1))).id();
 
         CountDownLatch firstInserted = new CountDownLatch(1);

@@ -19,17 +19,15 @@ public class ScheduleCandidateController {
     private final ScheduleCandidateService scheduleCandidateService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ScheduleCandidateResponse.Summary>> create(
+    public ResponseEntity<ApiResponse<ScheduleCandidateResponse.Summary>> candidateCreate(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ScheduleCandidateRequest.Create request
 
             ){
-
         Long userId = securityUser.getId();
 
-
-        ScheduleCandidateResponse.Summary response = scheduleCandidateService.create(meetingId, userId, request);
+        ScheduleCandidateResponse.Summary response = scheduleCandidateService.createCandidate(meetingId, userId, request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(
@@ -38,7 +36,6 @@ public class ScheduleCandidateController {
                                 response
                         )
                 );
-
     }
 
 
@@ -52,8 +49,6 @@ public class ScheduleCandidateController {
 
         Long userId = securityUser.getId();
         ScheduleCandidateResponse.Summary response = scheduleCandidateService.update(meetingId, candidateId, userId, request);
-
-
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success(
