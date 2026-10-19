@@ -2,14 +2,14 @@ package com.prgms.backend.domain.schedule.vote.repository;
 
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
 import com.prgms.backend.domain.schedule.vote.entity.ScheduleVote;
-import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 public interface ScheduleVoteRepository extends JpaRepository<ScheduleVote,Long> {
     boolean existsByScheduleCandidateId(Long candidateId);

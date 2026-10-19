@@ -124,6 +124,7 @@ public class SchedulePoll {
                 );
     }
 
+
     public void removeCandidate(ScheduleCandidate candidate) {
         candidates.remove(candidate);
     }

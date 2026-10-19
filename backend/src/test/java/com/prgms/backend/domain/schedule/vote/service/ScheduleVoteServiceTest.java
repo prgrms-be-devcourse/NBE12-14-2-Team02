@@ -5,7 +5,6 @@ import com.prgms.backend.domain.meeting.entity.MeetingMember;
 import com.prgms.backend.domain.meeting.repository.MeetingMemberRepository;
 import com.prgms.backend.domain.meeting.repository.MeetingRepository;
 import com.prgms.backend.domain.schedule.candidate.entity.ScheduleCandidate;
-import com.prgms.backend.domain.schedule.candidate.repository.ScheduleCandidateRepository;
 import com.prgms.backend.domain.schedule.poll.entity.SchedulePoll;
 import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.domain.schedule.vote.dto.ScheduleVoteRequest;
@@ -40,11 +39,10 @@ import static org.mockito.Mockito.when;
 class ScheduleVoteServiceTest {
     private final ScheduleVoteRepository votes = mock(ScheduleVoteRepository.class);
     private final MeetingMemberRepository members = mock(MeetingMemberRepository.class);
-    private final ScheduleCandidateRepository candidates = mock(ScheduleCandidateRepository.class);
     private final SchedulePollRepository polls = mock(SchedulePollRepository.class);
     private final MeetingRepository meetings = mock(MeetingRepository.class);
     private final ScheduleVoteService service =
-            new ScheduleVoteService(votes, members, candidates, polls, meetings);
+            new ScheduleVoteService(votes, members, polls, meetings);
 
     private SchedulePoll poll;
     private MeetingMember member;
@@ -59,7 +57,6 @@ class ScheduleVoteServiceTest {
         when(meetings.findByIdAndDeletedAtIsNullForShare(10L)).thenReturn(Optional.of(meeting));
         when(polls.findByMeetingIdForShare(10L)).thenReturn(Optional.of(poll));
         when(members.findByMeetingIdAndUserIdForUpdate(10L, 2L)).thenReturn(Optional.of(member));
-        when(candidates.findByIdAndSchedulePollId(40L, 20L)).thenReturn(Optional.of(candidate));
     }
 
     @Test
@@ -99,14 +96,12 @@ class ScheduleVoteServiceTest {
         assertThrows(MeetingMemberAlreadyLeftException.class,
                 () -> service.submit(10L, 40L, 2L,
                         new ScheduleVoteRequest.Submit(SchedulePreference.PREFER)));
-        verifyNoInteractions(candidates, votes);
+        verifyNoInteractions(votes);
     }
 
     @Test
     @DisplayName("다른 Poll의 후보 ID는 현재 모임의 투표 대상으로 인정하지 않는다")
     void rejectCandidateOutsidePoll() {
-        when(candidates.findByIdAndSchedulePollId(41L, 20L)).thenReturn(Optional.empty());
-
         assertThrows(ScheduleCandidateNotFoundException.class,
                 () -> service.submit(10L, 41L, 2L,
                         new ScheduleVoteRequest.Submit(SchedulePreference.PREFER)));
@@ -121,6 +116,6 @@ class ScheduleVoteServiceTest {
         assertThrows(SchedulePollClosedException.class,
                 () -> service.submit(10L, 40L, 2L,
                         new ScheduleVoteRequest.Submit(SchedulePreference.PREFER)));
-        verifyNoInteractions(members, candidates, votes);
+        verifyNoInteractions(members, votes);
     }
 }
