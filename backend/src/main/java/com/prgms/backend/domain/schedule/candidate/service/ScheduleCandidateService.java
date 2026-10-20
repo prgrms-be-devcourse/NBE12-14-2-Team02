@@ -32,18 +32,17 @@ public class ScheduleCandidateService {
 
 
     @Transactional
-    public ScheduleCandidateResponse.Summary create(Long meetingId, Long userId, ScheduleCandidateRequest.Create request) {
+    public ScheduleCandidateResponse.Summary createCandidate(
+            Long meetingId,
+            Long userId,
+            ScheduleCandidateRequest.Create request
+    ) {
+        validateActiveMeetingForHostWithSharedLock(meetingId, userId);
 
-        validateHostAndActiveMeeting(meetingId, userId);
-
-        SchedulePoll schedulePoll = getLockedOpenPoll(meetingId);
+        SchedulePoll schedulePoll = getOpenPollWithExclusiveLock(meetingId);
 
         LocalDate candidateDate = request.candidateDate();
-
-        if (schedulePoll.hasDuplicateDate(candidateDate)) {
-            throw new DuplicateScheduleCandidateException(candidateDate);
-        }
-
+        validateUniqueCandidateDate(schedulePoll,candidateDate);
         ScheduleCandidate candidate =
                 schedulePoll.addCandidate(candidateDate);
 
@@ -51,7 +50,6 @@ public class ScheduleCandidateService {
                 scheduleCandidateRepository.save(candidate);
 
         return ScheduleCandidateResponse.Summary.from(savedCandidate);
-
     }
 
     @Transactional
@@ -61,25 +59,16 @@ public class ScheduleCandidateService {
             Long userId,
             ScheduleCandidateRequest.Update request
     ) {
-        validateHostAndActiveMeeting(meetingId, userId);
+        validateActiveMeetingForHostWithSharedLock(meetingId, userId);
 
         SchedulePoll schedulePoll =
-                getLockedOpenPoll(meetingId);
-
+                getOpenPollWithExclusiveLock(meetingId);
         ScheduleCandidate candidate =
                 schedulePoll.findCandidate(candidateId);
-
         validateCandidateHasNoVotes(candidateId);
 
         LocalDate candidateDate = request.candidateDate();
-
-        if (schedulePoll.hasDuplicateDate(
-                candidateId,
-                candidateDate
-        )) {
-            throw new DuplicateScheduleCandidateException(candidateDate);
-        }
-
+        validateUniqueCandidateDateForUpdate(schedulePoll,candidateId,candidateDate);
         candidate.updateCandidateDate(candidateDate);
 
         return ScheduleCandidateResponse.Summary.from(candidate);
@@ -91,19 +80,14 @@ public class ScheduleCandidateService {
             Long candidateId,
             Long userId
     ) {
-        validateHostAndActiveMeeting(meetingId, userId);
-
+        validateActiveMeetingForHostWithSharedLock(meetingId, userId);
         SchedulePoll schedulePoll =
-                getLockedOpenPoll(meetingId);
-
+                getOpenPollWithExclusiveLock(meetingId);
         ScheduleCandidate candidate =
                 schedulePoll.findCandidate(candidateId);
-
         validateCandidateHasNoVotes(candidateId);
-
         schedulePoll.removeCandidate(candidate);
     }
-
 
     private void validateCandidateHasNoVotes(Long candidateId) {
         if (scheduleVoteRepository
@@ -114,36 +98,65 @@ public class ScheduleCandidateService {
         }
     }
 
-
-    private void validateHostAndActiveMeeting(
-            Long meetingId,
-            Long userId
+    private Meeting getMeetingWithSharedLock(
+            Long meetingId
     ) {
-        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
+        return meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
                 .orElseThrow(
                         () -> new MeetingNotFoundException(meetingId)
                 );
-
-        if (!meeting.isHost(userId)) {
-            throw new MeetingHostRequiredException();
-        }
-
-        if (!meeting.isActive()) {
-            throw new MeetingNotActiveException(meetingId);
-        }
     }
 
-    private SchedulePoll getLockedOpenPoll(Long meetingId) {
+    private SchedulePoll getOpenPollWithExclusiveLock(Long meetingId) {
         SchedulePoll schedulePoll =
                 schedulePollRepository.findByMeetingIdForUpdate(meetingId)
                         .orElseThrow(
                                 () -> new SchedulePollNotFoundException(meetingId)
                         );
-
         schedulePoll.validateOpen(LocalDateTime.now());
-
         return schedulePoll;
     }
 
+    private void validateActiveMeeting(Meeting meeting){
+        if (!meeting.isActive()) {
+            throw new MeetingNotActiveException(meeting.getId());
+        }
+    }
 
+    private void validateHost(
+            Meeting meeting,
+            Long userId
+    ) {
+        if (!meeting.isHost(userId)) {
+            throw new MeetingHostRequiredException();
+        }
+    }
+
+    private void validateUniqueCandidateDate(
+            SchedulePoll schedulePoll,
+            LocalDate candidateDate
+    ){
+        if (schedulePoll.hasDuplicateDate(candidateDate)) {
+            throw new DuplicateScheduleCandidateException(candidateDate);
+        }
+    }
+
+    private void validateActiveMeetingForHostWithSharedLock(
+            Long meetingId,
+            Long userId)
+    {
+        Meeting meeting = getMeetingWithSharedLock(meetingId);
+        validateHost(meeting, userId);
+        validateActiveMeeting(meeting);
+    }
+
+    private void validateUniqueCandidateDateForUpdate(
+            SchedulePoll schedulePoll,
+            Long excludedCandidateId,
+            LocalDate candidateDate
+    ){
+        if (schedulePoll.hasDuplicateDate(excludedCandidateId, candidateDate)) {
+            throw new DuplicateScheduleCandidateException(candidateDate);
+        }
+    }
 }

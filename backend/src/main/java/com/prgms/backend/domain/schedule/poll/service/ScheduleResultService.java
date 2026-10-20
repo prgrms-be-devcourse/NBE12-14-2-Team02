@@ -76,7 +76,7 @@ public class ScheduleResultService {
             ResultContext context
     ) {
 
-
+        //후보id : 투표
         Map<Long, List<ScheduleVote>> votesByCandidate =
                 context.votes().stream().collect(
                         Collectors.groupingBy(
@@ -84,9 +84,10 @@ public class ScheduleResultService {
                         )
                 );
 
+        //참여자 수
         long joinedMemberCount = context.joinedMembers().size();
 
-
+        //
         List<CandidateAggregation> aggregations =
                 context.schedulePoll().getCandidates().stream()
                         .map(candidate -> {
@@ -95,12 +96,14 @@ public class ScheduleResultService {
                                             candidate.getId(),
                                             List.of()
                                     );
+                            //총 점수
                             int totalScore =
                                     candidateVotes.stream()
                                             .mapToInt(
                                                     ScheduleVote::getScore
                                             )
                                             .sum();
+                            //prefer수
                             long preferCount =
                                     countPreference(
                                             candidateVotes,
@@ -221,31 +224,36 @@ public class ScheduleResultService {
     }
 
     private ResultContext getResultContext(Long meetingId, Long userId) {
+        //먼저 모임을 조회
         meetingRepository
             .findByIdAndDeletedAtIsNull(meetingId)
             .orElseThrow(() -> new MeetingNotFoundException(meetingId));
-
+        //해당 유저가 참여자인지
         validateJoinedMember(meetingId, userId);
+        //마감된 투표인가
         SchedulePoll schedulePoll = getClosedSchedulePoll(meetingId);
 
+        //참여자 모두 계산
         List<MeetingMember> joinedMembers =
                 meetingMemberRepository.findAllByMeetingIdAndStatus(
                         meetingId,
                         MeetingMemberStatus.JOINED
                 );
 
-
+        //참여한 회원들의 id로 매핑
         Set<Long> joinedMemberIds =
                 joinedMembers.stream()
                         .map(MeetingMember::getId)
                         .collect(Collectors.toSet());
-
+        //schedulePollId를 통해 연관된 candidate를 거쳐서 vote까지 조회
+        //실제로 해당 투표에 있는 사람들만 필터링
         List<ScheduleVote> votes =
                 scheduleVoteRepository
                         .findAllByScheduleCandidateSchedulePollId(schedulePoll.getId())
                         .stream()
                         .filter(vote -> joinedMemberIds.contains(vote.getMeetingMember().getId()))
                         .toList();
+        //해당 투표, 참여자, vote를 반환
         return new ResultContext(schedulePoll, joinedMembers, votes);
     }
 

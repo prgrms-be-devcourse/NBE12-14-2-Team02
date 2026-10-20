@@ -22,7 +22,7 @@ public class SchedulePollController {
     private final ScheduleResultService scheduleResultService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<SchedulePollResponse.Created>> create(
+    public ResponseEntity<ApiResponse<SchedulePollResponse.Created>> createPoll(
             @PathVariable Long meetingId,
             @Valid @RequestBody SchedulePollRequest.Create request,
             @AuthenticationPrincipal SecurityUser securityUser
@@ -30,7 +30,7 @@ public class SchedulePollController {
 
         Long userId = securityUser.getId();
 
-        SchedulePollResponse.Created response = schedulePollService.create(meetingId, userId, request);
+        SchedulePollResponse.Created response = schedulePollService.createPoll(meetingId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         201,
@@ -39,14 +39,14 @@ public class SchedulePollController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> get(
+    public ResponseEntity<ApiResponse<SchedulePollResponse.Detail>> getPoll(
             @PathVariable Long meetingId,
             @AuthenticationPrincipal SecurityUser securityUser
     ){
 
         Long userId = securityUser.getId();
         SchedulePollResponse.Detail response =
-                schedulePollService.get(meetingId, userId);
+                schedulePollService.getPoll(meetingId, userId);
 
         return ResponseEntity.ok(
                 ApiResponse.success(
