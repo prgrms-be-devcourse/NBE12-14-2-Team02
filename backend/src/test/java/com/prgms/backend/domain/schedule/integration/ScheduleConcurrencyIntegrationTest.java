@@ -20,6 +20,7 @@ import com.prgms.backend.domain.schedule.vote.service.ScheduleVoteService;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.domain.notification.repository.NotificationRepository;
+import com.prgms.backend.domain.notification.entity.Notification;
 import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateHasVotesException;
 import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateLimitExceededException;
 import java.time.LocalDate;
@@ -49,11 +50,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 
 @SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create",
@@ -86,7 +90,7 @@ class ScheduleConcurrencyIntegrationTest {
     @Autowired private SchedulePollCloseService closeService;
     @Autowired private ScheduleCandidateService candidateService;
     @Autowired private ScheduleVoteService voteService;
-    @Autowired private NotificationRepository notificationRepository;
+    @MockitoSpyBean private NotificationRepository notificationRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private TransactionTemplate transactionTemplate;
 
@@ -303,6 +307,22 @@ class ScheduleConcurrencyIntegrationTest {
             continueClose.countDown();
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    @DisplayName("알림 저장에 실패해도 일정 투표 마감은 커밋된다")
+    void notificationFailureDoesNotRollBackPollClose() {
+        Long pollId = schedulePollRepository.findByMeetingId(meetingId).orElseThrow().getId();
+        jdbcTemplate.update("UPDATE schedule_polls SET deadline = ? WHERE id = ?",
+                Timestamp.valueOf(LocalDateTime.now().minusMinutes(1)), pollId);
+        doThrow(new IllegalStateException("notification insert failure"))
+                .when(notificationRepository).save(any(Notification.class));
+
+        assertDoesNotThrow(() -> closeService.closeOneIfExpired(pollId));
+
+        assertEquals(SchedulePollStatus.CLOSED,
+                schedulePollRepository.findById(pollId).orElseThrow().getStatus());
+        assertTrue(notificationRepository.findByReceiverIdOrderByCreatedAtDesc(hostId).isEmpty());
     }
 
     private Future<?> holdTransaction(ExecutorService executor, Runnable action,
