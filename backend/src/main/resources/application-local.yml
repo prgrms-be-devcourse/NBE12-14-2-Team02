@@ -1,9 +1,6 @@
 # application-local.yml
 spring:
   jpa:
-    show-sql: false
-    hibernate:
-      ddl-auto: update
     properties:
       hibernate:
         format_sql: true

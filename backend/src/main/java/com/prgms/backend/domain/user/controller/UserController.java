@@ -8,7 +8,6 @@ import com.prgms.backend.domain.user.dto.request.SignUpRequest;
 import com.prgms.backend.domain.user.dto.request.UpdatePasswordRequest;
 import com.prgms.backend.domain.user.dto.response.SignUpResponse;
 import com.prgms.backend.domain.user.entity.SecurityUser;
-import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.domain.user.service.AuthService;
 import com.prgms.backend.domain.user.service.UserService;
 import com.prgms.backend.domain.user.service.UserWithdrawService;
