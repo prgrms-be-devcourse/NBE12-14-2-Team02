@@ -66,6 +66,44 @@ class ExpenseApiTest {
         verifyNoInteractions(expenses);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"amount\":100,\"splitMode\":\"EXACT\",\"participants\":[{\"memberId\":1,\"amount\":100}]}",
+            "{\"title\":\"식사\",\"splitMode\":\"EXACT\",\"participants\":[{\"memberId\":1,\"amount\":100}]}",
+            "{\"title\":\"식사\",\"amount\":100,\"participants\":[{\"memberId\":1,\"amount\":100}]}",
+            "{\"title\":\"식사\",\"amount\":100,\"splitMode\":\"EXACT\",\"participants\":[null]}",
+            "{\"title\":\"식사\",\"amount\":100,\"splitMode\":\"EXACT\",\"participants\":[{\"amount\":100}]}",
+            "{\"title\":\"식사\",\"amount\":100,\"splitMode\":\"EXACT\",\"participants\":[{\"memberId\":-1,\"amount\":100}]}",
+            "{\"title\":\"식사\",\"amount\":100,\"splitMode\":\"EXACT\",\"participants\":[{\"memberId\":1,\"amount\":0.5}]}",
+            "{\"title\":\"식사\",\"amount\":100,\"splitMode\":\"EXACT\",\"participants\":[]}"
+    })
+    @DisplayName("Kotlin DTO의 필수 필드와 중첩 참여자 검증이 400으로 유지된다")
+    void kotlinRequestValidation(String request) throws Exception {
+        mvc.perform(post(URL).principal(principal).contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(expenses);
+    }
+
+    @Test @DisplayName("랜덤 옵션 생략은 기존처럼 false로 해석한다")
+    void omittedRandomOption() throws Exception {
+        mvc.perform(post(URL).principal(principal).contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST.replace("\"randomRemainder\":false,", "")))
+                .andExpect(status().isCreated());
+        verify(expenses).create(eq(10L), eq(principal), argThat(request -> !request.randomRemainder()));
+    }
+
+    @Test @DisplayName("Kotlin 계좌 DTO의 필수 필드와 계좌번호 형식을 검증한다")
+    void accountValidation() throws Exception {
+        for (String request : List.of(
+                "{\"bankName\":\"은행\",\"accountNumber\":\"123-456\"}",
+                "{\"bankName\":\"은행\",\"accountNumber\":\"abc\",\"accountHolder\":\"사용자\"}")) {
+            mvc.perform(put("/api/meetings/10/settlement/account").principal(principal)
+                            .contentType(MediaType.APPLICATION_JSON).content(request))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(accounts);
+    }
+
     @ParameterizedTest @ValueSource(ints = {400, 403, 404, 409})
     @DisplayName("업무 예외의 HTTP 상태와 메시지를 그대로 반환")
     void businessErrors(int code) throws Exception {
