@@ -6,6 +6,8 @@ spring:
   application:
     name: backend
 
+  profiles:
+    default: local # 프로필 미정시 local이 기본으로 실행
 
   config:
     import: optional:file:.env[.properties]
@@ -17,6 +19,16 @@ spring:
     password: ${MYSQLPASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  flyway:
+    enabled: true # flyway 활성화
+    baseline-on-migrate: true # flyway가 제공하는 변경 이력 테이블 자동 생성
+    baseline-version: 1 # 초기 버전 설정
+    locations: classpath:/db/migration
+
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate # local, prod 모두 validate
 
 custom:
   jwt:
