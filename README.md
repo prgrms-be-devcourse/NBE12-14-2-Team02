@@ -82,27 +82,27 @@ JWT_ACCESS_SECRET=your_jwt_access_secret
 JWT_REFRESH_SECRET=your_jwt_refresh_secret
 ```
 
-#### 2. MySQL 실행
-
-```bash
-docker compose up -d
-```
-
-#### 3. 애플리케이션 실행
-
-```bash
-./gradlew bootRun
-```
-
-#### 4. 실행 프로필 설정
+#### 2. 실행 프로필 설정
 프로필을 지정하지 않으면 기본으로 `local` 프로필이 적용됩니다. 운영 환경에서는 배포 환경변수에 `SPRING_PROFILES_ACTIVE=prod`를 추가합니다.
 
 ```env
 SPRING_PROFILES_ACTIVE=prod
 ```
 
-#### 5. DB 스키마 관리 (Flyway)
+#### 3. DB 스키마 관리 (Flyway)
 DB 테이블은 처음 실행할 때 Flyway가 빈 DB에 자동으로 생성합니다. 스키마를 변경할 때는 `backend/src/main/resources/db/migration`에 새 버전의 SQL 파일을 추가합니다. 
+
+#### 4. MySQL 실행
+
+```bash
+docker compose up -d
+```
+
+#### 5. 애플리케이션 실행
+
+```bash
+./gradlew bootRun
+```
 
 서버 실행 후 API 문서는 [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)에서 확인할 수 있습니다.
 
