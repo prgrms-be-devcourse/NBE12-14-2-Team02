@@ -2,7 +2,7 @@ package com.prgms.backend.domain.settlement;
 
 import com.prgms.backend.domain.expense.entity.Expense;
 import com.prgms.backend.domain.expense.repository.ExpenseRepository;
-import com.prgms.backend.domain.notification.service.NotificationService;
+import com.prgms.backend.domain.settlement.integration.SettlementClosedEvent;
 import com.prgms.backend.domain.settlement.entity.Settlement;
 import com.prgms.backend.domain.settlement.entity.SettlementStatus;
 import com.prgms.backend.domain.settlement.integration.MeetingAccessPort;
@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.security.Principal;
 import java.util.List;
@@ -28,17 +30,21 @@ class SettlementServiceTest {
     private final MeetingAccessPort access = mock(MeetingAccessPort.class);
     private final ExpenseRepository expenses = mock(ExpenseRepository.class);
     private final SettlementRepository settlements = mock(SettlementRepository.class);
-    private final NotificationService notificationService = mock(NotificationService.class);
+    private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
     private final com.prgms.backend.domain.settlement.repository.SettlementAccountRepository accounts = mock(com.prgms.backend.domain.settlement.repository.SettlementAccountRepository.class);
     private final com.prgms.backend.domain.meeting.repository.MeetingMemberRepository members = mock(com.prgms.backend.domain.meeting.repository.MeetingMemberRepository.class);
-    private final SettlementService service = new SettlementService(access, expenses, settlements, new SettlementCalculator(), notificationService, accounts, members);
+    private final SettlementService service = new SettlementService(access, expenses, settlements, new SettlementCalculator(), events, accounts, members);
     private final Principal principal = () -> "host";
 
     @BeforeEach void setup() {
         when(access.requireMember(10, principal)).thenReturn(context(true, true));
         when(access.requireMemberForRead(10, principal)).thenReturn(context(false, true));
         when(settlements.findByMeetingId(10)).thenReturn(Optional.empty());
-        when(settlements.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(settlements.save(any())).thenAnswer(invocation -> {
+            Settlement saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 100L);
+            return saved;
+        });
     }
 
     @Test @DisplayName("모임장이 확정하면 금액·송금 내역·확정자·시각을 함께 저장")
@@ -54,7 +60,52 @@ class SettlementServiceTest {
         verify(settlements).save(saved.capture());
         assertEquals(2, saved.getValue().getBalances().size());
         assertEquals(200, saved.getValue().getTransfers().getFirst().getAmount());
+        verify(events).publishEvent(new SettlementClosedEvent(10, 100, result.closedAt()));
+        assertEquals(1, saved.getValue().getAccounts().size());
+        assertTrue(result.missingAccountMemberIds().isEmpty());
+    }
 
+    @Test @DisplayName("수취인 계좌가 없으면 결과 저장과 이벤트 발행 없이 확정을 거절한다")
+    void missingRecipientAccount() {
+        Settlement settlement = new Settlement(10);
+        when(settlements.findByMeetingId(10)).thenReturn(Optional.of(settlement));
+        when(accounts.findByMeetingId(10)).thenReturn(List.of(account(2)));
+        when(expenses.findByMeetingIdOrderByIdAsc(10)).thenReturn(List.of(
+                Expense.register(10, 1, "식사", 300, null, Map.of(1L, 100L, 2L, 200L), "EXACT", null, null)));
+
+        var error = assertThrows(BusinessException.class, () -> service.confirm(10, principal));
+        assertEquals(409, error.getCode());
+        assertTrue(error.getMessage().contains("[1]"));
+        assertEquals(SettlementStatus.OPEN, settlement.getStatus());
+        assertTrue(settlement.getBalances().isEmpty());
+        assertTrue(settlement.getTransfers().isEmpty());
+        assertNull(settlement.getClosedAt());
+        verify(settlements, never()).save(any());
+        verifyNoInteractions(events);
+
+        // 계좌를 보완하면 동일 지출을 확정할 수 있습니다.
+        when(accounts.findByMeetingId(10)).thenReturn(List.of(account(1)));
+        assertEquals(SettlementStatus.CLOSED, service.confirm(10, principal).status());
+    }
+
+    @Test @DisplayName("송금할 금액이 없으면 계좌 없이 확정할 수 있다")
+    void noTransfersNeedNoAccounts() {
+        when(expenses.findByMeetingIdOrderByIdAsc(10)).thenReturn(List.of(
+                Expense.register(10, 1, "개인 식사", 100, null, Map.of(1L, 100L), "EXACT", null, null)));
+        var result = service.confirm(10, principal);
+        assertEquals(SettlementStatus.CLOSED, result.status());
+        assertTrue(result.transfers().isEmpty());
+    }
+
+    @Test @DisplayName("미리보기는 확정과 같은 수취인 기준으로 미등록 계좌를 안내한다")
+    void previewMissingAccounts() {
+        when(accounts.findByMeetingId(10)).thenReturn(List.of(account(2)));
+        when(expenses.findByMeetingIdOrderByIdAsc(10)).thenReturn(List.of(
+                Expense.register(10, 1, "식사", 300, null, Map.of(1L, 100L, 2L, 200L), "EXACT", null, null)));
+        assertEquals(List.of(1L), service.preview(10, principal).missingAccounts().stream()
+                .map(account -> account.memberId()).toList());
+        verify(settlements, never()).save(any());
+        verifyNoInteractions(events);
     }
 
     private com.prgms.backend.domain.settlement.entity.SettlementAccount account(long memberId) {
