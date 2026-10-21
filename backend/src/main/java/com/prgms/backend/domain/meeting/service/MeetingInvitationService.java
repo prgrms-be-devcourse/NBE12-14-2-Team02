@@ -87,12 +87,10 @@ public class MeetingInvitationService {
         String inviteCode,
         Long userId
     ) {
-        // Meeting ID 확인용 1차 조회
-        MeetingInvitation initialInvitation = meetingInvitationRepository
-                .findByInviteCode(inviteCode)
+        // 잠글 모임의 ID만 조회
+        Long meetingId = meetingInvitationRepository
+                .findMeetingIdByInviteCode(inviteCode)
                 .orElseThrow(() -> new MeetingInvitationNotFoundException(inviteCode));
-
-        Long meetingId = initialInvitation.getMeeting().getId();
 
         // 모임의 멤버 구성이 바뀌므로 WRITE LOCK
         Meeting meeting = meetingRepository
@@ -119,28 +117,26 @@ public class MeetingInvitationService {
             .findById(userId)
             .orElseThrow(() -> new UserNotFoundException("존재하지 않는 회원입니다."));
 
-        // 해당 모임의 모임원 목록에 있는 회원인지 검사
+        // 모임원 목록 잠금 조회
         Optional<MeetingMember> existingMember = meetingMemberRepository
-                .findByMeetingIdAndUserId(meetingId, userId);
+                .findByMeetingIdAndUserIdForUpdate(meetingId, userId);
 
         MeetingMember meetingMember;
 
         // 모임원 목록에 있는 회원인 경우
         if (existingMember.isPresent()) {
-
             meetingMember = existingMember.get();
 
-            // 현재 참여 중인 모임원인 경우
+            // 현재 참여 중인 모임원인 경우 중복 가입 차단
             if (meetingMember.isJoined()) {
                 throw new AlreadyMeetingMemberException(meetingId, userId);
             }
 
-            // 현재 참여 중이 아니면(LEFT) 재가입
+            // 현재 참여 중이 아니면(LEFT) 기존 모임원 기록으로 재가입
             meetingMember.rejoin();
 
-            // 모임에 가입한 적 없는 회원인 경우 모임원에 등록
+            // 모임에 가입한 적 없는 회원인 경우 새 모임원으로 등록
         } else {
-
             meetingMember = new MeetingMember(meeting, user);
 
             meetingMemberRepository.save(meetingMember);

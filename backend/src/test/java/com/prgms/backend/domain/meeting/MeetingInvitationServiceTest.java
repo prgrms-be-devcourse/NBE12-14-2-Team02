@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -236,6 +237,10 @@ class MeetingInvitationServiceTest {
             LocalDateTime.now().plusDays(1)
         );
 
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invite-code"))
+            .thenReturn(Optional.of(10L));
+
         when(
             meetingInvitationRepository
                 .findByInviteCode("invite-code")
@@ -249,13 +254,9 @@ class MeetingInvitationServiceTest {
         when(userRepository.findById(2L))
             .thenReturn(Optional.of(user));
 
-        when(
-            meetingMemberRepository
-                .findByMeetingIdAndUserId(
-                    10L,
-                    2L
-                )
-        ).thenReturn(Optional.empty());
+        when(meetingMemberRepository
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
+            .thenReturn(Optional.empty());
 
         when(
             meetingMemberRepository
@@ -285,11 +286,13 @@ class MeetingInvitationServiceTest {
         assertEquals(200L, response.id());
         assertEquals(10L, response.meetingId());
         assertEquals(2L, response.userId());
-        assertEquals(
-            MeetingMemberStatus.JOINED,
-            response.status()
-        );
+        assertEquals(MeetingMemberStatus.JOINED, response.status());
 
+        // 가입 여부 판단에 사용할 조회가 호출됐는지 확인
+        verify(meetingMemberRepository)
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L);
+
+        // 신규 가입이므로 새 모임원을 저장
         verify(meetingMemberRepository)
             .save(any(MeetingMember.class));
     }
@@ -339,6 +342,10 @@ class MeetingInvitationServiceTest {
         // 기존 회원이 탈퇴한 상태
         member.leave();
 
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invite-code"))
+            .thenReturn(Optional.of(10L));
+
         when(
             meetingInvitationRepository
                 .findByInviteCode("invite-code")
@@ -352,13 +359,9 @@ class MeetingInvitationServiceTest {
         when(userRepository.findById(2L))
             .thenReturn(Optional.of(user));
 
-        when(
-            meetingMemberRepository
-                .findByMeetingIdAndUserId(
-                    10L,
-                    2L
-                )
-        ).thenReturn(Optional.of(member));
+        when(meetingMemberRepository
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
+            .thenReturn(Optional.of(member));
 
         // when
         var response =
@@ -368,16 +371,16 @@ class MeetingInvitationServiceTest {
             );
 
         // then
-        assertEquals(
-            MeetingMemberStatus.JOINED,
-            response.status()
-        );
+        assertEquals(MeetingMemberStatus.JOINED, response.status());
 
         assertEquals(200L, response.id());
         assertEquals(10L, response.meetingId());
         assertEquals(2L, response.userId());
 
-        // 재가입 시 기존 MeetingMember를 사용하므로 새로 저장하지 않음
+        // 재가입하면 기존 탈퇴 시각 해제
+        assertNull(response.leftAt());
+
+        // 기존 MeetingMember를 재사용하므로 새로 저장X
         verify(meetingMemberRepository, never())
             .save(any(MeetingMember.class));
     }
@@ -418,6 +421,10 @@ class MeetingInvitationServiceTest {
                 user
             );
 
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invite-code"))
+            .thenReturn(Optional.of(10L));
+
         when(
             meetingInvitationRepository
                 .findByInviteCode("invite-code")
@@ -431,22 +438,24 @@ class MeetingInvitationServiceTest {
         when(userRepository.findById(2L))
             .thenReturn(Optional.of(user));
 
-        when(
-            meetingMemberRepository
-                .findByMeetingIdAndUserId(
-                    10L,
-                    2L
-                )
-        ).thenReturn(Optional.of(member));
+        when(meetingMemberRepository
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
+            .thenReturn(Optional.of(member));
 
         // when & then
-        assertThrows(
+        AlreadyMeetingMemberException exception = assertThrows(
             AlreadyMeetingMemberException.class,
             () -> meetingInvitationService.joinMeeting(
                 "invite-code",
                 2L
             )
         );
+
+        assertEquals(409, exception.getCode());
+
+        // 중복 참여자는 새로 저장X
+        verify(meetingMemberRepository, never())
+            .save(any(MeetingMember.class));
     }
 
     @Test
@@ -454,10 +463,9 @@ class MeetingInvitationServiceTest {
     void joinMeeting_invitationNotFound() {
 
         // given
-        when(
-            meetingInvitationRepository
-                .findByInviteCode("invalid-code")
-        ).thenReturn(Optional.empty());
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invalid-code"))
+            .thenReturn(Optional.empty());
 
         // when & then
         assertThrows(
@@ -493,6 +501,10 @@ class MeetingInvitationServiceTest {
                 "expired-code",
                 LocalDateTime.now().minusDays(1)
             );
+
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("expired-code"))
+            .thenReturn(Optional.of(10L));
 
         when(
             meetingInvitationRepository
