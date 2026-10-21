@@ -5,13 +5,14 @@ import com.prgms.backend.domain.schedule.poll.entity.SchedulePollStatus;
 import com.prgms.backend.domain.schedule.poll.repository.SchedulePollRepository;
 import com.prgms.backend.domain.schedule.poll.service.SchedulePollCloseService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SchedulePollCloseScheduler {
@@ -30,7 +31,11 @@ public class SchedulePollCloseScheduler {
                 );
 
         for (Long pollId : expiredPollIds) {
-            schedulePollCloseService.closeOneIfExpired(pollId);
+            try {
+                schedulePollCloseService.closeOneIfExpired(pollId);
+            } catch (Exception e) {
+                log.error("일정 투표 자동 마감 실패. pollId={}", pollId, e);
+            }
         }
     }
 }

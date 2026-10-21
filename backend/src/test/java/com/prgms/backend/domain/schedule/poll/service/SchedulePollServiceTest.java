@@ -13,27 +13,20 @@ import com.prgms.backend.global.exception.custom.meeting.MeetingMemberAlreadyLef
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollAlreadyExistsException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollClosedException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.candidate;
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.meeting;
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.member;
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.poll;
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.user;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class SchedulePollServiceTest {
     private final SchedulePollRepository polls = mock(SchedulePollRepository.class);
@@ -56,14 +49,14 @@ class SchedulePollServiceTest {
 
     @Test
     @DisplayName("모임장이 일정 투표를 만들면 OPEN 상태와 마감 시간이 저장된다")
-    void createPoll() {
+    void createPollPoll() {
         when(polls.save(any(SchedulePoll.class))).thenAnswer(invocation -> {
             SchedulePoll saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 21L);
             return saved;
         });
 
-        var response = service.create(10L, 1L, new SchedulePollRequest.Create(deadline));
+        var response = service.createPoll(10L, 1L, new SchedulePollRequest.Create(deadline));
 
         assertEquals(21L, response.id());
         assertEquals(10L, response.meetingId());
@@ -78,16 +71,16 @@ class SchedulePollServiceTest {
         when(polls.existsByMeetingId(10L)).thenReturn(true);
 
         assertThrows(SchedulePollAlreadyExistsException.class,
-                () -> service.create(10L, 1L, new SchedulePollRequest.Create(deadline)));
+                () -> service.createPoll(10L, 1L, new SchedulePollRequest.Create(deadline)));
 
         verify(polls, never()).save(any());
     }
 
     @Test
     @DisplayName("모임장이 아닌 회원은 일정 투표를 만들 수 없다")
-    void onlyHostCanCreate() {
+    void onlyHostCanCreatePoll() {
         assertThrows(MeetingHostRequiredException.class,
-                () -> service.create(10L, 2L, new SchedulePollRequest.Create(deadline)));
+                () -> service.createPoll(10L, 2L, new SchedulePollRequest.Create(deadline)));
 
         verifyNoInteractions(polls);
     }
@@ -98,7 +91,7 @@ class SchedulePollServiceTest {
         meeting.complete();
 
         assertThrows(MeetingNotActiveException.class,
-                () -> service.create(10L, 1L, new SchedulePollRequest.Create(deadline)));
+                () -> service.createPoll(10L, 1L, new SchedulePollRequest.Create(deadline)));
         verifyNoInteractions(polls);
     }
 
@@ -112,7 +105,7 @@ class SchedulePollServiceTest {
         when(members.findByMeetingIdAndUserId(10L, 2L)).thenReturn(Optional.of(member));
         when(polls.findByMeetingIdWithCandidates(10L)).thenReturn(Optional.of(poll));
 
-        var response = service.get(10L, 2L);
+        var response = service.getPoll(10L, 2L);
 
         assertEquals(20L, response.id());
         assertEquals(1, response.candidates().size());
@@ -128,7 +121,7 @@ class SchedulePollServiceTest {
         when(members.findByMeetingIdAndUserId(10L, 2L)).thenReturn(Optional.of(leftMember));
 
         assertThrows(MeetingMemberAlreadyLeftException.class,
-                () -> service.get(10L, 2L));
+                () -> service.getPoll(10L, 2L));
         verify(polls, never()).findByMeetingIdWithCandidates(10L);
     }
 

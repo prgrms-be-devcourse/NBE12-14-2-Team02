@@ -45,7 +45,6 @@ public class SchedulePoll {
     @Column(nullable = false, length = 20)
     private SchedulePollStatus status;
 
-    //CascadeType.All & orphanRemoval로 부모 엔티티에서 자식 생명주기를 관리.
     @OneToMany(
             mappedBy = "schedulePoll",
             cascade = CascadeType.ALL,
@@ -59,10 +58,8 @@ public class SchedulePoll {
     ){
         this.meeting = meeting;
         this.deadline = deadline;
-        //일정 투표 처음 생성 시 OPEN
         this.status = SchedulePollStatus.OPEN;
     }
-    //일정 투표 생성 팩토리 메서드
     public static SchedulePoll create(
             Meeting meeting,
             LocalDateTime deadline
@@ -71,7 +68,6 @@ public class SchedulePoll {
     }
 
      public ScheduleCandidate addCandidate(LocalDate candidateDate) {
-        //최대 10개까지만 후보 저장 가능.
         if(candidates.size() >= MAX_CANDIDATE_COUNT){
             throw new ScheduleCandidateLimitExceededException(MAX_CANDIDATE_COUNT);
         }
@@ -91,7 +87,6 @@ public class SchedulePoll {
         this.deadline = newDeadline;
     }
 
-    //현재 닫혀있는 투표이거나, 마감시간을 지났다면, 예외.
     public void validateOpen(LocalDateTime now) {
         if (this.status == SchedulePollStatus.CLOSED ||
                 !now.isBefore(deadline)) {
@@ -129,12 +124,11 @@ public class SchedulePoll {
                 );
     }
 
-    //poll에 달린 candidate삭제하는 로직 같은 트랜잭션 내에서 수행되어야함.
+
     public void removeCandidate(ScheduleCandidate candidate) {
         candidates.remove(candidate);
     }
 
-    //투표가 마감될 수 있도록 호출하는 메서드.
     public void close() {
         this.status = SchedulePollStatus.CLOSED;
     }

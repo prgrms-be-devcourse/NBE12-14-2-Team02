@@ -12,26 +12,19 @@ import com.prgms.backend.global.exception.custom.meeting.MeetingHostRequiredExce
 import com.prgms.backend.global.exception.custom.schedule.DuplicateScheduleCandidateException;
 import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateHasVotesException;
 import com.prgms.backend.global.exception.custom.schedule.SchedulePollClosedException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.candidate;
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.meeting;
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.poll;
-import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.user;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static com.prgms.backend.domain.schedule.support.ScheduleTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class ScheduleCandidateServiceTest {
     private final ScheduleCandidateRepository candidates = mock(ScheduleCandidateRepository.class);
@@ -55,14 +48,14 @@ class ScheduleCandidateServiceTest {
 
     @Test
     @DisplayName("모임장이 후보를 추가하면 Poll 목록과 응답에 새 후보가 반영된다")
-    void createCandidate() {
+    void createCandidateCandidate() {
         when(candidates.save(any(ScheduleCandidate.class))).thenAnswer(invocation -> {
             ScheduleCandidate saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 40L);
             return saved;
         });
 
-        var response = service.create(10L, 1L, new ScheduleCandidateRequest.Create(firstDate));
+        var response = service.createCandidate(10L, 1L, new ScheduleCandidateRequest.Create(firstDate));
 
         assertEquals(40L, response.id());
         assertEquals(firstDate, response.candidateDate());
@@ -76,7 +69,7 @@ class ScheduleCandidateServiceTest {
         candidate(40L, poll, firstDate);
 
         assertThrows(DuplicateScheduleCandidateException.class,
-                () -> service.create(10L, 1L, new ScheduleCandidateRequest.Create(firstDate)));
+                () -> service.createCandidate(10L, 1L, new ScheduleCandidateRequest.Create(firstDate)));
 
         assertEquals(1, poll.getCandidates().size());
         verify(candidates, never()).save(any());
@@ -124,7 +117,7 @@ class ScheduleCandidateServiceTest {
     @DisplayName("모임장이 아닌 회원의 요청은 Poll 잠금 조회 전에 거부한다")
     void rejectNonHost() {
         assertThrows(MeetingHostRequiredException.class,
-                () -> service.create(10L, 2L, new ScheduleCandidateRequest.Create(firstDate)));
+                () -> service.createCandidate(10L, 2L, new ScheduleCandidateRequest.Create(firstDate)));
 
         verify(polls, never()).findByMeetingIdForUpdate(any());
     }
@@ -135,7 +128,7 @@ class ScheduleCandidateServiceTest {
         poll.close();
 
         assertThrows(SchedulePollClosedException.class,
-                () -> service.create(10L, 1L, new ScheduleCandidateRequest.Create(firstDate)));
+                () -> service.createCandidate(10L, 1L, new ScheduleCandidateRequest.Create(firstDate)));
         verify(candidates, never()).save(any());
     }
 }

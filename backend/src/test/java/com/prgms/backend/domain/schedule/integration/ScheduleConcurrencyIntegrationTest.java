@@ -20,6 +20,7 @@ import com.prgms.backend.domain.schedule.vote.service.ScheduleVoteService;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.domain.notification.repository.NotificationRepository;
+import com.prgms.backend.domain.notification.entity.Notification;
 import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateHasVotesException;
 import com.prgms.backend.global.exception.custom.schedule.ScheduleCandidateLimitExceededException;
 import java.time.LocalDate;
@@ -49,11 +50,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 
 @SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create",
@@ -86,7 +90,7 @@ class ScheduleConcurrencyIntegrationTest {
     @Autowired private SchedulePollCloseService closeService;
     @Autowired private ScheduleCandidateService candidateService;
     @Autowired private ScheduleVoteService voteService;
-    @Autowired private NotificationRepository notificationRepository;
+    @MockitoSpyBean private NotificationRepository notificationRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private TransactionTemplate transactionTemplate;
 
@@ -106,7 +110,7 @@ class ScheduleConcurrencyIntegrationTest {
         meetingId = meeting.getId();
         hostId = host.getId();
         meetingMemberId = member.getId();
-        schedulePollService.create(meetingId, hostId,
+        schedulePollService.createPoll(meetingId, hostId,
                 new SchedulePollRequest.Create(LocalDateTime.now().plusDays(7)));
     }
 
@@ -115,7 +119,7 @@ class ScheduleConcurrencyIntegrationTest {
     void candidateLimitUnderConcurrentRequests() throws Exception {
         LocalDate firstDate = LocalDate.now().plusDays(1);
         for (int i = 0; i < 9; i++) {
-            candidateService.create(meetingId, hostId,
+            candidateService.createCandidate(meetingId, hostId,
                     new ScheduleCandidateRequest.Create(firstDate.plusDays(i)));
         }
 
@@ -124,14 +128,14 @@ class ScheduleConcurrencyIntegrationTest {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<?> first = holdTransaction(executor,
-                    () -> candidateService.create(meetingId, hostId,
+                    () -> candidateService.createCandidate(meetingId, hostId,
                             new ScheduleCandidateRequest.Create(firstDate.plusDays(9))),
                     firstInserted, releaseFirst);
             await(firstInserted);
             CountDownLatch secondStarted = new CountDownLatch(1);
             Future<?> second = executor.submit(() -> {
                 secondStarted.countDown();
-                return candidateService.create(meetingId, hostId,
+                return candidateService.createCandidate(meetingId, hostId,
                         new ScheduleCandidateRequest.Create(firstDate.plusDays(10)));
             });
 
@@ -153,7 +157,7 @@ class ScheduleConcurrencyIntegrationTest {
     @DisplayName("투표가 커밋될 때까지 기다린 후보 수정은 투표 존재를 확인하고 거부된다")
     void updateWaitsForVote() throws Exception {
         LocalDate original = LocalDate.now().plusDays(1);
-        Long candidateId = candidateService.create(meetingId, hostId,
+        Long candidateId = candidateService.createCandidate(meetingId, hostId,
                 new ScheduleCandidateRequest.Create(original)).id();
 
         CountDownLatch voteInserted = new CountDownLatch(1);
@@ -189,7 +193,7 @@ class ScheduleConcurrencyIntegrationTest {
     @Test
     @DisplayName("투표가 커밋될 때까지 기다린 후보 삭제도 투표 존재를 확인하고 거부된다")
     void deleteWaitsForVote() throws Exception {
-        Long candidateId = candidateService.create(meetingId, hostId,
+        Long candidateId = candidateService.createCandidate(meetingId, hostId,
                 new ScheduleCandidateRequest.Create(LocalDate.now().plusDays(1))).id();
 
         CountDownLatch voteInserted = new CountDownLatch(1);
@@ -223,7 +227,7 @@ class ScheduleConcurrencyIntegrationTest {
     @Test
     @DisplayName("같은 회원의 첫 투표 두 건은 하나의 행으로 저장된다")
     void sameMemberFirstVoteIsSerialized() throws Exception {
-        Long candidateId = candidateService.create(meetingId, hostId,
+        Long candidateId = candidateService.createCandidate(meetingId, hostId,
                 new ScheduleCandidateRequest.Create(LocalDate.now().plusDays(1))).id();
 
         CountDownLatch firstInserted = new CountDownLatch(1);
@@ -303,6 +307,22 @@ class ScheduleConcurrencyIntegrationTest {
             continueClose.countDown();
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    @DisplayName("알림 저장에 실패해도 일정 투표 마감은 커밋된다")
+    void notificationFailureDoesNotRollBackPollClose() {
+        Long pollId = schedulePollRepository.findByMeetingId(meetingId).orElseThrow().getId();
+        jdbcTemplate.update("UPDATE schedule_polls SET deadline = ? WHERE id = ?",
+                Timestamp.valueOf(LocalDateTime.now().minusMinutes(1)), pollId);
+        doThrow(new IllegalStateException("notification insert failure"))
+                .when(notificationRepository).save(any(Notification.class));
+
+        assertDoesNotThrow(() -> closeService.closeOneIfExpired(pollId));
+
+        assertEquals(SchedulePollStatus.CLOSED,
+                schedulePollRepository.findById(pollId).orElseThrow().getStatus());
+        assertTrue(notificationRepository.findByReceiverIdOrderByCreatedAtDesc(hostId).isEmpty());
     }
 
     private Future<?> holdTransaction(ExecutorService executor, Runnable action,

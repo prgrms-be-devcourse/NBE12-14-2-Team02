@@ -100,6 +100,20 @@ class ContentPollCloseServiceTest {
     }
 
     @Test
+    @DisplayName("이미 닫힌 투표판은 이벤트를 다시 발행하지 않음")
+    void skipWhenAlreadyClosed() {
+
+        // given
+        poll.close();
+
+        // when
+        service.closeOneIfExpired(POLL_ID);
+
+        // then
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
     @DisplayName("락 획득 후 마감기한이 연장되었으면 닫지 않음")
     void skipWhenDeadlineExtended() {
 
