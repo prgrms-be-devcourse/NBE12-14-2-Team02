@@ -120,13 +120,14 @@ public class ContentPollService {
             Long userId,
             ContentPollRequest.UpdateDeadline request
     ){
-        Meeting meeting = meetingRepository.findById(meetingId)
+        // 마감 스케줄러와 같은 순서로 잠금
+        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
         if(!meeting.isHost(userId)){
             throw new MeetingAccessDeniedException(meetingId, userId);
         }
 
-        ContentPoll poll = contentPollRepository.findByMeetingId(meetingId)
+        ContentPoll poll = contentPollRepository.findByMeetingIdForUpdate(meetingId)
                 .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
         if(poll.getStatus() == ContentPollStatus.CLOSED){
             throw new ContentPollClosedException();
@@ -296,13 +297,14 @@ public class ContentPollService {
             Long userId,
             ContentPollRequest.Confirm request
     ){
-        Meeting meeting = meetingRepository.findById(meetingId)
+        // 중복 확정 요청이 겹치지 않도록 Meeting 공유 잠금 -> 투표판 FOR UPDATE
+        Meeting meeting = meetingRepository.findByIdAndDeletedAtIsNullForShare(meetingId)
                 .orElseThrow(() -> new MeetingNotFoundException(meetingId));
         if (!meeting.isHost(userId)){
             throw new MeetingAccessDeniedException(meetingId, userId);
         }
 
-        ContentPoll poll = contentPollRepository.findByMeetingId(meetingId)
+        ContentPoll poll = contentPollRepository.findByMeetingIdForUpdate(meetingId)
                 .orElseThrow(() -> new ContentPollNotFoundException(meetingId));
         if(poll.getStatus() != ContentPollStatus.CLOSED) {
             throw new ContentPollNotClosedException();
