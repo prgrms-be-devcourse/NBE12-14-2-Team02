@@ -260,7 +260,7 @@ class MeetingInvitationServiceTest {
 
         when(
             meetingMemberRepository
-                .save(any(MeetingMember.class))
+                .saveAndFlush(any(MeetingMember.class))
         ).thenAnswer(invocation -> {
 
             MeetingMember member =
@@ -294,7 +294,7 @@ class MeetingInvitationServiceTest {
 
         // 신규 가입이므로 새 모임원을 저장
         verify(meetingMemberRepository)
-            .save(any(MeetingMember.class));
+            .saveAndFlush(any(MeetingMember.class));
     }
 
     @Test
@@ -382,7 +382,7 @@ class MeetingInvitationServiceTest {
 
         // 기존 MeetingMember를 재사용하므로 새로 저장X
         verify(meetingMemberRepository, never())
-            .save(any(MeetingMember.class));
+            .saveAndFlush(any(MeetingMember.class));
     }
 
     @Test
@@ -455,7 +455,7 @@ class MeetingInvitationServiceTest {
 
         // 중복 참여자는 새로 저장X
         verify(meetingMemberRepository, never())
-            .save(any(MeetingMember.class));
+            .saveAndFlush(any(MeetingMember.class));
     }
 
     @Test
