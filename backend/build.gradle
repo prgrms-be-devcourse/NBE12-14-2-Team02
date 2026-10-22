@@ -1,5 +1,10 @@
 plugins {
     id 'java'
+    id 'org.jetbrains.kotlin.jvm' version '2.4.21'
+    id 'org.jetbrains.kotlin.plugin.spring' version '2.4.21'
+    id 'org.jetbrains.kotlin.plugin.jpa' version '2.4.21'
+    id 'org.jetbrains.kotlin.plugin.allopen' version '2.4.21'
+    id 'org.jetbrains.kotlin.plugin.lombok' version '2.4.21'
     id 'org.springframework.boot' version '4.1.1'
     id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -18,7 +23,24 @@ repositories {
     mavenCentral()
 }
 
+kotlin {
+    jvmToolchain(25)
+    compilerOptions {
+        javaParameters = true
+        freeCompilerArgs.addAll('-Xjsr305=strict', '-Xemit-jvm-type-annotations')
+    }
+}
+
+allOpen {
+    annotation('jakarta.persistence.Entity')
+    annotation('jakarta.persistence.Embeddable')
+    annotation('jakarta.persistence.MappedSuperclass')
+}
+
 dependencies {
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:2.4.21'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.4.21'
+    implementation 'tools.jackson.module:jackson-module-kotlin'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -45,6 +67,7 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers-mysql:2.0.5'
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'com.h2database:h2'
     testAnnotationProcessor 'org.projectlombok:lombok'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
 }
