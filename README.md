@@ -106,6 +106,12 @@ docker compose up -d
 
 서버 실행 후 API 문서는 [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)에서 확인할 수 있습니다.
 
+#### 6. Kotlin 마이그레이션 코드 스타일
+
+백엔드의 Kotlin 형식 검사는 `backend`에서 `./gradlew ktlintCheck`로 실행합니다.
+Windows PowerShell에서는 `.\gradlew.bat ktlintCheck`를 사용합니다.
+팀원 초기 설정, 자동 수정 명령, Kotlin 빌드 설정과의 병합 방법은 [ktlint 사용 안내](backend/docs/ktlint.md)를 참고합니다.
+
 
 
 ### Frontend
