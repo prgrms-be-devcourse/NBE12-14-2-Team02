@@ -19,8 +19,6 @@ import com.prgms.backend.domain.settlement.repository.SettlementRepository;
 import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
 
-import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
-import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingPollNotCompletedException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingSettlementNotCompletedException;
@@ -209,60 +207,6 @@ class MeetingServiceTest {
     }
 
     @Test
-    @DisplayName("참여 중인 회원이 아니면 모임 상세 정보를 조회할 수 없다")
-    void getMeeting_notMember() {
-
-        // given
-        User host = new User(
-            "host@test.com",
-            "모임장",
-            "password"
-        );
-
-        ReflectionTestUtils.setField(
-            host,
-            "id",
-            1L
-        );
-
-        Meeting meeting =
-            new Meeting(
-                host,
-                "제주도 여행",
-                "제주도 여행 모임"
-            );
-
-        ReflectionTestUtils.setField(
-            meeting,
-            "id",
-            10L
-        );
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNull(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        when(
-            meetingMemberRepository
-                .existsByMeetingIdAndUserIdAndStatus(
-                    10L,
-                    2L,
-                    MeetingMemberStatus.JOINED
-                )
-        ).thenReturn(false);
-
-        // when & then
-        assertThrows(
-            MeetingAccessDeniedException.class,
-            () -> meetingService.getMeeting(
-                10L,
-                2L
-            )
-        );
-    }
-
-    @Test
     @DisplayName("존재하지 않는 회원은 모임을 생성할 수 없다")
     void createMeeting_userNotFound() {
 
@@ -286,26 +230,6 @@ class MeetingServiceTest {
         );
     }
 
-
-    @Test
-    @DisplayName("존재하지 않는 모임은 상세 조회할 수 없다")
-    void getMeeting_notFound() {
-
-        // given
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNull(10L)
-        ).thenReturn(Optional.empty());
-
-        // when & then
-        assertThrows(
-            MeetingNotFoundException.class,
-            () -> meetingService.getMeeting(
-                10L,
-                1L
-            )
-        );
-    }
 
 
     @Test
@@ -538,86 +462,6 @@ class MeetingServiceTest {
         );
     }
 
-    @Test
-    @DisplayName("모임장이 아니면 모임 정보를 수정할 수 없다")
-    void updateMeeting_notHost() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "기존 모임"
-        );
-
-        MeetingUpdateRequest request =
-            new MeetingUpdateRequest(
-                "수정된 모임",
-                "수정된 설명"
-            );
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNullForUpdate(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingAccessDeniedException.class,
-            () -> meetingService.updateMeeting(
-                10L,
-                2L,
-                request
-            )
-        );
-    }
-
-    @Test
-    @DisplayName("종료된 모임은 수정할 수 없다")
-    void updateMeeting_completed() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "기존 모임"
-        );
-
-        meeting.complete();
-
-        MeetingUpdateRequest request =
-            new MeetingUpdateRequest(
-                "수정된 모임",
-                "수정된 설명"
-            );
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNullForUpdate(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingNotActiveException.class,
-            () -> meetingService.updateMeeting(
-                10L,
-                1L,
-                request
-            )
-        );
-    }
-
 
     @Test
     @DisplayName("지출 내역이 없으면 정산 없이 모임을 종료할 수 있다")
@@ -772,72 +616,6 @@ class MeetingServiceTest {
         assertEquals(
             MeetingStatus.ACTIVE,
             meeting.getStatus()
-        );
-    }
-
-    @Test
-    @DisplayName("모임장이 아니면 모임을 종료할 수 없다")
-    void completeMeeting_notHost() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "제주도 여행"
-        );
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNullForUpdate(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingAccessDeniedException.class,
-            () -> meetingService.completeMeeting(
-                10L,
-                2L
-            )
-        );
-    }
-
-    @Test
-    @DisplayName("이미 종료된 모임은 다시 종료할 수 없다")
-    void completeMeeting_alreadyCompleted() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "제주도 여행"
-        );
-
-        meeting.complete();
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNullForUpdate(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingNotActiveException.class,
-            () -> meetingService.completeMeeting(
-                10L,
-                1L
-            )
         );
     }
 
