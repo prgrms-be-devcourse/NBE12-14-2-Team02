@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.UUID;
 
 @Service
 public class JwtTokenProvider {
@@ -55,6 +56,7 @@ public class JwtTokenProvider {
                 .subject(userId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
+                .id(UUID.randomUUID().toString())   // jti 추가
                 .signWith(refreshSecretKey)
                 .compact();
     }
