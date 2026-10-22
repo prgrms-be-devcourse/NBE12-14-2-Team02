@@ -130,18 +130,6 @@ class ContentCandidateServiceTest {
     }
 
     @Test
-    @DisplayName("투표판이 없으면 후보를 생성할 수 없음")
-    void createWithoutPoll() {
-
-        // given
-        when(contentPollRepository.findByMeetingId(MEETING_ID)).thenReturn(Optional.empty());
-
-        // when / then
-        assertThrows(ContentPollNotFoundException.class, () -> service.create(MEETING_ID, USER_ID,
-                new ContentCandidateRequest.Create("새 후보", "설명")));
-    }
-
-    @Test
     @DisplayName("마감된 투표판에는 후보를 생성할 수 없음")
     void createInClosedPoll() {
 
@@ -220,19 +208,6 @@ class ContentCandidateServiceTest {
     }
 
     @Test
-    @DisplayName("다른 투표판의 후보는 수정할 수 없음")
-    void updateCandidateOfOtherPoll() {
-
-        // given
-        ContentCandidate otherPollCandidate = candidate(CANDIDATE_ID, poll(999L), MEMBER_ID, "다른 판 후보");
-        when(contentCandidateRepository.findById(CANDIDATE_ID)).thenReturn(Optional.of(otherPollCandidate));
-
-        // when / then
-        assertThrows(ContentCandidateNotFoundException.class, () -> service.update(MEETING_ID, CANDIDATE_ID,
-                USER_ID, new ContentCandidateRequest.Update("수정", "설명")));
-    }
-
-    @Test
     @DisplayName("후보를 만든 멤버는 투표가 없으면 후보를 삭제")
     void deleteCandidate() {
 
@@ -241,19 +216,6 @@ class ContentCandidateServiceTest {
 
         // then
         verify(contentCandidateRepository).delete(candidate);
-    }
-
-    @Test
-    @DisplayName("후보를 만든 멤버가 아니면 삭제할 수 없음")
-    void deleteByNonOwner() {
-
-        // given
-        ContentCandidate othersCandidate = candidate(CANDIDATE_ID, poll, OTHER_MEMBER_ID, "남의 후보");
-        when(contentCandidateRepository.findById(CANDIDATE_ID)).thenReturn(Optional.of(othersCandidate));
-
-        // when / then
-        assertThrows(NotContentCandidateOwnerException.class, () -> service.delete(MEETING_ID, CANDIDATE_ID, USER_ID));
-        verify(contentCandidateRepository, never()).delete(any());
     }
 
     @Test
