@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -163,26 +164,32 @@ public class ContentPollService {
             throw new ContentPollNotClosedException("투표가 진행 중일 때는 결과를 볼 수 없습니다.");
         }
 
-        //JOIN인지 확인 후 집계
-        //findAllByMeetingIdAndStatus()에서 meeting_members만 가져오고 user은 비어있음
-        // -> @EntityGraph를 통해 user까지 한번에 가져옴
-        List<MeetingMember> joined = meetingMemberRepository
-                .findAllByMeetingIdAndStatus(meetingId, MeetingMemberStatus.JOINED);
+        List<ContentCandidate> candidates = contentCandidateRepository.findByContentPollIdOrderByCreatedAtAsc(poll.getId());
+
+        //모든 표들을 가져와서 후보별로 맵핑
+        List<ContentVote> allVotes = contentVoteRepository
+                .findByContentCandidate_ContentPoll_Id(poll.getId());
+        Map<Long,List<ContentVote>> votesByCandidate = allVotes.stream()
+                .collect(Collectors.groupingBy(v -> v.getContentCandidate().getId()));
+
+        // 탈퇴자 처리 기준: 현재 참여 중인 모임원 + 표를 낸 탈퇴자는 참여 인원으로 포함한다.
+        // 표(점수/응답 수)와 참여 인원/미응답 수/인원별 결과가 항상 같은 모집단을 보도록 맞춘다.
+        // (투표 전에 이미 탈퇴한 사람은 표가 없으므로 미응답으로 잡히지 않는다.)
+        Set<Long> voterIds = allVotes.stream()
+                .map(ContentVote::getMeetingMemberId)
+                .collect(Collectors.toSet());
+        List<MeetingMember> allMembers = meetingMemberRepository.findAllByMeetingId(meetingId);
+        List<MeetingMember> joined = allMembers.stream()
+                .filter(m -> m.isJoined() || voterIds.contains(m.getId()))
+                .toList();
         int joinedCount = joined.size();
 
-        Map<Long, String> nicknameByMemberId = joined.stream()
+        // 후보 등록자가 탈퇴했어도 닉네임을 표시할 수 있도록 전체 모임원 기준으로 만든다.
+        Map<Long, String> nicknameByMemberId = allMembers.stream()
                 .collect(Collectors.toMap(
                         MeetingMember::getId,
                         m -> m.getUser().getNickname()
                 ));
-
-        List<ContentCandidate> candidates = contentCandidateRepository.findByContentPollIdOrderByCreatedAtAsc(poll.getId());
-
-        //모든 표들을 가져와서 후보별로 맵핑
-        Map<Long,List<ContentVote>> votesByCandidate = contentVoteRepository
-                .findByContentCandidate_ContentPoll_Id(poll.getId())
-                .stream()
-                .collect(Collectors.groupingBy(v -> v.getContentCandidate().getId()));
 
         //후보마다 투표결과 집계 정렬기준 sort에 따라 다르게 정렬
         List<ContentPollResultsResponse.CandidateResult> candidateResults = candidates.stream()

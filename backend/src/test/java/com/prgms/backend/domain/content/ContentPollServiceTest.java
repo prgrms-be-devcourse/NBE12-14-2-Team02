@@ -85,7 +85,7 @@ class ContentPollServiceTest {
         when(contentPollRepository.findByMeetingIdForUpdate(MEETING_ID)).thenReturn(Optional.of(poll));
         when(meetingMemberRepository.findByMeetingIdAndUserId(MEETING_ID, HOST_ID)).thenReturn(Optional.of(hostMember));
         when(meetingMemberRepository.findByMeetingIdAndUserId(MEETING_ID, 2L)).thenReturn(Optional.of(member));
-        when(meetingMemberRepository.findAllByMeetingIdAndStatus(MEETING_ID, MeetingMemberStatus.JOINED))
+        when(meetingMemberRepository.findAllByMeetingId(MEETING_ID))
                 .thenReturn(List.of(hostMember, member));
     }
 
@@ -323,6 +323,34 @@ class ContentPollServiceTest {
         assertEquals(Arrays.asList(ContentPreference.DISLIKE, null), memberResult.preferences());
         assertEquals(1, memberResult.responseCount());
         assertEquals(true, results.members().get(0).host());
+    }
+
+    @Test
+    @DisplayName("마감 후 탈퇴한 사람의 표는 참여 인원/미응답 수/인원별 결과에 함께 포함되어 합계가 맞음")
+    void getResultsKeepsWithdrawnVoter() {
+
+        // given
+        poll.close();
+        ContentCandidate first = candidate(40L, poll, MEMBER_ID);
+        when(contentCandidateRepository.findByContentPollIdOrderByCreatedAtAsc(POLL_ID))
+                .thenReturn(List.of(first));
+        when(contentVoteRepository.findByContentCandidate_ContentPoll_Id(POLL_ID)).thenReturn(List.of(
+                new ContentVote(first, HOST_MEMBER_ID, ContentPreference.PREFER),
+                new ContentVote(first, MEMBER_ID, ContentPreference.DISLIKE)
+        ));
+        member.leave();
+
+        // when
+        ContentPollResultsResponse.Detail results =
+                service.getResults(MEETING_ID, HOST_ID, ContentPollResultSort.SCORE);
+
+        // then
+        ContentPollResultsResponse.CandidateResult result = results.candidates().get(0);
+        assertEquals(2, results.joinedCount());
+        assertEquals(2, result.responseCount());
+        assertEquals(0, result.noResponseCount());
+        assertEquals("member", result.createdByNickname());
+        assertEquals(2, results.members().size());
     }
 
     @Test

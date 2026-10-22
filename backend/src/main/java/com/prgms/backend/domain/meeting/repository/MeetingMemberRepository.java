@@ -31,6 +31,10 @@ public interface MeetingMemberRepository
         MeetingMemberStatus status
     );
 
+    // 탈퇴한 모임원까지 포함한 전체 모임원 조회(마감된 투표 결과처럼 과거 이력을 집계할 때 사용)
+    @EntityGraph(attributePaths = "user")
+    List<MeetingMember> findAllByMeetingId(Long meetingId);
+
     // 현재 모임원 목록 조회(status = JOINED인 모임원)
     @EntityGraph(attributePaths = "user")
     List<MeetingMember> findAllByMeetingIdAndStatus(
