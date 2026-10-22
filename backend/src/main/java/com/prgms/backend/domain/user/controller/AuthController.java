@@ -88,7 +88,7 @@ public class AuthController {
             description = "저장된 리프레시 토큰을 무효화하고 리프레시 토큰 쿠키를 삭제합니다."
     )
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse> logout(
+    public ResponseEntity<ApiResponse<?>> logout(
             @AuthenticationPrincipal SecurityUser securityUser,
             @CookieValue(value = "refreshToken", required = false) String refreshToken
     ) {

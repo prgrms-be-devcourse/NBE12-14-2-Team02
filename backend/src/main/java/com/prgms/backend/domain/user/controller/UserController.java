@@ -142,6 +142,10 @@ public class UserController {
                 .body(ApiResponse.noContentSuccess("비밀번호를 변경했습니다."));
     }
 
+    @Operation(
+            summary = "회원 탈퇴",
+            description = " 로그인한 회원의 탈퇴 가능 여부를 확인하고, 탈퇴를 진행합니다."
+    )
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @AuthenticationPrincipal SecurityUser securityUser
@@ -160,6 +164,6 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponse.noContentSuccess("회원 탈퇴가 완료되었습니다."));
+                .body(ApiResponse.success(200, "회원 탈퇴가 완료되었습니다.", null));
     }
 }
