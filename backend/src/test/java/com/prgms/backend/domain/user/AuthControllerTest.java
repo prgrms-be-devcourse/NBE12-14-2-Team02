@@ -170,7 +170,7 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("로그아웃하면 토큰의 회원 id로 로그아웃하고 refresh token 쿠키를 만료시킨다")
+    @DisplayName("로그아웃하면 200과 공통 응답 본문을 반환하고 refresh token 쿠키를 만료시킨다")
     void logout() throws Exception {
 
         // given
@@ -180,8 +180,12 @@ class AuthControllerTest {
         mvc.perform(post("/api/auth/logout")
                 .header("Authorization", "Bearer " + ACCESS_TOKEN)
                 .cookie(new Cookie("refreshToken", "refresh-token")))
-            .andExpect(status().isNoContent())
-            .andExpect(content().string(""))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.message").value("로그아웃 되었습니다."))
+            .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(cookie().value("refreshToken", ""))
             .andExpect(cookie().maxAge("refreshToken", 0))
             .andExpect(cookie().path("refreshToken", "/api/auth"));

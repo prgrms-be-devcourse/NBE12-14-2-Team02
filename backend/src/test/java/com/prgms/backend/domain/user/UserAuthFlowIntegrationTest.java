@@ -164,8 +164,12 @@ class UserAuthFlowIntegrationTest extends MySqlContainerSupport {
         mvc.perform(post("/api/auth/logout")
                 .header("Authorization", "Bearer " + accessToken)
                 .cookie(refreshCookie))
-            .andExpect(status().isNoContent())
-            .andExpect(content().string(""));
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.message").value("로그아웃 되었습니다."))
+            .andExpect(jsonPath("$.data").doesNotExist());
 
         // then
         assertNull(userRepository.findById(userId).orElseThrow().getRefreshToken());

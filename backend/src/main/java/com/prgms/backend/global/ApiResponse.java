@@ -27,6 +27,11 @@ public class ApiResponse<T> {
         return new ApiResponse<>(true, code, "", data);
     }
 
+    // 성공 응답: code + 메시지 + 데이터
+    public static <T> ApiResponse<T> success(int code, String message, T data) {
+        return new ApiResponse<>(true, code, message, data);
+    }
+
     // 성공 응답 객체: 메시지와 데이터 없음
     public static ApiResponse<Void> noContentSuccess() {
         return new ApiResponse<>(true, 204, "", null);

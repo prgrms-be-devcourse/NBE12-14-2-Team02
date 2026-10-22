@@ -106,9 +106,9 @@ public class AuthController {
 
 
         return ResponseEntity
-                .status(HttpStatus.NO_CONTENT)
+                .status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponse.noContentSuccess("로그아웃 되었습니다."));
+                .body(ApiResponse.success(200, "로그아웃 되었습니다.", null));
     }
 
 }

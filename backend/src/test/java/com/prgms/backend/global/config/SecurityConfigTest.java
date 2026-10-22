@@ -183,7 +183,7 @@ class SecurityConfigTest {
 
         // when & then
         mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + ACCESS_TOKEN))
-            .andExpect(status().isNoContent());
+            .andExpect(status().isOk());
     }
 
     @Test
