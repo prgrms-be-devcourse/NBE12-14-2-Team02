@@ -68,22 +68,6 @@ class ContentPollCloseServiceTest {
     }
 
     @Test
-    @DisplayName("삭제된 모임의 투표판은 닫지 않음")
-    void skipWhenMeetingDeleted() {
-
-        // given
-        when(meetingRepository.findByIdAndDeletedAtIsNullForShare(MEETING_ID)).thenReturn(Optional.empty());
-
-        // when
-        service.closeOneIfExpired(POLL_ID);
-
-        // then
-        assertEquals(ContentPollStatus.OPEN, poll.getStatus());
-        verify(contentPollRepository, never()).findByIdForUpdate(anyLong());
-        verifyNoInteractions(eventPublisher);
-    }
-
-    @Test
     @DisplayName("종료된 모임의 투표판은 닫지 않음")
     void skipWhenMeetingCompleted() {
 

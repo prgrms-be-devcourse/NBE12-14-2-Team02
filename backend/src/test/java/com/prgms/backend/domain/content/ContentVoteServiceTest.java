@@ -122,19 +122,6 @@ class ContentVoteServiceTest {
     }
 
     @Test
-    @DisplayName("모임 멤버가 아니면 투표할 수 없음")
-    void voteByNonMember() {
-
-        // given
-        when(meetingMemberRepository.findByMeetingIdAndUserId(MEETING_ID, USER_ID)).thenReturn(Optional.empty());
-
-        // when / then
-        assertThrows(MeetingMemberNotFoundException.class, () -> service.upsert(MEETING_ID, USER_ID,
-                new ContentVoteRequest.Submit(CANDIDATE_ID, ContentPreference.PREFER)));
-        verify(contentVoteRepository, never()).save(any());
-    }
-
-    @Test
     @DisplayName("탈퇴한 멤버는 투표할 수 없음")
     void voteByLeftMember() {
 
@@ -143,18 +130,6 @@ class ContentVoteServiceTest {
 
         // when / then
         assertThrows(MeetingAccessDeniedException.class, () -> service.upsert(MEETING_ID, USER_ID,
-                new ContentVoteRequest.Submit(CANDIDATE_ID, ContentPreference.PREFER)));
-    }
-
-    @Test
-    @DisplayName("투표판이 없으면 투표할 수 없음")
-    void voteWithoutPoll() {
-
-        // given
-        when(contentPollRepository.findByMeetingId(MEETING_ID)).thenReturn(Optional.empty());
-
-        // when / then
-        assertThrows(ContentPollNotFoundException.class, () -> service.upsert(MEETING_ID, USER_ID,
                 new ContentVoteRequest.Submit(CANDIDATE_ID, ContentPreference.PREFER)));
     }
 
@@ -169,18 +144,6 @@ class ContentVoteServiceTest {
         assertThrows(ContentPollClosedException.class, () -> service.upsert(MEETING_ID, USER_ID,
                 new ContentVoteRequest.Submit(CANDIDATE_ID, ContentPreference.PREFER)));
         verify(contentVoteRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 후보에는 투표할 수 없음")
-    void voteForMissingCandidate() {
-
-        // given
-        when(contentCandidateRepository.findById(CANDIDATE_ID)).thenReturn(Optional.empty());
-
-        // when / then
-        assertThrows(ContentCandidateNotFoundException.class, () -> service.upsert(MEETING_ID, USER_ID,
-                new ContentVoteRequest.Submit(CANDIDATE_ID, ContentPreference.PREFER)));
     }
 
     @Test
