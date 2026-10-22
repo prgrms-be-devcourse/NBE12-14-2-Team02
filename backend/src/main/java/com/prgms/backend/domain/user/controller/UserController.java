@@ -139,7 +139,7 @@ public class UserController {
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(ApiResponse.noContentSuccess("비밀번호를 변경했습니다."));
+                .body(ApiResponse.success(200, "비밀번호를 변경했습니다.", null));
     }
 
     @Operation(
