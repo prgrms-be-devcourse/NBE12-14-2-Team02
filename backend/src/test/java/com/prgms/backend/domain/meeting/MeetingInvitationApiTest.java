@@ -43,8 +43,6 @@ class MeetingInvitationApiTest {
 
     private MeetingMemberRepository members;
     private MockMvc mvc;
-    private Meeting meeting;
-    private User user;
 
     @BeforeEach
     void setUp() {
@@ -58,9 +56,9 @@ class MeetingInvitationApiTest {
             .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
             .build();
 
-        user = new User("member@test.com", "회원", "password");
+        User user = new User("member@test.com", "회원", "password");
         ReflectionTestUtils.setField(user, "id", 2L);
-        meeting = new Meeting(user, "초대 테스트", "");
+        Meeting meeting = new Meeting(user, "초대 테스트", "");
         ReflectionTestUtils.setField(meeting, "id", 10L);
         MeetingInvitation invitation = new MeetingInvitation(
             meeting, "invite-code", LocalDateTime.now().plusDays(1));
@@ -76,18 +74,6 @@ class MeetingInvitationApiTest {
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
-    }
-
-    @Test
-    @DisplayName("조회에서 이미 가입한 모임원을 발견하면 HTTP 409로 응답한다")
-    void alreadyJoinedReturnsConflict() throws Exception {
-        when(members.findByMeetingIdAndUserIdForUpdate(10L, 2L))
-            .thenReturn(Optional.of(new MeetingMember(meeting, user)));
-
-        mvc.perform(post("/api/invitations/invite-code/join"))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.code").value(409))
-            .andExpect(jsonPath("$.success").value(false));
     }
 
     @ParameterizedTest

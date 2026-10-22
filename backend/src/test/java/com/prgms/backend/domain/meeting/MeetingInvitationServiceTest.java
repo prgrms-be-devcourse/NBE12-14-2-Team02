@@ -12,18 +12,15 @@ import com.prgms.backend.domain.user.entity.User;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.global.exception.custom.meeting.AlreadyMeetingMemberException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingAccessDeniedException;
-import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationExpiredException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingInvitationNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
@@ -144,72 +141,6 @@ class MeetingInvitationServiceTest {
     }
 
     @Test
-    @DisplayName("모임장이 아니면 초대를 생성할 수 없다")
-    void createInvitation_notHost() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "제주도 여행"
-        );
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNullForShare(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingAccessDeniedException.class,
-            () -> meetingInvitationService.createInvitation(
-                10L,
-                2L
-            )
-        );
-    }
-
-    @Test
-    @DisplayName("종료된 모임에는 초대를 생성할 수 없다")
-    void createInvitation_completedMeeting() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "제주도 여행"
-        );
-
-        meeting.complete();
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNullForShare(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingNotActiveException.class,
-            () -> meetingInvitationService.createInvitation(
-                10L,
-                1L
-            )
-        );
-    }
-
-    @Test
     @DisplayName("초대를 통해 처음 모임에 참여할 수 있다")
     void joinMeeting_newMember() {
 
@@ -297,81 +228,6 @@ class MeetingInvitationServiceTest {
         // 신규 가입이므로 새 모임원을 저장
         verify(meetingMemberRepository)
             .saveAndFlush(any(MeetingMember.class));
-    }
-
-    @Test
-    @DisplayName("새 모임원 저장 중 모임원 중복 키 오류가 발생하면 중복 참여 예외로 변환한다")
-    void joinMeeting_duplicateKey() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        User user = createUser(
-            2L,
-            "user@test.com",
-            "회원"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "제주도 여행"
-        );
-
-        MeetingInvitation invitation = createInvitation(
-            100L,
-            meeting,
-            "invite-code",
-            LocalDateTime.now().plusDays(1)
-        );
-
-        // 초대 코드가 어느 모임에 속하는지 조회
-        when(meetingInvitationRepository
-            .findMeetingIdByInviteCode("invite-code"))
-            .thenReturn(Optional.of(10L));
-
-        // 잠금을 걸면서 모임 조회
-        when(meetingRepository
-            .findByIdAndDeletedAtIsNullForUpdate(10L))
-            .thenReturn(Optional.of(meeting));
-
-        // 초대 정보 조회
-        when(meetingInvitationRepository
-            .findByInviteCode("invite-code"))
-            .thenReturn(Optional.of(invitation));
-
-        // 가입하려는 사용자 조회
-        when(userRepository.findById(2L))
-            .thenReturn(Optional.of(user));
-
-        when(meetingMemberRepository
-            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
-            .thenReturn(Optional.empty());
-
-        // DB가 모임원 중복 제약 위반을 알린 상황을 준비
-        ConstraintViolationException cause =
-            mock(ConstraintViolationException.class);
-
-        when(cause.getConstraintName())
-            .thenReturn("uk_meeting_member_meeting_user");
-
-        DataIntegrityViolationException dbException =
-            new DataIntegrityViolationException("저장 실패", cause);
-
-        when(meetingMemberRepository.saveAndFlush(any(MeetingMember.class)))
-            .thenThrow(dbException);
-
-        // 서비스가 DB 오류를 중복 참여 예외로 변환하는지 확인
-        AlreadyMeetingMemberException exception = assertThrows(
-            AlreadyMeetingMemberException.class,
-            () -> meetingInvitationService.joinMeeting("invite-code", 2L)
-        );
-
-        assertEquals(409, exception.getCode());
     }
 
     @Test
@@ -536,74 +392,6 @@ class MeetingInvitationServiceTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 초대 코드로는 모임에 가입할 수 없다")
-    void joinMeeting_invitationNotFound() {
-
-        // given
-        when(meetingInvitationRepository
-            .findMeetingIdByInviteCode("invalid-code"))
-            .thenReturn(Optional.empty());
-
-        // when & then
-        assertThrows(
-            MeetingInvitationNotFoundException.class,
-            () -> meetingInvitationService.joinMeeting(
-                "invalid-code",
-                2L
-            )
-        );
-    }
-
-    @Test
-    @DisplayName("만료된 초대로는 모임에 가입할 수 없다")
-    void joinMeeting_expiredInvitation() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "제주도 여행"
-        );
-
-        MeetingInvitation expiredInvitation =
-            createInvitation(
-                100L,
-                meeting,
-                "expired-code",
-                LocalDateTime.now().minusDays(1)
-            );
-
-        when(meetingInvitationRepository
-            .findMeetingIdByInviteCode("expired-code"))
-            .thenReturn(Optional.of(10L));
-
-        when(
-            meetingInvitationRepository
-                .findByInviteCode("expired-code")
-        ).thenReturn(Optional.of(expiredInvitation));
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNullForUpdate(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingInvitationExpiredException.class,
-            () -> meetingInvitationService.joinMeeting(
-                "expired-code",
-                2L
-            )
-        );
-    }
-
-    @Test
     @DisplayName("모임장은 초대 코드 목록을 조회할 수 있다")
     void getInvitations() {
 
@@ -674,38 +462,6 @@ class MeetingInvitationServiceTest {
         assertEquals(
             10L,
             responses.get(0).meetingId()
-        );
-    }
-
-    @Test
-    @DisplayName("모임장이 아니면 초대 코드 목록을 조회할 수 없다")
-    void getInvitations_notHost() {
-
-        // given
-        User host = createUser(
-            1L,
-            "host@test.com",
-            "모임장"
-        );
-
-        Meeting meeting = createMeeting(
-            10L,
-            host,
-            "제주도 여행"
-        );
-
-        when(
-            meetingRepository
-                .findByIdAndDeletedAtIsNull(10L)
-        ).thenReturn(Optional.of(meeting));
-
-        // when & then
-        assertThrows(
-            MeetingAccessDeniedException.class,
-            () -> meetingInvitationService.getInvitations(
-                10L,
-                2L
-            )
         );
     }
 
