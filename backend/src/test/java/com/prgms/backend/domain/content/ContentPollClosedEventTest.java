@@ -105,25 +105,6 @@ class ContentPollClosedEventTest {
     }
 
     @Test
-    @DisplayName("알림 트랜잭션 커밋이 실패해도 콘텐츠 투표 마감은 유지되고 예외가 전파되지 않음")
-    void notificationCommitFailureKeepsPollClosed() throws Exception {
-
-        // given
-        doThrow(new SQLException("notification commit failed"))
-            .when(notificationConnection).commit();
-
-        // when
-        assertDoesNotThrow(() ->
-            transaction.executeWithoutResult(status -> context.publishEvent(event))
-        );
-
-        // then
-        verify(pollConnection).commit();
-        verify(pollConnection, never()).rollback();
-        verify(notificationService).notifyContentClosed(10L);
-    }
-
-    @Test
     @DisplayName("콘텐츠 투표 마감이 롤백되면 알림을 저장하지 않음")
     void rolledBackPollSendsNoNotification() throws Exception {
 

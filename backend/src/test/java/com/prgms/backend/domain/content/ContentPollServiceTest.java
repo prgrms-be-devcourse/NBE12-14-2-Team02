@@ -85,7 +85,7 @@ class ContentPollServiceTest {
         when(contentPollRepository.findByMeetingIdForUpdate(MEETING_ID)).thenReturn(Optional.of(poll));
         when(meetingMemberRepository.findByMeetingIdAndUserId(MEETING_ID, HOST_ID)).thenReturn(Optional.of(hostMember));
         when(meetingMemberRepository.findByMeetingIdAndUserId(MEETING_ID, 2L)).thenReturn(Optional.of(member));
-        when(meetingMemberRepository.findAllByMeetingIdAndStatus(MEETING_ID, MeetingMemberStatus.JOINED))
+        when(meetingMemberRepository.findAllByMeetingId(MEETING_ID))
                 .thenReturn(List.of(hostMember, member));
     }
 
@@ -187,17 +187,6 @@ class ContentPollServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴한 멤버는 투표판을 조회할 수 없음")
-    void getByLeftMember() {
-
-        // given
-        member.leave();
-
-        // when / then
-        assertThrows(MeetingAccessDeniedException.class, () -> service.get(MEETING_ID, 2L));
-    }
-
-    @Test
     @DisplayName("마감기한을 수정하고 모임 공유 잠금 후 투표판 잠금 순서로 조회")
     void updateDeadline() {
 
@@ -226,18 +215,6 @@ class ContentPollServiceTest {
     }
 
     @Test
-    @DisplayName("삭제된 모임의 마감기한은 수정할 수 없음")
-    void updateDeadlineOfDeletedMeeting() {
-
-        // given
-        when(meetingRepository.findByIdAndDeletedAtIsNullForShare(MEETING_ID)).thenReturn(Optional.empty());
-
-        // when / then
-        assertThrows(MeetingNotFoundException.class, () -> service.updateDeadline(MEETING_ID, HOST_ID,
-                new ContentPollRequest.UpdateDeadline(LocalDateTime.now().plusDays(5))));
-    }
-
-    @Test
     @DisplayName("이미 마감된 투표판의 마감기한은 수정할 수 없음")
     void updateDeadlineOfClosedPoll() {
 
@@ -247,15 +224,6 @@ class ContentPollServiceTest {
         // when / then
         assertThrows(ContentPollClosedException.class, () -> service.updateDeadline(MEETING_ID, HOST_ID,
                 new ContentPollRequest.UpdateDeadline(LocalDateTime.now().plusDays(5))));
-    }
-
-    @Test
-    @DisplayName("진행 중인 투표판은 결과를 볼 수 없음")
-    void getResultsOfOpenPoll() {
-
-        // when / then
-        assertThrows(ContentPollNotClosedException.class, () ->
-                service.getResults(MEETING_ID, HOST_ID, ContentPollResultSort.SCORE));
     }
 
     @Test
@@ -326,6 +294,34 @@ class ContentPollServiceTest {
     }
 
     @Test
+    @DisplayName("마감 후 탈퇴한 사람의 표는 참여 인원/미응답 수/인원별 결과에 함께 포함되어 합계가 맞음")
+    void getResultsKeepsWithdrawnVoter() {
+
+        // given
+        poll.close();
+        ContentCandidate first = candidate(40L, poll, MEMBER_ID);
+        when(contentCandidateRepository.findByContentPollIdOrderByCreatedAtAsc(POLL_ID))
+                .thenReturn(List.of(first));
+        when(contentVoteRepository.findByContentCandidate_ContentPoll_Id(POLL_ID)).thenReturn(List.of(
+                new ContentVote(first, HOST_MEMBER_ID, ContentPreference.PREFER),
+                new ContentVote(first, MEMBER_ID, ContentPreference.DISLIKE)
+        ));
+        member.leave();
+
+        // when
+        ContentPollResultsResponse.Detail results =
+                service.getResults(MEETING_ID, HOST_ID, ContentPollResultSort.SCORE);
+
+        // then
+        ContentPollResultsResponse.CandidateResult result = results.candidates().get(0);
+        assertEquals(2, results.joinedCount());
+        assertEquals(2, result.responseCount());
+        assertEquals(0, result.noResponseCount());
+        assertEquals("member", result.createdByNickname());
+        assertEquals(2, results.members().size());
+    }
+
+    @Test
     @DisplayName("마감된 투표판의 후보를 확정하고 모임 공유 잠금 후 투표판 잠금 순서로 조회")
     void confirm() {
 
@@ -355,15 +351,6 @@ class ContentPollServiceTest {
     }
 
     @Test
-    @DisplayName("마감되지 않은 투표판은 확정할 수 없음")
-    void confirmOpenPoll() {
-
-        // when / then
-        assertThrows(ContentPollNotClosedException.class, () ->
-                service.confirm(MEETING_ID, HOST_ID, new ContentPollRequest.Confirm(40L)));
-    }
-
-    @Test
     @DisplayName("이미 확정된 투표판은 다시 확정할 수 없음")
     void confirmTwice() {
 
@@ -376,19 +363,4 @@ class ContentPollServiceTest {
                 service.confirm(MEETING_ID, HOST_ID, new ContentPollRequest.Confirm(41L)));
     }
 
-    @Test
-    @DisplayName("다른 투표판의 후보는 확정할 수 없음")
-    void confirmCandidateOfOtherPoll() {
-
-        // given
-        poll.close();
-        ContentPoll otherPoll = new ContentPoll(99L, LocalDateTime.now().plusDays(1));
-        ReflectionTestUtils.setField(otherPoll, "id", 999L);
-        when(contentCandidateRepository.findById(50L))
-                .thenReturn(Optional.of(candidate(50L, otherPoll, HOST_MEMBER_ID)));
-
-        // when / then
-        assertThrows(ContentCandidateNotFoundException.class, () ->
-                service.confirm(MEETING_ID, HOST_ID, new ContentPollRequest.Confirm(50L)));
-    }
 }

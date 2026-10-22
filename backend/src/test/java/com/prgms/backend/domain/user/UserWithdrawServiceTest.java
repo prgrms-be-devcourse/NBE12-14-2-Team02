@@ -19,16 +19,13 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -69,7 +66,7 @@ class UserWithdrawServiceTest {
     }
 
     @Test
-    @DisplayName("참여 중인 모임을 모두 탈퇴하고, 호스트인 완료 모임을 삭제한 뒤 회원을 탈퇴 처리한다")
+    @DisplayName("참여 중인 모임을 모두 탈퇴하고, 호스트인 완료 모임을 보존한 채 회원을 탈퇴 처리한다")
     void withdraw() {
 
         // given
@@ -99,7 +96,8 @@ class UserWithdrawServiceTest {
         verify(meetingMemberService).leaveMeeting(10L, 1L);
         verify(meetingMemberService).leaveMeeting(20L, 1L);
 
-        assertNotNull(hostMeeting.getDeletedAt());
+        assertNull(hostMeeting.getDeletedAt());
+        assertEquals(MeetingStatus.COMPLETED, hostMeeting.getStatus());
         assertNull(memberMeeting.getDeletedAt());
 
         assertEquals(UserStatus.WITHDRAWN, user.getStatus());
@@ -108,8 +106,8 @@ class UserWithdrawServiceTest {
     }
 
     @Test
-    @DisplayName("모임 탈퇴를 먼저 처리한 뒤 호스트 모임을 삭제한다")
-    void withdrawLeavesBeforeSoftDelete() {
+    @DisplayName("회원 탈퇴 시 현재 참여 중인 모임이 없어도 내가 호스트였던 완료 모임은 보존한다")
+    void withdrawPreservesCompletedHostMeeting() {
 
         // given
         Meeting hostMeeting = createMeeting(10L, user);
@@ -117,24 +115,32 @@ class UserWithdrawServiceTest {
 
         givenNoActiveHostMeeting();
 
+        // 현재 JOINED 상태인 모임은 없다.
         when(
             meetingMemberRepository.findAllByUserIdAndStatusAndMeetingDeletedAtIsNull(
                 1L,
                 MeetingMemberStatus.JOINED
             )
-        ).thenReturn(List.of(new MeetingMember(hostMeeting, user)));
+        ).thenReturn(List.of());
 
+        // 과거에 호스트였던 완료 모임은 존재한다.
         when(meetingRepository.findByHostIdAndDeletedAtIsNull(1L))
             .thenReturn(List.of(hostMeeting));
 
         // when
         userWithdrawService.withdraw(1L);
 
-        // then
-        // soft delete가 먼저 되면 leaveMeeting에서 모임을 찾지 못한다
-        InOrder inOrder = inOrder(meetingMemberService, meetingRepository);
-        inOrder.verify(meetingMemberService).leaveMeeting(10L, 1L);
-        inOrder.verify(meetingRepository).findByHostIdAndDeletedAtIsNull(1L);
+        // then: 현재 참여 중인 모임이 없으므로 모임 탈퇴 호출도 없다.
+        verify(meetingMemberService, never()).leaveMeeting(anyLong(), anyLong());
+
+        // 과거 완료 모임은 그대로 유지한다.
+        assertNull(hostMeeting.getDeletedAt());
+        assertEquals(MeetingStatus.COMPLETED, hostMeeting.getStatus());
+
+        // 계정 탈퇴는 정상적으로 완료한다.
+        assertEquals(UserStatus.WITHDRAWN, user.getStatus());
+        assertNotNull(user.getDeletedAt());
+        assertNull(user.getRefreshToken());
     }
 
     @Test
@@ -151,15 +157,14 @@ class UserWithdrawServiceTest {
             )
         ).thenReturn(List.of());
 
-        when(meetingRepository.findByHostIdAndDeletedAtIsNull(1L))
-            .thenReturn(List.of());
-
         // when
         userWithdrawService.withdraw(1L);
 
         // then
         verify(meetingMemberService, never()).leaveMeeting(anyLong(), anyLong());
         assertEquals(UserStatus.WITHDRAWN, user.getStatus());
+        assertNotNull(user.getDeletedAt());
+        assertNull(user.getRefreshToken());
     }
 
     @Test
@@ -196,7 +201,6 @@ class UserWithdrawServiceTest {
         );
 
         verify(meetingMemberService, never()).leaveMeeting(anyLong(), anyLong());
-        verify(meetingRepository, never()).findByHostIdAndDeletedAtIsNull(anyLong());
         assertEquals(UserStatus.ACTIVE, user.getStatus());
         assertNull(user.getDeletedAt());
     }
@@ -226,7 +230,6 @@ class UserWithdrawServiceTest {
             () -> userWithdrawService.withdraw(1L)
         );
 
-        verify(meetingRepository, never()).findByHostIdAndDeletedAtIsNull(anyLong());
         assertEquals(UserStatus.ACTIVE, user.getStatus());
         assertNull(user.getDeletedAt());
         assertEquals("refresh-token", user.getRefreshToken());
