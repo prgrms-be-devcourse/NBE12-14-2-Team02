@@ -18,6 +18,7 @@ import com.prgms.backend.global.exception.custom.meeting.MeetingHostRequiredExce
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberAlreadyLeftException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingMemberNotFoundException;
 import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundException;
+import com.prgms.backend.global.exception.custom.meeting.MeetingNotActiveException;
 import com.prgms.backend.global.exception.custom.schedule.*;
 import com.prgms.backend.security.JwtTokenProvider;
 import jakarta.persistence.EntityManager;
@@ -49,10 +50,12 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -125,17 +128,21 @@ class ScheduleControllerIntegrationTest {
         @Test
         @DisplayName("모임장은 투표소를 생성하고 201 응답을 받는다")
         void createPoll() throws Exception {
-            perform(post(url), host, Map.of("deadline", deadline))
+            var result = perform(post(url), host, Map.of("deadline", deadline))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.code").value(201))
                     .andExpect(jsonPath("$.data.id").isNumber())
                     .andExpect(jsonPath("$.data.meetingId").value(meeting.getId()))
                     .andExpect(jsonPath("$.data.deadline").value(deadline.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
-                    .andExpect(jsonPath("$.data.status").value("OPEN"));
+                    .andExpect(jsonPath("$.data.status").value("OPEN"))
+                    .andReturn();
 
             flushAndClear();
-            assertEquals(deadline, polls.findByMeetingId(meeting.getId()).orElseThrow().getDeadline());
+            SchedulePoll saved = polls.findByMeetingId(meeting.getId()).orElseThrow();
+            long responseId = jsonMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
+            assertEquals(saved.getId(), responseId);
+            assertEquals(deadline, saved.getDeadline());
         }
 
         @Test
@@ -196,6 +203,15 @@ class ScheduleControllerIntegrationTest {
         }
 
         @Test
+        @DisplayName("종료된 모임에는 일정 투표를 생성할 수 없다")
+        void completedMeetingCannotCreatePoll() throws Exception {
+            meeting.complete();
+            expectBusinessError(perform(post(url), host, Map.of("deadline", deadline)),
+                    new MeetingNotActiveException(meeting.getId()));
+            assertFalse(polls.existsByMeetingId(meeting.getId()));
+        }
+
+        @Test
         @DisplayName("투표소가 없으면 404를 반환한다")
         void missingPoll() throws Exception {
             expectBusinessError(perform(get(url), member, null),
@@ -243,30 +259,53 @@ class ScheduleControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("마감 결과에 후보 순위, 점수, 응답 수와 참여자별 미응답을 포함한다")
+        @DisplayName("마감 결과는 공동 순위·0점 응답·미응답을 구분하고 탈퇴자의 표를 제외한다")
         void results() throws Exception {
             SchedulePoll poll = createPollFixture();
-            ScheduleCandidate first = addCandidate(poll, candidateDate);
+            // 등록 순서와 점수·날짜 순서를 다르게 해 실제 정렬 계약도 검증한다.
+            ScheduleCandidate unanswered = addCandidate(poll, candidateDate.plusDays(2));
             ScheduleCandidate second = addCandidate(poll, candidateDate.plusDays(1));
-            votes.save(ScheduleVote.create(first, joinedMember, SchedulePreference.PREFER));
+            ScheduleCandidate first = addCandidate(poll, candidateDate);
+            MeetingMember hostMember = members.findByMeetingIdAndUserId(meeting.getId(), host.getId()).orElseThrow();
+            User thirdUser = users.save(new User("third-" + host.getEmail(), "third", "password"));
+            members.save(new MeetingMember(meeting, thirdUser));
+            // 외부 사용자가 가입·응답 후 탈퇴한 상황이다.
+            MeetingMember leftMember = members.save(new MeetingMember(meeting, outsider));
+            votes.saveAll(List.of(
+                    ScheduleVote.create(first, hostMember, SchedulePreference.PREFER),
+                    ScheduleVote.create(first, joinedMember, SchedulePreference.IMPOSSIBLE),
+                    ScheduleVote.create(second, hostMember, SchedulePreference.AVAILABLE),
+                    ScheduleVote.create(second, joinedMember, SchedulePreference.DISLIKE),
+                    ScheduleVote.create(unanswered, leftMember, SchedulePreference.PREFER)
+            ));
+            leftMember.leave();
             poll.close();
             flushAndClear();
 
             perform(get(url + "/results"), member, null)
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.candidateRanks", hasSize(2)))
+                    .andExpect(jsonPath("$.data.candidateRanks", hasSize(3)))
+                    .andExpect(jsonPath("$.data.candidateRanks[*].rank").value(contains(1, 1, 3)))
+                    .andExpect(jsonPath("$.data.candidateRanks[*].totalScore").value(contains(3, 3, 0)))
                     .andExpect(jsonPath("$.data.candidateRanks[0].candidateId").value(first.getId()))
-                    .andExpect(jsonPath("$.data.candidateRanks[0].totalScore").value(3))
-                    .andExpect(jsonPath("$.data.candidateRanks[0].rank").value(1))
-                    .andExpect(jsonPath("$.data.candidateRanks[0].responseCount").value(1))
+                    .andExpect(jsonPath("$.data.candidateRanks[0].responseCount").value(2))
                     .andExpect(jsonPath("$.data.candidateRanks[0].nonResponseCount").value(1))
                     .andExpect(jsonPath("$.data.candidateRanks[0].preferenceCounts.prefer").value(1))
+                    .andExpect(jsonPath("$.data.candidateRanks[0].preferenceCounts.impossible").value(1))
                     .andExpect(jsonPath("$.data.candidateRanks[1].candidateId").value(second.getId()))
-                    .andExpect(jsonPath("$.data.candidateRanks[1].totalScore").value(0))
-                    .andExpect(jsonPath("$.data.participantResponses", hasSize(2)))
+                    .andExpect(jsonPath("$.data.candidateRanks[1].preferenceCounts.available").value(1))
+                    .andExpect(jsonPath("$.data.candidateRanks[1].preferenceCounts.dislike").value(1))
+                    .andExpect(jsonPath("$.data.candidateRanks[2].candidateId").value(unanswered.getId()))
+                    .andExpect(jsonPath("$.data.candidateRanks[2].responseCount").value(0))
+                    .andExpect(jsonPath("$.data.candidateRanks[2].nonResponseCount").value(3))
+                    .andExpect(jsonPath("$.data.participantResponses", hasSize(3)))
                     .andExpect(jsonPath("$.data.participantResponses[1].userId").value(member.getId()))
-                    .andExpect(jsonPath("$.data.participantResponses[1].answers[0].preference").value("PREFER"))
-                    .andExpect(jsonPath("$.data.participantResponses[1].answers[1].preference").value(nullValue()));
+                    .andExpect(jsonPath("$.data.participantResponses[0].answers[0].preference").value("PREFER"))
+                    .andExpect(jsonPath("$.data.participantResponses[1].answers[0].preference").value("IMPOSSIBLE"))
+                    .andExpect(jsonPath("$.data.participantResponses[1].answers[1].preference").value("DISLIKE"))
+                    .andExpect(jsonPath("$.data.participantResponses[1].answers[2].preference").value(nullValue()))
+                    .andExpect(jsonPath("$.data.participantResponses[2].userId").value(thirdUser.getId()))
+                    .andExpect(jsonPath("$.data.participantResponses[2].answers[0].preference").value(nullValue()));
         }
 
         @Test
@@ -299,13 +338,18 @@ class ScheduleControllerIntegrationTest {
         @DisplayName("모임장은 후보를 추가하고 201 응답을 받는다")
         void createCandidate() throws Exception {
             LocalDate next = candidateDate.plusDays(1);
-            perform(post(url + "/candidates"), host, Map.of("candidateDate", next))
+            var result = perform(post(url + "/candidates"), host, Map.of("candidateDate", next))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.code").value(201))
                     .andExpect(jsonPath("$.data.id").isNumber())
-                    .andExpect(jsonPath("$.data.candidateDate").value(next.toString()));
+                    .andExpect(jsonPath("$.data.candidateDate").value(next.toString()))
+                    .andReturn();
             flushAndClear();
+            long responseId = jsonMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
+            ScheduleCandidate saved = candidates.findById(responseId).orElseThrow();
+            assertEquals(next, saved.getCandidateDate());
+            assertEquals(poll.getId(), saved.getSchedulePoll().getId());
             assertEquals(2, polls.findByMeetingIdWithCandidates(meeting.getId()).orElseThrow().getCandidates().size());
         }
 
@@ -420,9 +464,8 @@ class ScheduleControllerIntegrationTest {
         private ScheduleCandidate candidate;
         private String voteUrl;
 
-        @BeforeEach
-        void setUpVote() {
-            poll = createPollFixture();
+        private void givenPoll(LocalDateTime pollDeadline) {
+            poll = polls.save(SchedulePoll.create(meeting, pollDeadline));
             candidate = addCandidate(poll, candidateDate);
             voteUrl = url + "/candidates/" + candidate.getId() + "/vote";
         }
@@ -431,6 +474,7 @@ class ScheduleControllerIntegrationTest {
         @EnumSource(SchedulePreference.class)
         @DisplayName("참여자는 각 선호도로 투표하고 200 응답을 받는다")
         void submitVote(SchedulePreference preference) throws Exception {
+            givenPoll(deadline);
             perform(put(voteUrl), member, Map.of("preference", preference))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
@@ -446,6 +490,7 @@ class ScheduleControllerIntegrationTest {
         @Test
         @DisplayName("재투표하면 기존 투표를 수정하고 행을 중복 생성하지 않는다")
         void upsertVote() throws Exception {
+            givenPoll(deadline);
             perform(put(voteUrl), member, Map.of("preference", "PREFER")).andExpect(status().isOk());
             flushAndClear();
             Long originalId = votes.findByScheduleCandidateIdAndMeetingMemberId(
@@ -464,6 +509,7 @@ class ScheduleControllerIntegrationTest {
         @Test
         @DisplayName("선호도가 누락되면 400으로 거절하고 저장하지 않는다")
         void missingPreference() throws Exception {
+            givenPoll(deadline);
             expectValidationError(perform(put(voteUrl), member, Map.of()), "preference", "선호도는 필수입니다.");
             assertFalse(votes.existsByScheduleCandidateId(candidate.getId()));
         }
@@ -471,6 +517,7 @@ class ScheduleControllerIntegrationTest {
         @Test
         @DisplayName("비참여자와 탈퇴한 참여자는 투표할 수 없다")
         void requiresJoinedMember() throws Exception {
+            givenPoll(deadline);
             expectBusinessError(perform(put(voteUrl), outsider, Map.of("preference", "PREFER")),
                     new MeetingMemberNotFoundException(meeting.getId(), outsider.getId()));
             joinedMember.leave();
@@ -481,6 +528,7 @@ class ScheduleControllerIntegrationTest {
         @Test
         @DisplayName("마감 상태의 투표소에는 투표할 수 없다")
         void closedPoll() throws Exception {
+            givenPoll(deadline);
             poll.close();
             expectBusinessError(perform(put(voteUrl), member, Map.of("preference", "PREFER")),
                     new SchedulePollClosedException());
@@ -490,12 +538,7 @@ class ScheduleControllerIntegrationTest {
         @Test
         @DisplayName("OPEN 상태여도 마감 시간이 지나면 투표할 수 없다")
         void expiredPoll() throws Exception {
-            // 스케줄러 실행 전 상태를 재현하며 대기나 시스템 시계 변경을 사용하지 않는다.
-            entityManager.flush();
-            entityManager.createNativeQuery("UPDATE schedule_polls SET deadline = :deadline WHERE id = :id")
-                    .setParameter("deadline", LocalDateTime.now().minusMinutes(1))
-                    .setParameter("id", poll.getId()).executeUpdate();
-            entityManager.clear();
+            givenPoll(LocalDateTime.now().minusMinutes(1));
             expectBusinessError(perform(put(voteUrl), member, Map.of("preference", "PREFER")),
                     new SchedulePollClosedException());
         }
@@ -503,6 +546,7 @@ class ScheduleControllerIntegrationTest {
         @Test
         @DisplayName("다른 모임의 후보에 투표할 수 없다")
         void candidateFromAnotherMeeting() throws Exception {
+            givenPoll(deadline);
             Meeting otherMeeting = meetings.save(new Meeting(host, "다른 모임", ""));
             SchedulePoll otherPoll = polls.save(SchedulePoll.create(otherMeeting, deadline));
             ScheduleCandidate other = addCandidate(otherPoll, candidateDate);
