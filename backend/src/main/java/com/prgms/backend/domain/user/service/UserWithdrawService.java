@@ -44,17 +44,8 @@ public class UserWithdrawService {
         // 멤버로 참여한 모임을 leave
         leaveMeetings(userId);
 
-        // 호스트로 등록된 모임을 soft delete
-        softDeleteHostMeeting(user);
-
         // user 탈퇴
         withdrawUser(user);
-    }
-
-    // 호스트로 등록된 완료된 모임을 삭제 (soft delete)
-    private void softDeleteHostMeeting(User user) {
-        List<Meeting> meetings = meetingRepository.findByHostIdAndDeletedAtIsNull(user.getId());
-        meetings.forEach(Meeting::softDelete);
     }
 
 
