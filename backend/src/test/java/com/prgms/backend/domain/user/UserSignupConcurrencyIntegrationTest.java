@@ -71,7 +71,7 @@ class UserSignupConcurrencyIntegrationTest extends MySqlContainerSupport {
     void unrelatedDatabaseFailureRemainsServerError(String constraintName) throws Exception {
         doThrow(new DataIntegrityViolationException("내부 DB 오류 상세",
             new ConstraintViolationException("내부 제약 오류", new SQLException("내부 SQL 오류"), constraintName)))
-            .when(users).save(any(User.class));
+            .when(users).saveAndFlush(any(User.class));
         String suffix = UUID.randomUUID().toString();
 
         mvc.perform(post("/api/user/sign-up").contentType(MediaType.APPLICATION_JSON)

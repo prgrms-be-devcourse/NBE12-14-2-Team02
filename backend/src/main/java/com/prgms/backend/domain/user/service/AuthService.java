@@ -8,6 +8,8 @@ import com.prgms.backend.global.exception.custom.user.*;
 import com.prgms.backend.domain.user.repository.UserRepository;
 import com.prgms.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,10 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    // Flyway V1에서 정의한 users 테이블의 UNIQUE 제약 이름
+    private static final String EMAIL_UNIQUE_CONSTRAINT = "UK6dotkott2kjsp8vw4d0m25fb7";
+    private static final String NICKNAME_UNIQUE_CONSTRAINT = "UK2ty1xmrrgtn89xt7kyxx6ta7h";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -41,6 +47,7 @@ public class AuthService {
     }
 
     // 회원가입
+    @Transactional
     public Long signup(String email, String nickname, String password, String confirmPassword) {
 
         validateConfirmPassword(password, confirmPassword);
@@ -49,8 +56,30 @@ public class AuthService {
             throw new DuplicateEmailNickname();
         }
         User user = new User(email, nickname, passwordEncoder.encode(password));
-        userRepository.save(user);
+
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            if (isDuplicateEmailOrNickname(e)) {
+                throw new DuplicateEmailNickname();
+            }
+            throw e;
+        }
         return user.getId();
+    }
+
+    private boolean isDuplicateEmailOrNickname(DataIntegrityViolationException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation) {
+                String constraintName = violation.getConstraintName();
+                // MySQL은 제약 이름 앞에 테이블 이름을 붙여 반환하기도 한다.
+                return EMAIL_UNIQUE_CONSTRAINT.equals(constraintName)
+                    || NICKNAME_UNIQUE_CONSTRAINT.equals(constraintName)
+                    || ("users." + EMAIL_UNIQUE_CONSTRAINT).equals(constraintName)
+                    || ("users." + NICKNAME_UNIQUE_CONSTRAINT).equals(constraintName);
+            }
+        }
+        return false;
     }
 
     // 로그인
