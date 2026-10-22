@@ -3,6 +3,7 @@ package com.prgms.backend.security;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -21,6 +22,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    @DisplayName("액세스 토큰은 액세스 키로만 검증하고 회원 ID를 조회할 수 있다")
     void accessTokenIsAcceptedOnlyByAccessKey() {
         String token = provider.createAccessToken(1L);
 
@@ -31,6 +33,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    @DisplayName("리프레시 토큰은 리프레시 키로만 검증하고 회원 ID를 조회할 수 있다")
     void refreshTokenIsAcceptedOnlyByRefreshKey() {
         String token = provider.createRefreshToken(1L);
 
@@ -41,6 +44,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    @DisplayName("만료된 액세스 토큰과 리프레시 토큰은 검증에 실패한다")
     void expiredTokensAreRejected() {
         ReflectionTestUtils.setField(provider, "accessExpiration", -60L);
         ReflectionTestUtils.setField(provider, "refreshExpiration", -60L);
@@ -50,6 +54,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    @DisplayName("토큰이 없거나 형식이 올바르지 않으면 검증에 실패한다")
     void missingAndMalformedTokensAreRejected() {
         assertFalse(provider.validateAccessToken(null));
         assertFalse(provider.validateRefreshToken(null));
@@ -58,6 +63,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    @DisplayName("액세스 토큰과 리프레시 토큰에 같은 서명 키를 사용할 수 없다")
     void identicalKeysAreRejected() {
         var key = Jwts.SIG.HS256.key().build();
         assertThrows(IllegalArgumentException.class, () -> new JwtTokenProvider(key, key));

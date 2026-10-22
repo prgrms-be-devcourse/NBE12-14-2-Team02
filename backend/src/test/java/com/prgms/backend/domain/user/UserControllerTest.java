@@ -276,7 +276,7 @@ class UserControllerTest {
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.code").value(204))
+            .andExpect(jsonPath("$.code").value(200))
             .andExpect(jsonPath("$.message").value("비밀번호를 변경했습니다."));
 
         verify(userService).updatePassword(1L, "Passw0rd!", "NewPassw0rd!");
@@ -332,6 +332,7 @@ class UserControllerTest {
         // when & then
         mvc.perform(delete("/api/user").header("Authorization", "Bearer " + ACCESS_TOKEN))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(200))
             .andExpect(jsonPath("$.message").value("회원 탈퇴가 완료되었습니다."))
             .andExpect(cookie().value("refreshToken", ""))
             .andExpect(cookie().maxAge("refreshToken", 0))

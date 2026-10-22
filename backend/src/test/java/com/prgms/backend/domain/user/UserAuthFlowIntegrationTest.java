@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // 실제 빈(BCrypt·JWT·필터·트랜잭션·DB)으로 회원가입부터 탈퇴까지의 흐름 확인
@@ -105,11 +106,11 @@ class UserAuthFlowIntegrationTest extends MySqlContainerSupport {
     }
 
     @Test
-    @DisplayName("refresh token 쿠키로 access token을 재발급받는다")
+    @DisplayName("재발급한 refresh token을 DB에 저장하고 이전 쿠키의 재사용을 거부한다")
     void reissue() throws Exception {
 
         // given
-        signUp();
+        Long userId = signUp();
         Cookie refreshCookie = login(email, PASSWORD).getResponse().getCookie("refreshToken");
 
         // when
@@ -119,9 +120,19 @@ class UserAuthFlowIntegrationTest extends MySqlContainerSupport {
 
         // then
         String newAccessToken = accessToken(reissue);
-        assertNotNull(reissue.getResponse().getCookie("refreshToken"));
+        Cookie newRefreshCookie = reissue.getResponse().getCookie("refreshToken");
+        assertNotNull(newRefreshCookie);
+        assertNotEquals(refreshCookie.getValue(), newRefreshCookie.getValue());
+        assertEquals(newRefreshCookie.getValue(), userRepository.findById(userId).orElseThrow().getRefreshToken());
+
+        mvc.perform(post("/api/auth/reissue").cookie(refreshCookie))
+            .andExpect(status().isUnauthorized());
+        assertEquals(newRefreshCookie.getValue(), userRepository.findById(userId).orElseThrow().getRefreshToken());
 
         mvc.perform(get("/api/user/me").header("Authorization", "Bearer " + newAccessToken))
+            .andExpect(jsonPath("$.data.email").value(email))
+            .andExpect(status().isOk());
+        mvc.perform(post("/api/auth/reissue").cookie(newRefreshCookie))
             .andExpect(status().isOk());
     }
 
@@ -153,7 +164,12 @@ class UserAuthFlowIntegrationTest extends MySqlContainerSupport {
         mvc.perform(post("/api/auth/logout")
                 .header("Authorization", "Bearer " + accessToken)
                 .cookie(refreshCookie))
-            .andExpect(status().isNoContent());
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.message").value("로그아웃 되었습니다."))
+            .andExpect(jsonPath("$.data").doesNotExist());
 
         // then
         assertNull(userRepository.findById(userId).orElseThrow().getRefreshToken());
@@ -176,7 +192,10 @@ class UserAuthFlowIntegrationTest extends MySqlContainerSupport {
                 .content("""
                     {"password":"%s","newPassword":"NewPassw0rd!"}
                     """.formatted(PASSWORD)))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.message").value("비밀번호를 변경했습니다."));
 
         // then
         mvc.perform(post("/api/auth/log-in")
@@ -221,7 +240,10 @@ class UserAuthFlowIntegrationTest extends MySqlContainerSupport {
 
         // when
         mvc.perform(delete("/api/user").header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.message").value("회원 탈퇴가 완료되었습니다."));
 
         // then
         User user = userRepository.findById(userId).orElseThrow();

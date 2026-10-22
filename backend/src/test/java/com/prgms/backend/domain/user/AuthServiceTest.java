@@ -87,7 +87,7 @@ class AuthServiceTest {
         when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
         when(userRepository.existsByNickname("새회원")).thenReturn(false);
         when(passwordEncoder.encode("Passw0rd!")).thenReturn("encoded-Passw0rd!");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 2L);
             return saved;
@@ -98,7 +98,7 @@ class AuthServiceTest {
 
         // then
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(captor.capture());
+        verify(userRepository).saveAndFlush(captor.capture());
 
         User saved = captor.getValue();
         assertEquals(2L, userId);
@@ -118,7 +118,7 @@ class AuthServiceTest {
         );
 
         verify(userRepository, never()).existsByEmail(anyString());
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -134,7 +134,7 @@ class AuthServiceTest {
             () -> authService.signup("user@test.com", "새회원", "Passw0rd!", "Passw0rd!")
         );
 
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -151,7 +151,7 @@ class AuthServiceTest {
             () -> authService.signup("new@test.com", "회원", "Passw0rd!", "Passw0rd!")
         );
 
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test
