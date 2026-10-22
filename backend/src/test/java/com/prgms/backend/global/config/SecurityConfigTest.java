@@ -21,9 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultMatcher;
 
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -69,26 +67,28 @@ class SecurityConfigTest {
         // given
         when(authService.login(any())).thenReturn(new TokenPair("access", "refresh"));
         when(authService.reissue(any())).thenReturn(new TokenPair("access", "refresh"));
+        when(authService.signup("user@test.com", "회원", "Passw0rd!", "Passw0rd!"))
+            .thenReturn(1L);
 
         // when & then
         mvc.perform(get("/api/user/check-email").param("email", "user@test.com"))
-            .andExpect(notUnauthorized());
+            .andExpect(status().isOk());
         mvc.perform(get("/api/user/check-nickname").param("nickname", "회원"))
-            .andExpect(notUnauthorized());
+            .andExpect(status().isOk());
         mvc.perform(post("/api/user/sign-up")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"email":"user@test.com","nickname":"회원","password":"Passw0rd!","confirmPassword":"Passw0rd!"}
                     """))
-            .andExpect(notUnauthorized());
+            .andExpect(status().isCreated());
         mvc.perform(post("/api/auth/log-in")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"email":"user@test.com","password":"Passw0rd!"}
                     """))
-            .andExpect(notUnauthorized());
+            .andExpect(status().isCreated());
         mvc.perform(post("/api/auth/reissue"))
-            .andExpect(notUnauthorized());
+            .andExpect(status().isOk());
     }
 
     @Test
@@ -212,11 +212,4 @@ class SecurityConfigTest {
         when(jwtTokenProvider.getAccessUserId(ACCESS_TOKEN)).thenReturn(userId);
     }
 
-    private ResultMatcher notUnauthorized() {
-        return result -> {
-            int status = result.getResponse().getStatus();
-            assertNotEquals(401, status);
-            assertNotEquals(403, status);
-        };
-    }
 }

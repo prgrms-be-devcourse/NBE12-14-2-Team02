@@ -1,11 +1,13 @@
 package com.prgms.backend.security;
 
 import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Clock;
 import java.util.Date;
 import java.util.UUID;
 
@@ -14,16 +16,23 @@ public class JwtTokenProvider {
 
     private final SecretKey accessSecretKey;
     private final SecretKey refreshSecretKey;
+    private final Clock clock;
 
+    @Autowired
     public JwtTokenProvider(
             @Qualifier("accessSecretKey") SecretKey accessSecretKey,
             @Qualifier("refreshSecretKey") SecretKey refreshSecretKey
     ) {
+        this(accessSecretKey, refreshSecretKey, Clock.systemUTC());
+    }
+
+    public JwtTokenProvider(SecretKey accessSecretKey, SecretKey refreshSecretKey, Clock clock) {
         if (java.util.Arrays.equals(accessSecretKey.getEncoded(), refreshSecretKey.getEncoded())) {
             throw new IllegalArgumentException("Access와 refresh JWT key는 달라야 합니다.");
         }
         this.accessSecretKey = accessSecretKey;
         this.refreshSecretKey = refreshSecretKey;
+        this.clock = clock;
     }
 
     @Value("${custom.jwt.access-token-validity-seconds}")
@@ -35,7 +44,7 @@ public class JwtTokenProvider {
     public String createAccessToken(
             Long userId
     ) {
-        Date now = new Date();
+        Date now = Date.from(clock.instant());
         Date expiryDate = new Date(now.getTime() + accessExpiration * 1000);
 
         return Jwts.builder()
@@ -49,7 +58,7 @@ public class JwtTokenProvider {
     public String createRefreshToken(
             Long userId
     ) {
-        Date now = new Date();
+        Date now = Date.from(clock.instant());
         Date expiryDate = new Date(now.getTime() + refreshExpiration*1000);
 
         return Jwts.builder()
@@ -73,6 +82,7 @@ public class JwtTokenProvider {
         try {
             Jwts.parser()
                     .verifyWith(secretKey)
+                    .clock(() -> Date.from(clock.instant()))
                     .build()
                     .parseSignedClaims(token);
 
@@ -94,6 +104,7 @@ public class JwtTokenProvider {
     private Long getUserId(String token, SecretKey secretKey) {
         String subject = Jwts.parser()
                 .verifyWith(secretKey)
+                .clock(() -> Date.from(clock.instant()))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()

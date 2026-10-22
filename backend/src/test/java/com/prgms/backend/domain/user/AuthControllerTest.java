@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -180,6 +181,7 @@ class AuthControllerTest {
                 .header("Authorization", "Bearer " + ACCESS_TOKEN)
                 .cookie(new Cookie("refreshToken", "refresh-token")))
             .andExpect(status().isNoContent())
+            .andExpect(content().string(""))
             .andExpect(cookie().value("refreshToken", ""))
             .andExpect(cookie().maxAge("refreshToken", 0))
             .andExpect(cookie().path("refreshToken", "/api/auth"));
