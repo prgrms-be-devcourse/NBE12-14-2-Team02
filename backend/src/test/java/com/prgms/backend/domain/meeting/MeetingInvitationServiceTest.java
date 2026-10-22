@@ -19,15 +19,18 @@ import com.prgms.backend.global.exception.custom.meeting.MeetingNotFoundExceptio
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -236,6 +239,10 @@ class MeetingInvitationServiceTest {
             LocalDateTime.now().plusDays(1)
         );
 
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invite-code"))
+            .thenReturn(Optional.of(10L));
+
         when(
             meetingInvitationRepository
                 .findByInviteCode("invite-code")
@@ -249,17 +256,13 @@ class MeetingInvitationServiceTest {
         when(userRepository.findById(2L))
             .thenReturn(Optional.of(user));
 
-        when(
-            meetingMemberRepository
-                .findByMeetingIdAndUserId(
-                    10L,
-                    2L
-                )
-        ).thenReturn(Optional.empty());
+        when(meetingMemberRepository
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
+            .thenReturn(Optional.empty());
 
         when(
             meetingMemberRepository
-                .save(any(MeetingMember.class))
+                .saveAndFlush(any(MeetingMember.class))
         ).thenAnswer(invocation -> {
 
             MeetingMember member =
@@ -285,13 +288,90 @@ class MeetingInvitationServiceTest {
         assertEquals(200L, response.id());
         assertEquals(10L, response.meetingId());
         assertEquals(2L, response.userId());
-        assertEquals(
-            MeetingMemberStatus.JOINED,
-            response.status()
+        assertEquals(MeetingMemberStatus.JOINED, response.status());
+
+        // 가입 여부 판단에 사용할 조회가 호출됐는지 확인
+        verify(meetingMemberRepository)
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L);
+
+        // 신규 가입이므로 새 모임원을 저장
+        verify(meetingMemberRepository)
+            .saveAndFlush(any(MeetingMember.class));
+    }
+
+    @Test
+    @DisplayName("새 모임원 저장 중 모임원 중복 키 오류가 발생하면 중복 참여 예외로 변환한다")
+    void joinMeeting_duplicateKey() {
+
+        // given
+        User host = createUser(
+            1L,
+            "host@test.com",
+            "모임장"
         );
 
-        verify(meetingMemberRepository)
-            .save(any(MeetingMember.class));
+        User user = createUser(
+            2L,
+            "user@test.com",
+            "회원"
+        );
+
+        Meeting meeting = createMeeting(
+            10L,
+            host,
+            "제주도 여행"
+        );
+
+        MeetingInvitation invitation = createInvitation(
+            100L,
+            meeting,
+            "invite-code",
+            LocalDateTime.now().plusDays(1)
+        );
+
+        // 초대 코드가 어느 모임에 속하는지 조회
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invite-code"))
+            .thenReturn(Optional.of(10L));
+
+        // 잠금을 걸면서 모임 조회
+        when(meetingRepository
+            .findByIdAndDeletedAtIsNullForUpdate(10L))
+            .thenReturn(Optional.of(meeting));
+
+        // 초대 정보 조회
+        when(meetingInvitationRepository
+            .findByInviteCode("invite-code"))
+            .thenReturn(Optional.of(invitation));
+
+        // 가입하려는 사용자 조회
+        when(userRepository.findById(2L))
+            .thenReturn(Optional.of(user));
+
+        when(meetingMemberRepository
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
+            .thenReturn(Optional.empty());
+
+        // DB가 모임원 중복 제약 위반을 알린 상황을 준비
+        ConstraintViolationException cause =
+            mock(ConstraintViolationException.class);
+
+        when(cause.getConstraintName())
+            .thenReturn("uk_meeting_member_meeting_user");
+
+        DataIntegrityViolationException dbException =
+            new DataIntegrityViolationException("저장 실패", cause);
+
+        when(meetingMemberRepository.saveAndFlush(any(MeetingMember.class)))
+            .thenThrow(dbException);
+
+        // 서비스가 DB 오류를 중복 참여 예외로 변환하는지 확인
+        AlreadyMeetingMemberException exception = assertThrows(
+            AlreadyMeetingMemberException.class,
+            () -> meetingInvitationService.joinMeeting("invite-code", 2L)
+        );
+
+        assertEquals(409, exception.getCode());
     }
 
     @Test
@@ -339,6 +419,10 @@ class MeetingInvitationServiceTest {
         // 기존 회원이 탈퇴한 상태
         member.leave();
 
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invite-code"))
+            .thenReturn(Optional.of(10L));
+
         when(
             meetingInvitationRepository
                 .findByInviteCode("invite-code")
@@ -352,13 +436,9 @@ class MeetingInvitationServiceTest {
         when(userRepository.findById(2L))
             .thenReturn(Optional.of(user));
 
-        when(
-            meetingMemberRepository
-                .findByMeetingIdAndUserId(
-                    10L,
-                    2L
-                )
-        ).thenReturn(Optional.of(member));
+        when(meetingMemberRepository
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
+            .thenReturn(Optional.of(member));
 
         // when
         var response =
@@ -368,18 +448,18 @@ class MeetingInvitationServiceTest {
             );
 
         // then
-        assertEquals(
-            MeetingMemberStatus.JOINED,
-            response.status()
-        );
+        assertEquals(MeetingMemberStatus.JOINED, response.status());
 
         assertEquals(200L, response.id());
         assertEquals(10L, response.meetingId());
         assertEquals(2L, response.userId());
 
-        // 재가입 시 기존 MeetingMember를 사용하므로 새로 저장하지 않음
+        // 재가입하면 기존 탈퇴 시각 해제
+        assertNull(response.leftAt());
+
+        // 기존 MeetingMember를 재사용하므로 새로 저장X
         verify(meetingMemberRepository, never())
-            .save(any(MeetingMember.class));
+            .saveAndFlush(any(MeetingMember.class));
     }
 
     @Test
@@ -418,6 +498,10 @@ class MeetingInvitationServiceTest {
                 user
             );
 
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invite-code"))
+            .thenReturn(Optional.of(10L));
+
         when(
             meetingInvitationRepository
                 .findByInviteCode("invite-code")
@@ -431,22 +515,24 @@ class MeetingInvitationServiceTest {
         when(userRepository.findById(2L))
             .thenReturn(Optional.of(user));
 
-        when(
-            meetingMemberRepository
-                .findByMeetingIdAndUserId(
-                    10L,
-                    2L
-                )
-        ).thenReturn(Optional.of(member));
+        when(meetingMemberRepository
+            .findByMeetingIdAndUserIdForUpdate(10L, 2L))
+            .thenReturn(Optional.of(member));
 
         // when & then
-        assertThrows(
+        AlreadyMeetingMemberException exception = assertThrows(
             AlreadyMeetingMemberException.class,
             () -> meetingInvitationService.joinMeeting(
                 "invite-code",
                 2L
             )
         );
+
+        assertEquals(409, exception.getCode());
+
+        // 중복 참여자는 새로 저장X
+        verify(meetingMemberRepository, never())
+            .saveAndFlush(any(MeetingMember.class));
     }
 
     @Test
@@ -454,10 +540,9 @@ class MeetingInvitationServiceTest {
     void joinMeeting_invitationNotFound() {
 
         // given
-        when(
-            meetingInvitationRepository
-                .findByInviteCode("invalid-code")
-        ).thenReturn(Optional.empty());
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("invalid-code"))
+            .thenReturn(Optional.empty());
 
         // when & then
         assertThrows(
@@ -493,6 +578,10 @@ class MeetingInvitationServiceTest {
                 "expired-code",
                 LocalDateTime.now().minusDays(1)
             );
+
+        when(meetingInvitationRepository
+            .findMeetingIdByInviteCode("expired-code"))
+            .thenReturn(Optional.of(10L));
 
         when(
             meetingInvitationRepository

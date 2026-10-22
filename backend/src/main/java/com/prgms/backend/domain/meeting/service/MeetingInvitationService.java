@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class MeetingInvitationService {
 
     // 초대 기간 만료일 상수
     private static final long INVITATION_EXPIRE_DAYS = 7;
+    private static final String MEMBERSHIP_UNIQUE_CONSTRAINT = "uk_meeting_member_meeting_user";
 
     // 초대 저장
     @Transactional
@@ -87,12 +90,10 @@ public class MeetingInvitationService {
         String inviteCode,
         Long userId
     ) {
-        // Meeting ID 확인용 1차 조회
-        MeetingInvitation initialInvitation = meetingInvitationRepository
-                .findByInviteCode(inviteCode)
-                .orElseThrow(() -> new MeetingInvitationNotFoundException(inviteCode));
-
-        Long meetingId = initialInvitation.getMeeting().getId();
+        // 잠금 전에 모임 엔티티를 로딩하지 않도록 ID만 조회
+        Long meetingId = meetingInvitationRepository
+            .findMeetingIdByInviteCode(inviteCode)
+            .orElseThrow(() -> new MeetingInvitationNotFoundException(inviteCode));
 
         // 모임의 멤버 구성이 바뀌므로 WRITE LOCK
         Meeting meeting = meetingRepository
@@ -101,8 +102,8 @@ public class MeetingInvitationService {
 
         // Lock 획득 후 Invitation 다시 확인
         MeetingInvitation invitation = meetingInvitationRepository
-                .findByInviteCode(inviteCode)
-                .orElseThrow(() -> new MeetingInvitationNotFoundException(inviteCode));
+            .findByInviteCode(inviteCode)
+            .orElseThrow(() -> new MeetingInvitationNotFoundException(inviteCode));
 
         // 초대가 만료됐는지 검사
         if (invitation.isExpired()) {
@@ -119,34 +120,52 @@ public class MeetingInvitationService {
             .findById(userId)
             .orElseThrow(() -> new UserNotFoundException("존재하지 않는 회원입니다."));
 
-        // 해당 모임의 모임원 목록에 있는 회원인지 검사
+        // MySQL REPEATABLE READ에서도 잠금 대기 중 커밋된 가입 상태를 확인
         Optional<MeetingMember> existingMember = meetingMemberRepository
-                .findByMeetingIdAndUserId(meetingId, userId);
+            .findByMeetingIdAndUserIdForUpdate(meetingId, userId);
 
         MeetingMember meetingMember;
 
         // 모임원 목록에 있는 회원인 경우
         if (existingMember.isPresent()) {
-
             meetingMember = existingMember.get();
 
-            // 현재 참여 중인 모임원인 경우
+            // 현재 참여 중인 모임원인 경우 중복 가입 차단
             if (meetingMember.isJoined()) {
                 throw new AlreadyMeetingMemberException(meetingId, userId);
             }
 
-            // 현재 참여 중이 아니면(LEFT) 재가입
+            // 현재 참여 중이 아니면(LEFT) 기존 모임원 기록으로 재가입
             meetingMember.rejoin();
 
-            // 모임에 가입한 적 없는 회원인 경우 모임원에 등록
+            // 모임에 가입한 적 없는 회원인 경우 새 모임원으로 등록
         } else {
-
             meetingMember = new MeetingMember(meeting, user);
 
-            meetingMemberRepository.save(meetingMember);
+            try {
+                // DB 제약 위반이 이 메서드 안에서 발생하도록 즉시 반영
+                meetingMemberRepository.saveAndFlush(meetingMember);
+            } catch (DataIntegrityViolationException e) {
+                if (isDuplicateMembership(e)) {
+                    throw new AlreadyMeetingMemberException(meetingId, userId);
+                }
+                throw e;
+            }
         }
 
         return MeetingMemberResponse.from(meetingMember);
+    }
+
+    private boolean isDuplicateMembership(DataIntegrityViolationException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation) {
+                String constraintName = violation.getConstraintName();
+                // MySQL은 제약 이름 앞에 테이블 이름을 붙여 반환하기도 함
+                return MEMBERSHIP_UNIQUE_CONSTRAINT.equals(constraintName)
+                    || ("meeting_members." + MEMBERSHIP_UNIQUE_CONSTRAINT).equals(constraintName);
+            }
+        }
+        return false;
     }
 
     // 초대 코드 목록 조회(모임장만 가능)

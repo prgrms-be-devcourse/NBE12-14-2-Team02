@@ -4,6 +4,8 @@ import com.prgms.backend.domain.meeting.entity.MeetingInvitation;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface MeetingInvitationRepository extends JpaRepository<MeetingInvitation, Long> {
 
@@ -15,4 +17,13 @@ public interface MeetingInvitationRepository extends JpaRepository<MeetingInvita
 
     // 초대 코드 목록 조회
     List<MeetingInvitation> findAllByMeetingId(Long meetingId);
+
+    @Query("""
+    SELECT invitation.meeting.id
+    FROM MeetingInvitation invitation
+    WHERE invitation.inviteCode = :inviteCode
+    """)
+    Optional<Long> findMeetingIdByInviteCode(
+        @Param("inviteCode") String inviteCode
+    );
 }
