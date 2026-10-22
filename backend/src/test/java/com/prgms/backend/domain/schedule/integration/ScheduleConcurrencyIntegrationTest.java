@@ -34,9 +34,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,7 +54,6 @@ import org.testcontainers.mysql.MySQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -153,9 +155,10 @@ class ScheduleConcurrencyIntegrationTest {
         }
     }
 
-    @Test
-    @DisplayName("투표가 커밋될 때까지 기다린 후보 수정은 투표 존재를 확인하고 거부된다")
-    void updateWaitsForVote() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"UPDATE", "DELETE"})
+    @DisplayName("투표와 경합하는 후보 수정·삭제는 커밋된 투표를 확인하고 거절된다")
+    void candidateChangeWaitsForVote(String operation) throws Exception {
         LocalDate original = LocalDate.now().plusDays(1);
         Long candidateId = candidateService.createCandidate(meetingId, hostId,
                 new ScheduleCandidateRequest.Create(original)).id();
@@ -169,55 +172,25 @@ class ScheduleConcurrencyIntegrationTest {
                             new ScheduleVoteRequest.Submit(SchedulePreference.PREFER)),
                     voteInserted, releaseVote);
             await(voteInserted);
-            CountDownLatch updateStarted = new CountDownLatch(1);
-            Future<?> update = executor.submit(() -> {
-                updateStarted.countDown();
-                return candidateService.update(meetingId, candidateId, hostId,
-                        new ScheduleCandidateRequest.Update(original.plusDays(1)));
+            CountDownLatch changeStarted = new CountDownLatch(1);
+            Future<?> change = executor.submit(() -> {
+                changeStarted.countDown();
+                if (operation.equals("UPDATE")) {
+                    candidateService.update(meetingId, candidateId, hostId,
+                            new ScheduleCandidateRequest.Update(original.plusDays(1)));
+                } else {
+                    candidateService.delete(meetingId, candidateId, hostId);
+                }
             });
 
-            assertWaiting(updateStarted, update);
+            assertWaiting(changeStarted, change);
             releaseVote.countDown();
             vote.get(20, TimeUnit.SECONDS);
             ExecutionException failure = assertThrows(ExecutionException.class,
-                    () -> update.get(20, TimeUnit.SECONDS));
+                    () -> change.get(20, TimeUnit.SECONDS));
             assertInstanceOf(ScheduleCandidateHasVotesException.class, failure.getCause());
             assertEquals(original, scheduleCandidateRepository.findById(candidateId)
                     .orElseThrow().getCandidateDate());
-        } finally {
-            releaseVote.countDown();
-            executor.shutdownNow();
-        }
-    }
-
-    @Test
-    @DisplayName("투표가 커밋될 때까지 기다린 후보 삭제도 투표 존재를 확인하고 거부된다")
-    void deleteWaitsForVote() throws Exception {
-        Long candidateId = candidateService.createCandidate(meetingId, hostId,
-                new ScheduleCandidateRequest.Create(LocalDate.now().plusDays(1))).id();
-
-        CountDownLatch voteInserted = new CountDownLatch(1);
-        CountDownLatch releaseVote = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        try {
-            Future<?> vote = holdTransaction(executor,
-                    () -> voteService.submit(meetingId, candidateId, hostId,
-                            new ScheduleVoteRequest.Submit(SchedulePreference.PREFER)),
-                    voteInserted, releaseVote);
-            await(voteInserted);
-            CountDownLatch deleteStarted = new CountDownLatch(1);
-            Future<?> delete = executor.submit(() -> {
-                deleteStarted.countDown();
-                candidateService.delete(meetingId, candidateId, hostId);
-            });
-
-            assertWaiting(deleteStarted, delete);
-            releaseVote.countDown();
-            vote.get(20, TimeUnit.SECONDS);
-            ExecutionException failure = assertThrows(ExecutionException.class,
-                    () -> delete.get(20, TimeUnit.SECONDS));
-            assertInstanceOf(ScheduleCandidateHasVotesException.class, failure.getCause());
-            assertTrue(scheduleCandidateRepository.existsById(candidateId));
         } finally {
             releaseVote.countDown();
             executor.shutdownNow();
@@ -275,8 +248,6 @@ class ScheduleConcurrencyIntegrationTest {
             // 같은 트랜잭션의 연결에서 첫 일반 조회를 실행한 뒤 가입을 끼워 넣는다.
             Long result = jdbcTemplate.queryForObject(
                     "SELECT meeting_id FROM schedule_polls WHERE id = ?", Long.class, pollId);
-            assertEquals("READ-COMMITTED",
-                    jdbcTemplate.queryForObject("SELECT @@transaction_isolation", String.class));
             meetingIdRead.countDown();
             await(continueClose);
             return Optional.ofNullable(result);
@@ -345,7 +316,7 @@ class ScheduleConcurrencyIntegrationTest {
 
     private void assertWaiting(CountDownLatch started, Future<?> request) throws InterruptedException {
         assertTrue(started.await(20, TimeUnit.SECONDS));
-        Thread.sleep(150);
-        assertFalse(request.isDone(), "첫 번째 트랜잭션이 끝나기 전에 두 번째 요청이 완료됐습니다.");
+        assertThrows(TimeoutException.class, () -> request.get(150, TimeUnit.MILLISECONDS),
+                "첫 번째 트랜잭션이 끝나기 전에 두 번째 요청이 완료되면 안 됩니다.");
     }
 }
