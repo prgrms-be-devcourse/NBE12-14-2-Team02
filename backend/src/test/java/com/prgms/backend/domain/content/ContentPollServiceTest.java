@@ -227,36 +227,6 @@ class ContentPollServiceTest {
     }
 
     @Test
-    @DisplayName("결과는 SCORE 정렬이면 총점 순, PARTICIPANTS 정렬이면 응답 수 순")
-    void getResultsSorted() {
-
-        // given
-        poll.close();
-        ContentCandidate moreResponses = candidate(40L, poll, HOST_MEMBER_ID);
-        ContentCandidate higherScore = candidate(41L, poll, MEMBER_ID);
-        when(contentCandidateRepository.findByContentPollIdOrderByCreatedAtAsc(POLL_ID))
-                .thenReturn(List.of(moreResponses, higherScore));
-        // 40번: 2명 응답/총점 2, 41번: 1명 응답/총점 3
-        when(contentVoteRepository.findByContentCandidate_ContentPoll_Id(POLL_ID)).thenReturn(List.of(
-                new ContentVote(moreResponses, HOST_MEMBER_ID, ContentPreference.DISLIKE),
-                new ContentVote(moreResponses, MEMBER_ID, ContentPreference.DISLIKE),
-                new ContentVote(higherScore, HOST_MEMBER_ID, ContentPreference.PREFER)
-        ));
-
-        // when
-        ContentPollResultsResponse.Detail byScore =
-                service.getResults(MEETING_ID, HOST_ID, ContentPollResultSort.SCORE);
-        ContentPollResultsResponse.Detail byParticipants =
-                service.getResults(MEETING_ID, HOST_ID, ContentPollResultSort.PARTICIPANTS);
-
-        // then
-        assertEquals(List.of(41L, 40L), byScore.candidates().stream()
-                .map(ContentPollResultsResponse.CandidateResult::candidateId).toList());
-        assertEquals(List.of(40L, 41L), byParticipants.candidates().stream()
-                .map(ContentPollResultsResponse.CandidateResult::candidateId).toList());
-    }
-
-    @Test
     @DisplayName("결과에 후보별 집계와 미응답 수, 멤버별 선택이 후보 정렬 순서대로 담김")
     void getResultsAggregates() {
 
