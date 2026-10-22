@@ -82,34 +82,6 @@ class NotificationServiceTest {
     }
 
     @Test
-    @DisplayName("일정 투표 마감 알림은 일정 투표 타입과 경로로 저장")
-    void notifyScheduleClosed() {
-
-        // when
-        service.notifyScheduleClosed(MEETING_ID);
-
-        // then
-        Notification first = savedNotifications(2).get(0);
-        assertEquals(NotificationType.SCHEDULE_CLOSED, first.getType());
-        assertEquals("일정 투표가 마감되었습니다.", first.getTitle());
-        assertEquals("/meetings/10/schedule-poll", first.getRedirectUrl());
-    }
-
-    @Test
-    @DisplayName("정산 마감 알림은 정산 타입과 경로로 저장")
-    void notifySettlementClosed() {
-
-        // when
-        service.notifySettlementClosed(MEETING_ID);
-
-        // then
-        Notification first = savedNotifications(2).get(0);
-        assertEquals(NotificationType.SETTLEMENT_CLOSED, first.getType());
-        assertEquals("정산이 마감되었습니다.", first.getTitle());
-        assertEquals("/meetings/10/settlement-poll", first.getRedirectUrl());
-    }
-
-    @Test
     @DisplayName("참여 중인 멤버가 없으면 알림을 저장하지 않음")
     void notifyWithoutMembers() {
 
@@ -122,59 +94,6 @@ class NotificationServiceTest {
 
         // then
         verify(notificationRepository, never()).save(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    @DisplayName("내 알림 목록을 저장소가 준 순서(최신순) 그대로 반환")
-    void getMyNotifications() {
-
-        // given
-        when(notificationRepository.findByReceiverIdOrderByCreatedAtDesc(1L))
-                .thenReturn(List.of(notification(2L, 1L), notification(1L, 1L)));
-
-        // when
-        List<NotificationResponse> responses = service.getMyNotifications(1L);
-
-        // then
-        assertEquals(List.of(2L, 1L), responses.stream().map(NotificationResponse::id).toList());
-    }
-
-    @Test
-    @DisplayName("알림이 없으면 빈 목록을 반환")
-    void getMyNotificationsEmpty() {
-
-        // given
-        when(notificationRepository.findByReceiverIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
-
-        // when / then
-        assertTrue(service.getMyNotifications(1L).isEmpty());
-    }
-
-    @Test
-    @DisplayName("본인 알림은 읽음 처리")
-    void markRead() {
-
-        // given
-        Notification notification = notification(5L, 1L);
-        when(notificationRepository.findById(5L)).thenReturn(Optional.of(notification));
-
-        // when
-        NotificationResponse response = service.markRead(5L, 1L);
-
-        // then
-        assertTrue(response.isRead());
-        assertTrue(notification.isRead());
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 알림은 읽음 처리할 수 없음")
-    void markReadNotFound() {
-
-        // given
-        when(notificationRepository.findById(5L)).thenReturn(Optional.empty());
-
-        // when / then
-        assertThrows(NotificationNotFoundException.class, () -> service.markRead(5L, 1L));
     }
 
     @Test

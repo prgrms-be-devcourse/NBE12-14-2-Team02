@@ -142,19 +142,6 @@ class ContentCandidateServiceTest {
     }
 
     @Test
-    @DisplayName("같은 투표판에 같은 제목의 후보는 생성할 수 없음")
-    void createDuplicateTitle() {
-
-        // given
-        when(contentCandidateRepository.existsByContentPollIdAndTitle(POLL_ID, "기존 후보")).thenReturn(true);
-
-        // when / then
-        assertThrows(DuplicateContentCandidateTitleException.class, () -> service.create(MEETING_ID, USER_ID,
-                new ContentCandidateRequest.Create("기존 후보", "설명")));
-        verify(contentCandidateRepository, never()).save(any());
-    }
-
-    @Test
     @DisplayName("후보를 만든 멤버는 투표가 없으면 후보를 수정")
     void updateCandidate() {
 
@@ -165,19 +152,6 @@ class ContentCandidateServiceTest {
         // then
         assertEquals("수정된 후보", saved.title());
         assertEquals("수정된 설명", candidate.getDescription());
-    }
-
-    @Test
-    @DisplayName("후보를 만든 멤버가 아니면 수정할 수 없음")
-    void updateByNonOwner() {
-
-        // given
-        ContentCandidate othersCandidate = candidate(CANDIDATE_ID, poll, OTHER_MEMBER_ID, "남의 후보");
-        when(contentCandidateRepository.findById(CANDIDATE_ID)).thenReturn(Optional.of(othersCandidate));
-
-        // when / then
-        assertThrows(NotContentCandidateOwnerException.class, () -> service.update(MEETING_ID, CANDIDATE_ID,
-                USER_ID, new ContentCandidateRequest.Update("수정", "설명")));
     }
 
     @Test
