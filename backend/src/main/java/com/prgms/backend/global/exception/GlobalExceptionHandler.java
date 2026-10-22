@@ -4,10 +4,15 @@ import com.prgms.backend.global.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 
 @Slf4j
@@ -52,6 +57,46 @@ public class GlobalExceptionHandler {
         log.error("예상하지 못한 예외 발생", e); // 응답엔 안 담고 서버 콘솔에만 스택트레이스 남김
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(500, "서버 오류가 발생했습니다."));
+    }
+
+    // 요청 경로에 해당하는 API나 정적 리소스를 찾지 못하면 404로 응답
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException e) {
+        String message = e.getMessage();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(404, message));
+    }
+
+    // 필수 @RequestParam 파라미터가 누락되면 400으로 응답
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+        String message = e.getMessage();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, message));
+    }
+
+    // 필수 요청 본문 누락 또는 JSON 파싱·역직렬화 실패 시 400으로 응답
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        String message = e.getMessage();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, message));
+    }
+
+    // 지원하지 않는 요청 Content-Type은 415로 응답
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .headers(e.getHeaders())
+                .body(ApiResponse.error(415, "지원하지 않는 Content-Type입니다."));
+    }
+
+    // 지원하지 않는 HTTP 메서드는 405로 응답하고 Allow 헤더에 허용된 메서드를 전달
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .headers(e.getHeaders())
+                .body(ApiResponse.error(405, "지원하지 않는 HTTP 메서드입니다."));
     }
 
 }
